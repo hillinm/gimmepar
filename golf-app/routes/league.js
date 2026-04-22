@@ -1,104 +1,154 @@
 const express = require('express');
-const db = require('../db/database');
+const { getOne, getAll, query } = require('../db/database');
 const router = express.Router();
 
-// Auth middleware
 function requireAuth(req, res, next) {
   if (!req.session.leagueId) return res.status(401).json({ error: 'Not logged in' });
   next();
 }
 
 // ── COURSE ──
-router.put('/course', requireAuth, (req, res) => {
-  const { name, location, front9par, back9par } = req.body;
-  db.prepare(`UPDATE leagues SET course_name=?, course_location=?, front9par=?, back9par=? WHERE id=?`)
-    .run(name, location, JSON.stringify(front9par), JSON.stringify(back9par), req.session.leagueId);
-  res.json({ success: true });
+router.put('/course', requireAuth, async (req, res) => {
+  try {
+    const { name, location, front9par, back9par } = req.body;
+    await query(
+      'UPDATE leagues SET course_name=$1, course_location=$2, front9par=$3, back9par=$4 WHERE id=$5',
+      [name, location, JSON.stringify(front9par), JSON.stringify(back9par), req.session.leagueId]
+    );
+    res.json({ success: true });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── TEAMS ──
-router.get('/teams', requireAuth, (req, res) => {
-  const teams = db.prepare('SELECT * FROM teams WHERE league_id=? ORDER BY sort_order, id').all(req.session.leagueId);
-  res.json(teams);
+router.get('/teams', requireAuth, async (req, res) => {
+  try {
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1 ORDER BY sort_order, id', [req.session.leagueId]);
+    res.json(teams);
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-router.post('/teams', requireAuth, (req, res) => {
-  const { player1, player2, handicap, nine } = req.body;
-  const count = db.prepare('SELECT COUNT(*) as c FROM teams WHERE league_id=?').get(req.session.leagueId).c;
-  const result = db.prepare('INSERT INTO teams (league_id, player1, player2, handicap, nine, sort_order) VALUES (?,?,?,?,?,?)')
-    .run(req.session.leagueId, player1||'', player2||'', handicap||0, nine||'front', count);
-  res.json({ id: result.lastInsertRowid, player1, player2, handicap, nine: nine||'front', sort_order: count });
+router.post('/teams', requireAuth, async (req, res) => {
+  try {
+    const { player1, player2, player3, player4, handicap, nine, format } = req.body;
+    const countRes = await query('SELECT COUNT(*) FROM teams WHERE league_id=$1', [req.session.leagueId]);
+    const sort_order = parseInt(countRes.rows[0].count);
+    const result = await query(
+      'INSERT INTO teams (league_id, player1, player2, player3, player4, handicap, nine, format, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+      [req.session.leagueId, player1||'', player2||'', player3||'', player4||'', handicap||0, nine||'front', format||'2man', sort_order]
+    );
+    res.json(result.rows[0]);
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-router.put('/teams/:id', requireAuth, (req, res) => {
-  const { player1, player2, handicap, nine } = req.body;
-  // Verify team belongs to this league
-  const team = db.prepare('SELECT id FROM teams WHERE id=? AND league_id=?').get(req.params.id, req.session.leagueId);
-  if (!team) return res.status(403).json({ error: 'Not your team' });
-  db.prepare('UPDATE teams SET player1=?, player2=?, handicap=?, nine=? WHERE id=?')
-    .run(player1||'', player2||'', handicap||0, nine||'front', req.params.id);
-  res.json({ success: true });
+router.put('/teams/:id', requireAuth, async (req, res) => {
+  try {
+    const { player1, player2, player3, player4, handicap, nine, format } = req.body;
+    const team = await getOne('SELECT id FROM teams WHERE id=$1 AND league_id=$2', [req.params.id, req.session.leagueId]);
+    if (!team) return res.status(403).json({ error: 'Not your team' });
+    await query(
+      'UPDATE teams SET player1=$1, player2=$2, player3=$3, player4=$4, handicap=$5, nine=$6, format=$7 WHERE id=$8',
+      [player1||'', player2||'', player3||'', player4||'', handicap||0, nine||'front', format||'2man', req.params.id]
+    );
+    res.json({ success: true });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-router.delete('/teams/:id', requireAuth, (req, res) => {
-  const team = db.prepare('SELECT id FROM teams WHERE id=? AND league_id=?').get(req.params.id, req.session.leagueId);
-  if (!team) return res.status(403).json({ error: 'Not your team' });
-  db.prepare('DELETE FROM teams WHERE id=?').run(req.params.id);
-  res.json({ success: true });
+router.delete('/teams/:id', requireAuth, async (req, res) => {
+  try {
+    const team = await getOne('SELECT id FROM teams WHERE id=$1 AND league_id=$2', [req.params.id, req.session.leagueId]);
+    if (!team) return res.status(403).json({ error: 'Not your team' });
+    await query('DELETE FROM teams WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-// Bulk update handicaps (after recalculate)
-router.post('/teams/handicaps', requireAuth, (req, res) => {
-  const { updates } = req.body; // [{id, handicap}]
-  const update = db.prepare('UPDATE teams SET handicap=? WHERE id=? AND league_id=?');
-  const updateMany = db.transaction((items) => {
-    for (const u of items) update.run(u.handicap, u.id, req.session.leagueId);
+router.post('/teams/handicaps', requireAuth, async (req, res) => {
+  try {
+    const { updates } = req.body;
+    await Promise.all(updates.map(u =>
+      query('UPDATE teams SET handicap=$1 WHERE id=$2 AND league_id=$3', [u.handicap, u.id, req.session.leagueId])
+    ));
+    res.json({ success: true });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+router.post('/teams/roster', requireAuth, async (req, res) => {
+  try {
+    const { teams } = req.body;
+    await query('DELETE FROM teams WHERE league_id=$1', [req.session.leagueId]);
+    await Promise.all(teams.map((t, i) =>
+      query('INSERT INTO teams (league_id, player1, player2, player3, player4, handicap, nine, format, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+        [req.session.leagueId, t.player1||'', t.player2||'', t.player3||'', t.player4||'', t.handicap||0, t.nine||'front', t.format||'2man', i])
+    ));
+    res.json({ success: true });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── ROUNDS ──
+router.get('/rounds', requireAuth, async (req, res) => {
+  try {
+    const rounds = await getAll('SELECT * FROM rounds WHERE league_id=$1 ORDER BY played_on DESC LIMIT 20', [req.session.leagueId]);
+    res.json(rounds);
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+router.post('/rounds', requireAuth, async (req, res) => {
+  try {
+    const { scores, notes } = req.body;
+    const roundRes = await query('INSERT INTO rounds (league_id, notes) VALUES ($1,$2) RETURNING id', [req.session.leagueId, notes||'']);
+    const roundId = roundRes.rows[0].id;
+    await Promise.all(scores.map(s =>
+      query('INSERT INTO round_scores (round_id, team_id, nine, handicap_used, hole_scores, gross, net) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [roundId, s.team_id, s.nine, s.handicap_used||0, JSON.stringify(s.hole_scores||[]), s.gross||0, s.net||0])
+    ));
+    res.json({ success: true, roundId });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+router.get('/rounds/:id', requireAuth, async (req, res) => {
+  try {
+    const round = await getOne('SELECT * FROM rounds WHERE id=$1 AND league_id=$2', [req.params.id, req.session.leagueId]);
+    if (!round) return res.status(404).json({ error: 'Round not found' });
+    const scores = await getAll(
+      'SELECT rs.*, t.player1, t.player2 FROM round_scores rs JOIN teams t ON t.id=rs.team_id WHERE rs.round_id=$1',
+      [req.params.id]
+    );
+    res.json({ ...round, scores });
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── COURSE SEARCH ──
+router.post('/course-search', requireAuth, async (req, res) => {
+  const { query: q } = req.body;
+  if (!q) return res.status(400).json({ error: 'Query required' });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured on server' });
+  const payload = JSON.stringify({
+    model: 'claude-sonnet-4-20250514', max_tokens: 800,
+    messages: [{ role: 'user', content: `Find golf course matching: "${q}". Return ONLY JSON:
+{"courses":[{"name":"string","location":"City, State","front9par":[4,3,4,4,4,5,3,4,5],"back9par":[4,4,3,5,4,4,3,4,5],"totalPar":72,"confidence":"high|medium|low"}]}
+Up to 3 results. Real hole pars for known courses. Always 9 values per nine.` }]
   });
-  updateMany(updates);
-  res.json({ success: true });
-});
-
-// Bulk replace all teams (save roster)
-router.post('/teams/roster', requireAuth, (req, res) => {
-  const { teams } = req.body;
-  const deleteAll = db.prepare('DELETE FROM teams WHERE league_id=?');
-  const insert = db.prepare('INSERT INTO teams (league_id, player1, player2, handicap, nine, sort_order) VALUES (?,?,?,?,?,?)');
-  const saveAll = db.transaction((items) => {
-    deleteAll.run(req.session.leagueId);
-    items.forEach((t, i) => insert.run(req.session.leagueId, t.player1||'', t.player2||'', t.handicap||0, t.nine||'front', i));
-  });
-  saveAll(teams);
-  res.json({ success: true });
-});
-
-// ── ROUNDS (history) ──
-router.get('/rounds', requireAuth, (req, res) => {
-  const rounds = db.prepare('SELECT * FROM rounds WHERE league_id=? ORDER BY played_on DESC LIMIT 20').all(req.session.leagueId);
-  res.json(rounds);
-});
-
-router.post('/rounds', requireAuth, (req, res) => {
-  const { scores, notes } = req.body;
-  // scores: [{team_id, nine, handicap_used, hole_scores, gross, net}]
-  const round = db.prepare('INSERT INTO rounds (league_id, notes) VALUES (?,?)').run(req.session.leagueId, notes||'');
-  const insertScore = db.prepare('INSERT INTO round_scores (round_id, team_id, nine, handicap_used, hole_scores, gross, net) VALUES (?,?,?,?,?,?,?)');
-  const saveRound = db.transaction((items) => {
-    for (const s of items) {
-      insertScore.run(round.lastInsertRowid, s.team_id, s.nine, s.handicap_used||0, JSON.stringify(s.hole_scores||[]), s.gross||0, s.net||0);
-    }
-  });
-  saveRound(scores);
-  res.json({ success: true, roundId: round.lastInsertRowid });
-});
-
-router.get('/rounds/:id', requireAuth, (req, res) => {
-  const round = db.prepare('SELECT * FROM rounds WHERE id=? AND league_id=?').get(req.params.id, req.session.leagueId);
-  if (!round) return res.status(404).json({ error: 'Round not found' });
-  const scores = db.prepare(`
-    SELECT rs.*, t.player1, t.player2 FROM round_scores rs
-    JOIN teams t ON t.id = rs.team_id
-    WHERE rs.round_id=?`).all(req.params.id);
-  res.json({ ...round, scores });
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const https = require('https');
+      const options = {
+        hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Length': Buffer.byteLength(payload) }
+      };
+      const request = https.request(options, (response) => {
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => resolve(JSON.parse(data)));
+      });
+      request.on('error', reject);
+      request.write(payload);
+      request.end();
+    });
+    if (result.error) return res.status(500).json({ error: result.error.message });
+    const raw = result.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
+    res.json(JSON.parse(raw));
+  } catch(e) { console.error(e); res.status(500).json({ error: 'Search failed: ' + e.message }); }
 });
 
 module.exports = router;

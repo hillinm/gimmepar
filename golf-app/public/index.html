@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GimmePar</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GimmePar">
+<meta name="theme-color" content="#0f1a0f">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -16,6 +23,18 @@
 body{font-family:'Libre Baskerville',serif;background:var(--bg);color:var(--cream);min-height:100vh;}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(180deg,transparent 0,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 120px);pointer-events:none;z-index:0;}
 
+
+
+/* ── FORMAT TOGGLE ── */
+.format-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.format-btn { background:transparent; border:none; color:var(--muted); font-family:"Bebas Neue",sans-serif; font-size:12px; letter-spacing:1px; padding:5px 10px; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.format-btn.active-2 { background:var(--green); color:#fff; }
+.format-btn.active-4 { background:var(--gold); color:var(--bg); }
+.player-extra { display:none; }
+.player-extra.visible { display:table-cell; }
+.format-badge { display:inline-block; font-size:9px; font-weight:700; letter-spacing:1px; padding:2px 6px; border-radius:4px; text-transform:uppercase; margin-left:6px; }
+.format-badge.two { background:rgba(74,140,63,.35); color:var(--green2); border:1px solid rgba(74,140,63,.5); }
+.format-badge.four { background:rgba(201,168,76,.25); color:var(--gold2); border:1px solid rgba(201,168,76,.4); }
 
 /* ── NINE TOGGLE ── */
 .nine-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
@@ -53,7 +72,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 /* ── LAYOUT ── */
 .page{display:none;position:relative;z-index:1;}
 .page.active{display:block;}
-.wrap{max-width:960px;margin:0 auto;padding:0 20px 80px;}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 80px;padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 
 /* ── HEADER ── */
 .app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;}
@@ -263,6 +282,221 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .page-hero p{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold2);opacity:.7;margin-top:8px;font-style:italic;}
 .empty-state{text-align:center;padding:32px;color:var(--muted);font-style:italic;font-size:14px;}
 .status-text{font-size:12px;color:var(--muted);font-style:italic;padding:4px 0 8px;}
+
+/* ══════════════════════════════════════════
+   MOBILE RESPONSIVE — Full overhaul
+   ══════════════════════════════════════════ */
+
+/* Touch targets — all interactive elements min 44px */
+button, input, select { touch-action: manipulation; }
+input[type=number] { -moz-appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+/* ── HEADER mobile ── */
+@media(max-width:600px) {
+  .app-header {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .app-logo { font-size: 20px; letter-spacing: 2px; }
+  .header-league { font-size: 11px; width: 100%; order: 3; opacity: .7; }
+  .nav-tabs { display: none; } /* replaced by bottom nav */
+  .btn-logout { font-size: 11px; padding: 5px 10px; }
+}
+
+/* ── BOTTOM NAV (mobile only) ── */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-nav-inner {
+  display: flex;
+  height: 56px;
+}
+.bnav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s;
+  padding: 6px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.bnav-btn.active { color: var(--gold); }
+.bnav-icon { font-size: 20px; line-height: 1; }
+.bnav-label { font-family: "Bebas Neue", sans-serif; font-size: 10px; letter-spacing: 1px; }
+@media(max-width:600px) {
+  .bottom-nav { display: block; }
+  .wrap { padding-bottom: 100px !important; }
+}
+
+/* ── LOGIN mobile ── */
+@media(max-width:480px) {
+  .login-wrap { margin: 24px auto; }
+  .login-card { padding: 24px 20px; border-radius: 12px; }
+  .login-title { font-size: 28px; }
+  .form-input { font-size: 16px; padding: 13px 14px; } /* 16px prevents iOS zoom */
+}
+
+/* ── WRAP padding mobile ── */
+@media(max-width:600px) {
+  .wrap { padding-left: 12px; padding-right: 12px; padding-top: 16px !important; }
+}
+
+/* ── SCORING FILTER BAR mobile ── */
+@media(max-width:600px) {
+  .score-filter-bar { gap: 6px; }
+  .score-search { font-size: 16px; padding: 10px 12px; }
+  .filter-btn { padding: 8px 12px; font-size: 12px; }
+  .score-count { width: 100%; text-align: center; }
+}
+
+/* ── HOLES GRID — key fix: min touch target size ── */
+.holes-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+}
+@media(max-width:480px) {
+  .holes-grid { gap: 3px; }
+  .hole-lbl { font-size: 11px; padding: 2px 0; }
+  .par-lbl  { font-size: 10px; }
+  .hole-inp {
+    padding: 8px 1px;
+    font-size: 16px; /* prevent iOS zoom */
+    border-radius: 4px;
+  }
+}
+@media(max-width:360px) {
+  .hole-inp { padding: 6px 0; font-size: 14px; }
+}
+
+/* ── SCORE CARD mobile ── */
+@media(max-width:600px) {
+  .score-team-header { padding: 10px 12px; gap: 8px; }
+  .team-name-display { font-size: 12px; }
+  .score-team-body { padding: 10px 12px; }
+  .hdcp-row { flex-wrap: wrap; gap: 8px; }
+  .score-totals { gap: 6px; }
+  .total-val { font-size: 22px; }
+}
+
+/* ── HDCP OVERRIDE GRID mobile ── */
+@media(max-width:600px) {
+  .hdcp-override-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .hdcp-override-row { padding: 6px 8px; }
+  .hdcp-override-name { font-size: 11px; }
+}
+
+/* ── RESULTS GRID mobile ── */
+@media(max-width:600px) {
+  .results-grid { grid-template-columns: 1fr; gap: 12px; }
+  .results-title h2 { font-size: 28px; }
+  .fr-net { font-size: 22px; }
+  .res-hdr { padding: 12px 14px; }
+  .res-body { padding: 12px 14px; }
+}
+
+/* ── ROSTER TABLE mobile — stack into cards ── */
+@media(max-width:600px) {
+  .team-table thead { display: none; }
+  .team-table, .team-table tbody, .team-table tr, .team-table td { display: block; width: 100%; }
+  .team-table tr {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    position: relative;
+  }
+  .team-table td {
+    padding: 4px 0;
+    border: none;
+  }
+  .team-table td:first-child { display: none; } /* hide # */
+  .team-input { font-size: 16px; padding: 9px 10px; }
+  .hdcp-input-sm { width: 72px; font-size: 16px; }
+  .btn-del { position: absolute; top: 10px; right: 10px; font-size: 18px; }
+}
+
+/* ── PAR GRID mobile ── */
+@media(max-width:480px) {
+  .par-grid { gap: 4px; }
+  .par-hole-input { font-size: 16px; padding: 7px 1px; }
+  .par-hole-lbl { font-size: 11px; }
+}
+
+/* ── COURSE SEARCH mobile ── */
+@media(max-width:480px) {
+  .search-row { flex-direction: column; }
+  .btn-search { width: 100%; padding: 12px; font-size: 18px; }
+  .search-input { font-size: 16px; }
+}
+
+/* ── BUTTONS mobile — full width on small screens ── */
+@media(max-width:480px) {
+  .btn-calculate { font-size: 20px; padding: 16px; }
+  .btn-recalc { font-size: 18px; padding: 14px; }
+  .result-actions { flex-direction: column; align-items: stretch; }
+  .btn-outline, .btn-green-outline { text-align: center; padding: 13px; font-size: 16px; }
+}
+
+/* ── SKINS TABLE mobile ── */
+@media(max-width:480px) {
+  .skins-tbl, .sb-tbl { font-size: 12px; }
+  .skins-tbl td, .skins-tbl th,
+  .sb-tbl td, .sb-tbl th { padding: 6px 5px; }
+  .h-num { font-size: 15px; }
+}
+
+/* ── NINE TOGGLE in score card mobile ── */
+@media(max-width:480px) {
+  .nine-toggle-btn { font-size: 12px; padding: 7px 10px; }
+}
+
+
+/* ── 18-HOLE GRID ── */
+.holes-grid-18 {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+}
+.nine-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.card-nine-badge.all18 { background:rgba(109,190,95,.2); color:var(--green2); border:1px solid rgba(109,190,95,.4); }
+.team-num.all18 { background:var(--green2); color:var(--bg); }
+.nine-toggle-btn.active-18 { background:var(--green2); color:var(--bg); }
+@media(max-width:400px) {
+  .holes-grid-18 { gap: 2px; }
+}
+
+
+@media(max-width:600px) {
+  .p34-header { display:none; }
+  .player-extra { display:none !important; }
+  .player-extra.visible { display:block !important; width:100%; }
+}
+
+/* ── SAFE AREA bottom padding ── */
+.btn-calculate { margin-bottom: 20px; }
+
 </style>
 </head>
 <body>
@@ -271,7 +505,70 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 <div id="loginPage" class="page active">
   <div class="login-wrap">
     <div class="login-card">
-      <span class="login-icon">⛳</span>
+      <div style="width:80px;height:80px;margin:0 auto 12px;display:block;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2e1a"/>
+      <stop offset="100%" style="stop-color:#0f1a0f"/>
+    </linearGradient>
+    <linearGradient id="fairway" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d5a1e"/>
+      <stop offset="100%" style="stop-color:#1e3d12"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8cc7a"/>
+      <stop offset="100%" style="stop-color:#c9a84c"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#d8d8d8"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="rgba(0,0,0,0.5)"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)"/>
+
+  <!-- Subtle diagonal stripe texture -->
+  <rect width="512" height="512" rx="110" ry="110" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="40"/>
+
+  <!-- Green fairway hill -->
+  <ellipse cx="256" cy="420" rx="220" ry="90" fill="url(#fairway)"/>
+  <ellipse cx="256" cy="400" rx="200" ry="75" fill="#2d5a1e"/>
+
+  <!-- Flag pole -->
+  <line x1="256" y1="160" x2="256" y2="360" stroke="#c9a84c" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Flag -->
+  <polygon points="256,160 330,195 256,230" fill="url(#gold)" filter="url(#shadow)"/>
+
+  <!-- Hole cup shadow on green -->
+  <ellipse cx="256" cy="362" rx="18" ry="7" fill="rgba(0,0,0,0.4)"/>
+  <ellipse cx="256" cy="360" rx="15" ry="6" fill="#1a3a10"/>
+
+  <!-- Golf ball -->
+  <circle cx="340" cy="345" r="32" fill="url(#ball)" filter="url(#shadow)"/>
+  <!-- Ball dimples -->
+  <circle cx="332" cy="337" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="345" cy="333" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="352" cy="344" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="348" cy="355" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="336" cy="351" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="328" cy="348" r="3" fill="rgba(0,0,0,0.08)"/>
+
+  <!-- GIMME text -->
+  <text x="256" y="118" font-family="Arial Black, sans-serif" font-size="72" font-weight="900"
+        fill="url(#gold)" text-anchor="middle" letter-spacing="4">GIMME</text>
+
+  <!-- PAR text -->
+  <text x="256" y="490" font-family="Arial Black, sans-serif" font-size="72" font-weight="900"
+        fill="white" text-anchor="middle" letter-spacing="6" opacity="0.95">PAR</text>
+
+  <!-- Gold accent line under GIMME -->
+  <rect x="156" y="126" width="200" height="4" rx="2" fill="url(#gold)" opacity="0.6"/>
+</svg></div>
       <div class="login-title">GIMMEPAR</div>
       <div class="login-sub">Sign in to your league</div>
       <div class="form-error" id="loginError"></div>
@@ -303,6 +600,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <button class="btn-primary" onclick="register()">CREATE LEAGUE</button>
         <div class="login-toggle">Already have a league? <a onclick="showLogin()">Sign in</a></div>
       </div>
+    <p style="margin-top:28px;text-align:center;font-size:10px;color:rgba(122,138,106,0.4);letter-spacing:1px;font-style:italic;">&copy; 2025 GimmePar. All rights reserved.</p>
     </div>
   </div>
 </div>
@@ -310,7 +608,73 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 <!-- ══ APP (authenticated) ══ -->
 <div id="appPage" class="page">
   <div class="app-header">
-    <div class="app-logo">⛳ GIMME<span>PAR</span></div>
+    <div class="app-logo" style="display:flex;align-items:center;gap:10px;">
+      <div style="width:36px;height:36px;flex-shrink:0;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2e1a"/>
+      <stop offset="100%" style="stop-color:#0f1a0f"/>
+    </linearGradient>
+    <linearGradient id="fairway" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d5a1e"/>
+      <stop offset="100%" style="stop-color:#1e3d12"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8cc7a"/>
+      <stop offset="100%" style="stop-color:#c9a84c"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#d8d8d8"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="rgba(0,0,0,0.5)"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)"/>
+
+  <!-- Subtle diagonal stripe texture -->
+  <rect width="512" height="512" rx="110" ry="110" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="40"/>
+
+  <!-- Green fairway hill -->
+  <ellipse cx="256" cy="420" rx="220" ry="90" fill="url(#fairway)"/>
+  <ellipse cx="256" cy="400" rx="200" ry="75" fill="#2d5a1e"/>
+
+  <!-- Flag pole -->
+  <line x1="256" y1="160" x2="256" y2="360" stroke="#c9a84c" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Flag -->
+  <polygon points="256,160 330,195 256,230" fill="url(#gold)" filter="url(#shadow)"/>
+
+  <!-- Hole cup shadow on green -->
+  <ellipse cx="256" cy="362" rx="18" ry="7" fill="rgba(0,0,0,0.4)"/>
+  <ellipse cx="256" cy="360" rx="15" ry="6" fill="#1a3a10"/>
+
+  <!-- Golf ball -->
+  <circle cx="340" cy="345" r="32" fill="url(#ball)" filter="url(#shadow)"/>
+  <!-- Ball dimples -->
+  <circle cx="332" cy="337" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="345" cy="333" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="352" cy="344" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="348" cy="355" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="336" cy="351" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="328" cy="348" r="3" fill="rgba(0,0,0,0.08)"/>
+
+  <!-- GIMME text -->
+  <text x="256" y="118" font-family="Arial Black, sans-serif" font-size="72" font-weight="900"
+        fill="url(#gold)" text-anchor="middle" letter-spacing="4">GIMME</text>
+
+  <!-- PAR text -->
+  <text x="256" y="490" font-family="Arial Black, sans-serif" font-size="72" font-weight="900"
+        fill="white" text-anchor="middle" letter-spacing="6" opacity="0.95">PAR</text>
+
+  <!-- Gold accent line under GIMME -->
+  <rect x="156" y="126" width="200" height="4" rx="2" fill="url(#gold)" opacity="0.6"/>
+</svg></div>
+      <span>GIMME<span style="color:var(--white)">PAR</span></span>
+    </div>
     <div class="header-league" id="headerLeague"></div>
     <nav class="nav-tabs">
       <button class="nav-tab active" onclick="showTab('scoring')" id="tab-scoring">Scoring</button>
@@ -326,8 +690,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="score-filter-bar">
       <input class="score-search" id="scoreSearch" placeholder="🔍 Search team..." oninput="filterScoringCards()">
       <button class="filter-btn active" id="filterAll" onclick="setFilter('all',this)">ALL</button>
-      <button class="filter-btn" id="filterFront" onclick="setFilter('front',this)">FRONT 9</button>
-      <button class="filter-btn" id="filterBack" onclick="setFilter('back',this)">BACK 9</button>
+      <button class="filter-btn" id="filterFront" onclick="setFilter('front',this)">F9</button>
+      <button class="filter-btn" id="filterAll18" onclick="setFilter('all18',this)">18</button>
+      <button class="filter-btn" id="filterBack" onclick="setFilter('back',this)">B9</button>
       <span class="score-count" id="scoreCount"></span>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
@@ -356,7 +721,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         </div>
         <div style="overflow-x:auto;">
           <table class="team-table">
-            <thead><tr><th>#</th><th>Player 1</th><th>Player 2</th><th>Hdcp</th><th>Nine</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Format</th><th>Player 1</th><th>Player 2</th><th class="p34-header">Player 3</th><th class="p34-header">Player 4</th><th>Hdcp</th><th>Nine</th><th></th></tr></thead>
             <tbody id="rosterBody"></tbody>
           </table>
         </div>
@@ -409,6 +774,29 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     </div>
   </div>
 </div>
+
+
+  <!-- BOTTOM NAV (mobile) -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="bnav-btn active" id="bnav-scoring" onclick="showTab('scoring')">
+        <span class="bnav-icon">⛳</span>
+        <span class="bnav-label">Scoring</span>
+      </button>
+      <button class="bnav-btn" id="bnav-roster" onclick="showTab('roster')">
+        <span class="bnav-icon">👥</span>
+        <span class="bnav-label">Roster</span>
+      </button>
+      <button class="bnav-btn" id="bnav-course" onclick="showTab('course')">
+        <span class="bnav-icon">🏌️</span>
+        <span class="bnav-label">Course</span>
+      </button>
+      <button class="bnav-btn" id="bnav-history" onclick="showTab('history')">
+        <span class="bnav-icon">📅</span>
+        <span class="bnav-label">History</span>
+      </button>
+    </div>
+  </nav>
 
 <div class="toast" id="toast"></div>
 
@@ -502,15 +890,26 @@ function renderRosterTable() {
   rosterTeams.forEach((t, i) => {
     const nine = t.nine || 'front';
     const tr = document.createElement('tr');
+    const fmt = t.format || '2man';
+    const is4 = fmt === '4man';
     tr.innerHTML = `
       <td style="color:var(--muted);font-size:13px">${i+1}</td>
+      <td>
+        <div class="format-toggle">
+          <button class="format-btn ${!is4?'active-2':''}" onclick="setRosterFormat(${t.id},'2man',this)">2</button>
+          <button class="format-btn ${is4?'active-4':''}"  onclick="setRosterFormat(${t.id},'4man',this)">4</button>
+        </div>
+      </td>
       <td><input class="team-input" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player 1"></td>
       <td><input class="team-input" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
+      <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player3||'')}" onchange="updateRosterField(${t.id},'player3',this.value)" placeholder="Player 3"></td>
+      <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player4||'')}" onchange="updateRosterField(${t.id},'player4',this.value)" placeholder="Player 4"></td>
       <td><input class="team-input hdcp-input-sm" type="number" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" min="0" max="54"></td>
       <td>
         <div class="nine-toggle">
-          <button class="nine-toggle-btn ${nine==='front'?'active-f':''}" onclick="setRosterNine(${t.id},'front',this)">F9</button>
-          <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"  onclick="setRosterNine(${t.id},'back',this)">B9</button>
+          <button class="nine-toggle-btn ${nine==='front'?'active-f':''}"  onclick="setRosterNine(${t.id},'front',this)">F9</button>
+          <button class="nine-toggle-btn ${nine==='all18'?'active-18':''}" onclick="setRosterNine(${t.id},'all18',this)">ALL</button>
+          <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"   onclick="setRosterNine(${t.id},'back',this)">B9</button>
         </div>
       </td>
       <td><button class="btn-del" onclick="deleteTeam(${t.id})">✕</button></td>`;
@@ -527,15 +926,27 @@ function setRosterNine(id, nine, btn) {
   const t = rosterTeams.find(t=>t.id===id);
   if (!t) return;
   t.nine = nine;
-  // Update toggle buttons
   const row = btn.closest('tr');
-  row.querySelectorAll('.nine-toggle-btn').forEach(b => { b.classList.remove('active-f','active-b'); });
-  btn.classList.add(nine==='front'?'active-f':'active-b');
+  row.querySelectorAll('.nine-toggle-btn').forEach(b => { b.classList.remove('active-f','active-b','active-18'); });
+  btn.classList.add(nine==='front'?'active-f':nine==='back'?'active-b':'active-18');
+}
+
+function setRosterFormat(id, format, btn) {
+  const t = rosterTeams.find(t=>t.id===id);
+  if (!t) return;
+  t.format = format;
+  const row = btn.closest('tr');
+  // Update toggle buttons
+  row.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active-2','active-4'));
+  btn.classList.add(format==='4man'?'active-4':'active-2');
+  // Show/hide P3/P4 cells
+  const is4 = format === '4man';
+  row.querySelectorAll('.player-extra').forEach(td => td.classList.toggle('visible', is4));
 }
 
 async function addTeamRow() {
   try {
-    const t = await api('POST', '/api/league/teams', {player1:'', player2:'', handicap:0});
+    const t = await api('POST', '/api/league/teams', {player1:'', player2:'', player3:'', player4:'', handicap:0, format:'2man'});
     rosterTeams.push(t);
     renderRosterTable();
     buildScoringCards();
@@ -553,7 +964,7 @@ async function deleteTeam(id) {
 }
 
 async function saveRoster() {
-  const updates = rosterTeams.map(t => ({id: t.id, player1: t.player1, player2: t.player2, handicap: t.handicap, nine: t.nine||'front'}));
+  const updates = rosterTeams.map(t => ({id: t.id, player1: t.player1, player2: t.player2, player3: t.player3||'', player4: t.player4||'', handicap: t.handicap, nine: t.nine||'front', format: t.format||'2man'}));
   await Promise.all(updates.map(u => api('PUT', `/api/league/teams/${u.id}`, u)));
   buildScoringCards();
   toast('✓ Roster saved');
@@ -571,7 +982,7 @@ function buildParGrids() {
       wrap.className = 'par-hole-wrap';
       wrap.innerHTML = `<div class="par-hole-lbl">H${hNum}</div>
         <input class="par-hole-input" type="number" min="3" max="6" value="${DEFAULT_PAR[i]}"
-               id="${gi===0?'pf':'pb'}_${i}" onchange="updateParTotals()">`;
+               id="${gi===0?'pf':'pb'}_${i}" onchange="updateParTotals()" inputmode="numeric">`;
       el.appendChild(wrap);
     }
   });
@@ -611,33 +1022,27 @@ async function searchCourse() {
   document.getElementById('courseResults').style.display = 'none';
 
   try {
-    const res = await fetch('/api/auth/me'); // just to check session — actual AI call below
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:800,
-        messages:[{role:'user', content:`Find golf course matching: "${query}". Return ONLY JSON:
-{"courses":[{"name":"string","location":"City, State","front9par":[4,3,4,4,4,5,3,4,5],"back9par":[4,4,3,5,4,4,3,4,5],"totalPar":72,"confidence":"high|medium|low"}]}
-Up to 3 results. Use real hole pars for known courses. Always 9 values per nine.`}]
-      })
-    });
-    const data = await response.json();
-    const raw = data.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(raw);
+    const parsed = await api('POST', '/api/league/course-search', { query });
     courseSearchResults = parsed.courses || [];
     if (!courseSearchResults.length) {
-      status.textContent = 'No courses found — enter par manually.';
+      status.textContent = 'No courses found — try a different name or enter par manually.';
     } else {
-      status.textContent = `${courseSearchResults.length} result(s):`;
+      status.textContent = courseSearchResults.length + ' result(s) — click to select:';
       const el = document.getElementById('courseResults');
       el.innerHTML = courseSearchResults.map((c,i)=>`
         <div class="search-result-item" onclick="selectCourse(${i})">
-          <div class="search-result-name">${c.name}</div>
-          <div class="search-result-loc">${c.location} &bull; Par ${c.totalPar} &bull; ${c.confidence} confidence</div>
+          <div class="search-result-name">${esc(c.name)}</div>
+          <div class="search-result-loc">${esc(c.location)} &bull; Par ${c.totalPar} &bull; ${c.confidence} confidence</div>
         </div>`).join('');
       el.style.display = 'block';
     }
-  } catch(e) { status.textContent = 'Search failed — enter par manually.'; }
+  } catch(e) {
+    if (e.message && e.message.includes('ANTHROPIC_API_KEY')) {
+      status.textContent = '⚠ API key not set on server — see setup instructions below.';
+    } else {
+      status.textContent = 'Search failed: ' + e.message + ' — enter par manually.';
+    }
+  }
   btn.disabled=false; btn.textContent='🔍 Search';
 }
 
@@ -680,7 +1085,7 @@ function buildScoringCards() {
 
   rosterTeams.forEach((t, idx) => {
     const nine = t.nine || 'front';
-    const st = { id: t.id, nine, holes: Array(9).fill(null) };
+    const st = { id: t.id, nine, holes: Array(9).fill(null), format: t.format||'2man' };
     scoreTeams.push(st);
     container.appendChild(buildScoreCard(t, st, idx));
   });
@@ -702,7 +1107,9 @@ function filterScoringCards() {
     if (!card) return;
     const nine = t.nine || 'front';
     const nameMatch = !search || (t.player1+' '+t.player2).toLowerCase().includes(search);
-    const nineMatch = currentFilter === 'all' || nine === currentFilter;
+    const nineMatch = currentFilter === 'all' || nine === currentFilter ||
+                      (currentFilter === 'front' && nine === 'all18') ||
+                      (currentFilter === 'back'  && nine === 'all18');
     const show = nameMatch && nineMatch;
     card.style.display = show ? '' : 'none';
     if (show) visible++;
@@ -716,17 +1123,72 @@ function updateScoreCount() {
   if (el) el.textContent = rosterTeams.length + ' teams';
 }
 
+function getHoleConfig(nine) {
+  if (nine === 'all18') {
+    return {
+      holeNums: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+      par: [...getParFront(), ...getParBack()],
+      count: 18
+    };
+  }
+  const holeNums = nine==='back' ? [10,11,12,13,14,15,16,17,18] : [1,2,3,4,5,6,7,8,9];
+  return { holeNums, par: getParFor(nine), count: 9 };
+}
+
+function buildHolesGrid(teamId, nine) {
+  const { holeNums, par, count } = getHoleConfig(nine);
+  if (count === 18) {
+    // Two rows of 9 with a divider
+    const front = holeNums.slice(0,9);
+    const back  = holeNums.slice(9);
+    const pf = par.slice(0,9);
+    const pb = par.slice(9);
+    return `
+      <div class="holes-grid-18">
+        ${front.map(h=>`<div class="hole-lbl">${h}</div>`).join('')}
+        ${pf.map((p,i)=>`<div class="par-lbl" id="splbl_${teamId}_${i}">${p}</div>`).join('')}
+        ${front.map((h,i)=>`<input class="hole-inp" type="number" min="1" max="15"
+          id="shole_${teamId}_${i}" placeholder="-" inputmode="numeric" pattern="[0-9]*"
+          oninput="colorHole(this,${teamId},${i}); recalcCard(${teamId})">`).join('')}
+        <div class="nine-divider"></div>
+        ${back.map(h=>`<div class="hole-lbl">${h}</div>`).join('')}
+        ${pb.map((p,i)=>`<div class="par-lbl" id="splbl_${teamId}_${i+9}">${p}</div>`).join('')}
+        ${back.map((h,i)=>`<input class="hole-inp" type="number" min="1" max="15"
+          id="shole_${teamId}_${i+9}" placeholder="-" inputmode="numeric" pattern="[0-9]*"
+          oninput="colorHole(this,${teamId},${i+9}); recalcCard(${teamId})">`).join('')}
+      </div>`;
+  }
+  return `
+    <div class="holes-grid" id="sgrid_${teamId}">
+      ${holeNums.map(h=>`<div class="hole-lbl">${h}</div>`).join('')}
+      ${par.map((p,i)=>`<div class="par-lbl" id="splbl_${teamId}_${i}">${p}</div>`).join('')}
+      ${holeNums.map((h,i)=>`<input class="hole-inp" type="number" min="1" max="15"
+        id="shole_${teamId}_${i}" placeholder="-" inputmode="numeric" pattern="[0-9]*"
+        oninput="colorHole(this,${teamId},${i}); recalcCard(${teamId})">`).join('')}
+    </div>`;
+}
+
+function nineBadgeClass(nine) {
+  return nine==='back'?'back':nine==='all18'?'all18':'front';
+}
+function nineNumClass(nine) {
+  return nine==='back'?'back-nine':nine==='all18'?'all18':'';
+}
+function nineLabel(nine) {
+  return nine==='back'?'BACK 9':nine==='all18'?'ALL 18':'FRONT 9';
+}
+
 function buildScoreCard(team, st, idx) {
-  const par = getParFor(st.nine);
-  const holeNums = st.nine==='back' ? [10,11,12,13,14,15,16,17,18] : [1,2,3,4,5,6,7,8,9];
   const card = document.createElement('div');
   card.className = 'score-team-card';
   card.id = 'scard_'+team.id;
   card.innerHTML = `
     <div class="score-team-header" onclick="toggleCard(${team.id})">
-      <div class="team-num ${st.nine==='back'?'back-nine':''}">${idx+1}</div>
-      <div class="team-name-display">${esc(team.player1)} / ${esc(team.player2)}</div>
-      <span class="card-nine-badge ${st.nine}">${st.nine==='back'?'BACK 9':'FRONT 9'}</span>
+      <div class="team-num ${nineNumClass(st.nine)}" id="snum_${team.id}">${idx+1}</div>
+      <div class="team-name-display">
+        ${esc(team.player1)} / ${esc(team.player2)}${team.format==='4man'&&team.player3?' / '+esc(team.player3):''}${team.format==='4man'&&team.player4?' / '+esc(team.player4):''}
+        <span class="format-badge ${team.format==='4man'?'four':'two'}">${team.format==='4man'?'4-Man':'2-Man'}</span>
+      </div>
       <div class="card-quick-totals">
         <span class="quick-gross" id="sgross_${team.id}">—</span>
         <span class="quick-net" id="snet_${team.id}"></span>
@@ -734,19 +1196,22 @@ function buildScoreCard(team, st, idx) {
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
-      <div class="hdcp-row">
-        <label>Hdcp</label>
-        <input class="hdcp-inp" type="number" min="0" max="54" value="${team.handicap}"
-               id="shdcp_${team.id}" oninput="recalcCard(${team.id})">
-        <span style="font-size:11px;color:var(--muted);margin-left:8px;">${st.nine==='back'?'Back 9 (holes 10–18)':'Front 9 (holes 1–9)'}</span>
+      <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label>Hdcp</label>
+          <input class="hdcp-inp" type="number" min="0" max="54" value="${team.handicap}"
+                 id="shdcp_${team.id}" oninput="recalcCard(${team.id})" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="nine-toggle" id="stoggle_${team.id}" onclick="event.stopPropagation()">
+          <button class="nine-toggle-btn ${st.nine==='front'?'active-f':''}"
+                  onclick="switchNine(${team.id},'front')">F9</button>
+          <button class="nine-toggle-btn ${st.nine==='all18'?'active-18':''}"
+                  onclick="switchNine(${team.id},'all18')">ALL 18</button>
+          <button class="nine-toggle-btn ${st.nine==='back'?'active-b':''}"
+                  onclick="switchNine(${team.id},'back')">B9</button>
+        </div>
       </div>
-      <div class="holes-grid" id="sgrid_${team.id}">
-        ${holeNums.map(h=>`<div class="hole-lbl">${h}</div>`).join('')}
-        ${par.map((p,i)=>`<div class="par-lbl" id="splbl_${team.id}_${i}">${p}</div>`).join('')}
-        ${holeNums.map((h,i)=>`<input class="hole-inp" type="number" min="1" max="15"
-          id="shole_${team.id}_${i}" placeholder="-"
-          oninput="colorHole(this,${team.id},${i}); recalcCard(${team.id})">`).join('')}
-      </div>
+      <div id="sgrid_${team.id}">${buildHolesGrid(team.id, st.nine)}</div>
       <div class="score-totals">
         <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross2_${team.id}">—</div></div>
         <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">—</div></div>
@@ -781,32 +1246,62 @@ function expandAll() {
 }
 
 function refreshParLabels(st) {
-  const par = getParFor(st.nine);
-  for (let i=0;i<9;i++) {
+  const { par, count } = getHoleConfig(st.nine);
+  for (let i=0;i<count;i++) {
     const el = document.getElementById(`splbl_${st.id}_${i}`);
     if (el) el.textContent = par[i];
   }
 }
 
 function setNine(teamId, nine, btn) {
+  // legacy — use switchNine
+  switchNine(teamId, nine);
+}
+
+async function switchNine(teamId, nine) {
   const st = scoreTeams.find(s=>s.id===teamId);
+  const rt = rosterTeams.find(t=>t.id===teamId);
   if (!st) return;
+
   st.nine = nine;
-  const card = document.getElementById('scard_'+teamId);
-  card?.querySelectorAll('.nine-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  // Update hole numbers
-  const holeNums = nine==='back'?[10,11,12,13,14,15,16,17,18]:[1,2,3,4,5,6,7,8,9];
-  const grid = document.getElementById('sgrid_'+teamId);
-  grid?.querySelectorAll('.hole-lbl').forEach((lbl,i)=>{ lbl.textContent=holeNums[i]; });
-  refreshParLabels(st);
+  if (rt) rt.nine = nine;
+
+  // Update toggle buttons in card
+  const toggle = document.getElementById('stoggle_'+teamId);
+  toggle?.querySelectorAll('.nine-toggle-btn').forEach(b => b.classList.remove('active-f','active-b','active-18'));
+  if (toggle) {
+    const btns = toggle.querySelectorAll('.nine-toggle-btn');
+    if (nine==='front')       btns[0]?.classList.add('active-f');
+    else if (nine==='all18')  btns[1]?.classList.add('active-18');
+    else                      btns[2]?.classList.add('active-b');
+  }
+
+  // Rebuild the entire holes grid (handles 9 vs 18)
+  const gridWrap = document.getElementById('sgrid_'+teamId);
+  if (gridWrap) gridWrap.innerHTML = buildHolesGrid(teamId, nine);
+
+  // Update number badge
+  const numBadge = document.getElementById('snum_'+teamId);
+  if (numBadge) {
+    numBadge.className = 'team-num ' + nineNumClass(nine);
+  }
+
+  recalcCard(teamId);
+
+  // Save to roster
+  try {
+    const t = rosterTeams.find(t=>t.id===teamId);
+    if (t) await api('PUT', `/api/league/teams/${teamId}`, {
+      player1: t.player1, player2: t.player2, handicap: t.handicap, nine
+    });
+  } catch(e) { console.warn('Could not save nine to roster', e); }
 }
 
 // syncAllNines removed — nine is per-team in roster
 
 function colorHole(input, teamId, holeIdx) {
   const st = scoreTeams.find(s=>s.id===teamId);
-  const par = getParFor(st?.nine||'front');
+  const { par } = getHoleConfig(st?.nine||'front');
   const val = parseInt(input.value), p = par[holeIdx];
   input.classList.remove('birdie','eagle','bogey','double');
   if (!val||!p) return;
@@ -818,10 +1313,10 @@ function colorHole(input, teamId, holeIdx) {
 
 function recalcCard(teamId) {
   const st = scoreTeams.find(s=>s.id===teamId);
-  const par = getParFor(st?.nine||'front');
+  const { par, count } = getHoleConfig(st?.nine||'front');
   const parTotal = par.reduce((a,b)=>a+b,0);
   let gross=0, filled=0;
-  for (let i=0;i<9;i++) {
+  for (let i=0;i<count;i++) {
     const v = parseInt(document.getElementById(`shole_${teamId}_${i}`)?.value);
     if (!isNaN(v)) { gross+=v; filled++; }
   }
@@ -830,20 +1325,18 @@ function recalcCard(teamId) {
   const diff = gross - parTotal;
   const diffStr = diff===0?'E':diff>0?'+'+diff:''+diff;
 
-  // Header quick totals
   const gHdr = document.getElementById(`sgross_${teamId}`);
   const nHdr = document.getElementById(`snet_${teamId}`);
   if (gHdr) gHdr.textContent = filled>0 ? gross : '—';
-  if (nHdr) nHdr.textContent = filled===9 ? 'Net '+net : '';
+  if (nHdr) nHdr.textContent = filled===count ? 'Net '+net : '';
 
-  // Body totals
   const gEl = document.getElementById(`sgross2_${teamId}`);
   const tEl = document.getElementById(`stopar_${teamId}`);
   const nEl = document.getElementById(`snet2_${teamId}`);
   if (filled===0) { if(gEl) gEl.textContent='—'; if(tEl) tEl.textContent='—'; if(nEl) nEl.textContent='—'; return; }
   if (gEl) gEl.textContent = gross;
   if (tEl) { tEl.textContent = diffStr; tEl.className='total-val '+(diff>0?'over':diff<0?'under':'even'); }
-  if (nEl) nEl.textContent = filled===9 ? net : '—';
+  if (nEl) nEl.textContent = filled===count ? net : '—';
 }
 
 // ══ CALCULATE ══
@@ -851,15 +1344,17 @@ function calculate() {
   const parFront = getParFront(), parBack = getParBack();
   const data = rosterTeams.map(t => {
     const st = scoreTeams.find(s=>s.id===t.id);
-    const nine = st?.nine||'front';
-    const par = getParFor(nine);
+    const nine = st?.nine || t.nine || 'front';
+    const { par, count } = getHoleConfig(nine);
     const parTotal = par.reduce((a,b)=>a+b,0);
     const hdcp = parseInt(document.getElementById(`shdcp_${t.id}`)?.value)||0;
-    const holes = Array.from({length:9},(_,i)=>{ const v=parseInt(document.getElementById(`shole_${t.id}_${i}`)?.value); return isNaN(v)?null:v; });
+    const holes = Array.from({length:count},(_,i)=>{ const v=parseInt(document.getElementById(`shole_${t.id}_${i}`)?.value); return isNaN(v)?null:v; });
     const gross = holes.reduce((a,b)=>b!=null?a+b:a,0);
     const hasAll = holes.every(h=>h!=null);
-    return { id:t.id, name:`${t.player1} / ${t.player2}`, player1:t.player1, player2:t.player2, hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine };
-    // nine comes from roster
+    const players = [t.player1, t.player2];
+    if (t.format==='4man') { if(t.player3) players.push(t.player3); if(t.player4) players.push(t.player4); }
+    const teamName = players.filter(Boolean).join(' / ');
+    return { id:t.id, name:teamName, player1:t.player1, player2:t.player2, player3:t.player3||'', player4:t.player4||'', format:t.format||'2man', hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine, holeCount:count };
   });
   lastCalcData = data;
   renderResults(data, parFront, parBack);
@@ -875,10 +1370,17 @@ function renderResults(data, parFront, parBack) {
   data.forEach(t=>{ t.flight=aSet.has(t.id)?'A':'B'; });
   const fA = data.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
   const fB = data.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
-  const front = data.filter(t=>t.nine==='front');
-  const back  = data.filter(t=>t.nine==='back');
-  const skinsFront = computeSkins(front,'front');
-  const skinsBack  = computeSkins(back,'back');
+  // For skins: all18 teams play both nines
+  const frontTeams = data.filter(t=>t.nine==='front' || t.nine==='all18').map(t => {
+    if (t.nine==='all18') return {...t, holes: t.holes.slice(0,9), nine:'front'};
+    return t;
+  });
+  const backTeams = data.filter(t=>t.nine==='back' || t.nine==='all18').map(t => {
+    if (t.nine==='all18') return {...t, holes: t.holes.slice(9), nine:'back'};
+    return t;
+  });
+  const skinsFront = computeSkins(frontTeams,'front');
+  const skinsBack  = computeSkins(backTeams,'back');
   const pft = parFront.reduce((a,b)=>a+b,0);
   const pbt = parBack.reduce((a,b)=>a+b,0);
   const cut = sorted[mid-1]?.hdcp??'?';
@@ -971,7 +1473,7 @@ function flightHTML(letter, teams) {
       <div class="place ${pc}">${i+1}</div>
       <div class="fr-info">
         <div class="fr-name">${esc(t.name)}${tied?' <span style="color:var(--gold2);font-size:10px">(T)</span>':''}</div>
-        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='back'?'Back 9':'Front 9'} • ${ds}</div>
+        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}</div>
       </div>
       <div class="fr-score">
         <div class="fr-net">${t.net??'—'}</div>
@@ -1015,7 +1517,7 @@ function scoreboardHTML(data) {
   const sorted=[...data].sort((a,b)=>(a.net??999)-(b.net??999));
   const rows=sorted.map(t=>`<tr>
     <td>${esc(t.name)}<span class="ft ft-${t.flight.toLowerCase()}">${t.flight}</span></td>
-    <td>${t.hdcp}</td><td style="color:var(--muted);font-size:11px">${t.nine==='back'?'B9':'F9'}</td>
+    <td>${t.hdcp}</td><td style="color:var(--muted);font-size:11px">${t.nine==='all18'?'18':t.nine==='back'?'B9':'F9'}</td>
     <td>${t.gross||'—'}</td><td><strong style="color:var(--gold2)">${t.net??'—'}</strong></td>
   </tr>`).join('');
   return `<div class="res-card full"><div class="res-hdr board">
@@ -1030,10 +1532,12 @@ function scoreboardHTML(data) {
 // ══ CSV ══
 function downloadCSV() {
   if (!lastCalcData.length) return;
-  const rows = [['Team','Player 1','Player 2','Nine','Handicap','Gross','Net','To Par','Flight','H1','H2','H3','H4','H5','H6','H7','H8','H9'].join(',')];
+  const rows = [['Team','Player 1','Player 2','Nine','Handicap','Gross','Net','To Par','Flight','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','H11','H12','H13','H14','H15','H16','H17','H18'].join(',')];
   [...lastCalcData].sort((a,b)=>(a.net??999)-(b.net??999)).forEach(t => {
     const diff=t.gross-t.parTotal; const ds=diff===0?'E':diff>0?'+'+diff:''+diff;
-    rows.push([`"${t.name}"`,`"${t.player1||''}"`,`"${t.player2||''}"`,t.nine==='back'?'Back 9':'Front 9',t.hdcp,t.gross,t.net??'',ds,t.flight||'',...(t.holes||[]).map(h=>h??'')].join(','));
+    const nineLabel = t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9';
+    const holeCells = Array.from({length:18},(_,i)=>(t.holes||[])[i]??'');
+    rows.push([`"${t.name}"`,`"${t.player1||''}"`,`"${t.player2||''}"`,nineLabel,t.hdcp,t.gross,t.net??'',ds,t.flight||'',...holeCells].join(','));
   });
   rows.push('','SKINS');
   [{ nine:'front', label:'Front 9' },{ nine:'back', label:'Back 9' }].forEach(sec => {
@@ -1080,9 +1584,12 @@ async function viewRound(id) {
 function showTab(tab) {
   ['scoring','roster','course','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
+    document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
   if (tab==='history') loadHistory();
+  // Scroll to top on tab change
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function showPage(name) {

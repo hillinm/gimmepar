@@ -1,65 +1,70 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../data/golf.db');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-// Ensure data directory exists
-const fs = require('fs');
-const dir = path.dirname(DB_PATH);
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+async function init() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS leagues (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        course_name TEXT,
+        course_location TEXT,
+        front9par TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
+        back9par  TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS teams (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        player1 TEXT NOT NULL DEFAULT '',
+        player2 TEXT NOT NULL DEFAULT '',
+        handicap INTEGER NOT NULL DEFAULT 0,
+        nine TEXT NOT NULL DEFAULT 'front' CHECK (nine IN ('front','back','all18')),
+        sort_order INTEGER DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS rounds (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        played_on DATE NOT NULL DEFAULT CURRENT_DATE,
+        notes TEXT
+      );
+      CREATE TABLE IF NOT EXISTS round_scores (
+        id SERIAL PRIMARY KEY,
+        round_id INTEGER NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
+        team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        nine TEXT NOT NULL DEFAULT 'front' CHECK (nine IN ('front','back','all18')),
+        handicap_used INTEGER DEFAULT 0,
+        hole_scores TEXT NOT NULL DEFAULT '[]',
+        gross INTEGER DEFAULT 0,
+        net INTEGER DEFAULT 0
+      );
+    `);
+    // Migrate existing tables — safe to run every time
+    await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS player3 TEXT NOT NULL DEFAULT ''");
+    await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS player4 TEXT NOT NULL DEFAULT ''");
+    await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS format TEXT NOT NULL DEFAULT '2man'");
+    console.log('✓ Database tables ready');
+  } finally {
+    client.release();
+  }
+}
 
-const db = new Database(DB_PATH);
+async function query(text, params) {
+  return pool.query(text, params);
+}
+async function getOne(text, params) {
+  const res = await pool.query(text, params);
+  return res.rows[0] || null;
+}
+async function getAll(text, params) {
+  const res = await pool.query(text, params);
+  return res.rows;
+}
 
-// Enable WAL mode for better performance
-db.pragma('journal_mode = WAL');
-
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS leagues (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    course_name TEXT,
-    course_location TEXT,
-    front9par TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
-    back9par  TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS teams (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    league_id INTEGER NOT NULL,
-    player1 TEXT NOT NULL DEFAULT '',
-    player2 TEXT NOT NULL DEFAULT '',
-    handicap INTEGER NOT NULL DEFAULT 0,
-    nine TEXT NOT NULL DEFAULT 'front',
-    sort_order INTEGER DEFAULT 0,
-    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS rounds (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    league_id INTEGER NOT NULL,
-    played_on DATE NOT NULL DEFAULT (date('now')),
-    notes TEXT,
-    FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS round_scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    round_id INTEGER NOT NULL,
-    team_id INTEGER NOT NULL,
-    nine TEXT NOT NULL DEFAULT 'front',
-    handicap_used INTEGER DEFAULT 0,
-    hole_scores TEXT NOT NULL DEFAULT '[]',
-    gross INTEGER DEFAULT 0,
-    net INTEGER DEFAULT 0,
-    FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE,
-    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
-  );
-`);
-
-// Migrate: add nine column if missing
-try { db.exec("ALTER TABLE teams ADD COLUMN nine TEXT NOT NULL DEFAULT 'front'"); } catch(e) {}
-
-module.exports = db;
+module.exports = { pool, init, query, getOne, getAll };

@@ -10,5 +10,7 @@ services:
         generateValue: true
       - key: NODE_ENV
         value: production
-      - key: DB_PATH
-        value: /opt/render/project/src/data/golf.db
+      - key: DATABASE_URL
+        sync: false   # Set this to your Render Postgres Internal Database URL
+      - key: ANTHROPIC_API_KEY
+        sync: false

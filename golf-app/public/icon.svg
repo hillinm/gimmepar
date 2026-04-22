@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2e1a"/>
+      <stop offset="100%" style="stop-color:#0f1a0f"/>
+    </linearGradient>
+    <linearGradient id="fairway" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d5a1e"/>
+      <stop offset="100%" style="stop-color:#1e3d12"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8cc7a"/>
+      <stop offset="100%" style="stop-color:#c9a84c"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#d8d8d8"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="rgba(0,0,0,0.5)"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" ry="110" fill="url(#bg)"/>
+
+  <!-- Subtle diagonal stripe texture -->
+  <rect width="512" height="512" rx="110" ry="110" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="40"/>
+
+  <!-- Green fairway hill -->
+  <ellipse cx="256" cy="420" rx="220" ry="90" fill="url(#fairway)"/>
+  <ellipse cx="256" cy="400" rx="200" ry="75" fill="#2d5a1e"/>
+
+  <!-- Flag pole -->
+  <line x1="256" y1="160" x2="256" y2="360" stroke="#c9a84c" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Flag -->
+  <polygon points="256,160 330,195 256,230" fill="url(#gold)" filter="url(#shadow)"/>
+
+  <!-- Hole cup shadow on green -->
+  <ellipse cx="256" cy="362" rx="18" ry="7" fill="rgba(0,0,0,0.4)"/>
+  <ellipse cx="256" cy="360" rx="15" ry="6" fill="#1a3a10"/>
+
+  <!-- Golf ball -->
+  <circle cx="340" cy="345" r="32" fill="url(#ball)" filter="url(#shadow)"/>
+  <!-- Ball dimples -->
+  <circle cx="332" cy="337" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="345" cy="333" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="352" cy="344" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="348" cy="355" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="336" cy="351" r="3" fill="rgba(0,0,0,0.08)"/>
+  <circle cx="328" cy="348" r="3" fill="rgba(0,0,0,0.08)"/>
+
+  <!-- GIMME text -->
+  <text x="256" y="118" font-family="Arial Black, sans-serif" font-size="72" font-weight="900"
+        fill="url(#gold)" text-anchor="middle" letter-spacing="4">GIMME</text>
+
+  <!-- PAR text -->
+  <text x="256" y="490" font-family="Arial Black, sans-serif" font-size="72" font-weight="900"
+        fill="white" text-anchor="middle" letter-spacing="6" opacity="0.95">PAR</text>
+
+  <!-- Gold accent line under GIMME -->
+  <rect x="156" y="126" width="200" height="4" rx="2" fill="url(#gold)" opacity="0.6"/>
+</svg>
