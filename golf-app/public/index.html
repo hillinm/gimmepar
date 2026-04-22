@@ -1478,6 +1478,8 @@ function showTab(tab) {
 function showPage(name) {
   document.getElementById('loginPage').classList.toggle('active', name==='login');
   document.getElementById('appPage').classList.toggle('active', name==='app');
+  const nav = document.querySelector('.bottom-nav');
+  if (nav) nav.style.display = name==='login' ? 'none' : '';
 }
 
 // ══ UTILS ══
