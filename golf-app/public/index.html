@@ -1246,12 +1246,13 @@ function calculate() {
 }
 
 function renderResults(data, parFront, parBack) {
-  // Split flights by net score after the round
-  // A Flight = lower half (best net scores), B Flight = higher half
-  const sorted = [...data].sort((a,b)=>(a.net??999)-(b.net??999));
-  const mid = Math.ceil(sorted.length/2);
-  const aSet = new Set(sorted.slice(0,mid).map(t=>t.id));
-  data.forEach(t=>{ t.flight=aSet.has(t.id)?'A':'B'; });
+  // Split flights by score vs par
+  // A Flight = net score +3 or better (even, -1, -2, +1, +2, +3)
+  // B Flight = net score +4 or worse
+  data.forEach(t => {
+    const diff = (t.net ?? 999) - t.parTotal;
+    t.flight = diff <= 3 ? 'A' : 'B';
+  });
   const fA = data.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
   const fB = data.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
   // For skins: all18 teams play both nines
@@ -1272,7 +1273,7 @@ function renderResults(data, parFront, parBack) {
   document.getElementById('resultsArea').innerHTML = `
     <div class="results-title">
       <h2>🏆 Results</h2>
-      <p>${data.length} teams • A Flight: low net • B Flight: high net • Front par ${pft} • Back par ${pbt}</p>
+      <p>${data.length} teams • A Flight: +3 &amp; under • B Flight: +4 &amp; over • Front par ${pft} • Back par ${pbt}</p>
     </div>
     <div class="hdcp-override">
       <div class="hdcp-override-title">✏️ Adjust Handicaps</div>
