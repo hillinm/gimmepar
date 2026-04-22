@@ -1234,10 +1234,8 @@ function calculate() {
     const holes = Array.from({length:count},(_,i)=>{ const v=parseInt(document.getElementById(`shole_${t.id}_${i}`)?.value); return isNaN(v)?null:v; });
     const gross = holes.reduce((a,b)=>b!=null?a+b:a,0);
     const hasAll = holes.every(h=>h!=null);
-    const players = [t.player1, t.player2];
-    if (t.format==='4man') { if(t.player3) players.push(t.player3); if(t.player4) players.push(t.player4); }
-    const teamName = players.filter(Boolean).join(' / ');
-    return { id:t.id, name:teamName, player1:t.player1, player2:t.player2, player3:t.player3||'', player4:t.player4||'', format:t.format||'2man', hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine, holeCount:count };
+    const teamName = [t.player1, t.player2].filter(Boolean).join(' / ') || 'Team';
+    return { id:t.id, name:teamName, player1:t.player1||'', player2:t.player2||'', hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine, holeCount:count };
   });
   lastCalcData = data;
   renderResults(data, parFront, parBack);
@@ -1268,7 +1266,7 @@ function renderResults(data, parFront, parBack) {
   const skinsBack  = computeSkins(backTeams,'back');
   const pft = parFront.reduce((a,b)=>a+b,0);
   const pbt = parBack.reduce((a,b)=>a+b,0);
-  const cut = sorted[mid-1]?.hdcp??'?';
+  const cut = 3; // fixed cutoff: A=+3 and under, B=+4 and over
 
   document.getElementById('resultsArea').innerHTML = `
     <div class="results-title">
