@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: gimmepar
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /opt/render/project/src/data/golf.db
