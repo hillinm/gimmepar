@@ -749,21 +749,37 @@ async function onLogin(data) {
 async function login() {
   const name = document.getElementById('loginName').value.trim();
   const pass = document.getElementById('loginPass').value;
+  if (!name) return showError('Please enter your league name.');
+  if (!pass) return showError('Please enter your password.');
   try {
     const res = await api('POST', '/api/auth/login', {name, password: pass});
     await onLogin(res);
-  } catch(e) { showError(e.message); }
+  } catch(e) {
+    if (e.message === 'Failed to fetch' || e.message.includes('NetworkError')) {
+      showError('Cannot reach the server. Please try again in a moment.');
+    } else {
+      showError(e.message);
+    }
+  }
 }
 
 async function register() {
   const name = document.getElementById('regName').value.trim();
   const pass = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
-  if (pass !== pass2) return showError('Passwords do not match');
+  if (!name) return showError('Please enter a league name.');
+  if (pass.length < 4) return showError('Password must be at least 4 characters.');
+  if (pass !== pass2) return showError('Passwords do not match.');
   try {
     const res = await api('POST', '/api/auth/register', {name, password: pass});
     await onLogin(res);
-  } catch(e) { showError(e.message); }
+  } catch(e) {
+    if (e.message === 'Failed to fetch' || e.message.includes('NetworkError')) {
+      showError('Cannot reach the server. Please try again in a moment.');
+    } else {
+      showError(e.message);
+    }
+  }
 }
 
 async function logout() {

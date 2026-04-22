@@ -2,11 +2,20 @@ const express = require('express');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const path = require('path');
-const db = require('./db/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
+
+// ── Check required env vars immediately ──
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERROR: DATABASE_URL environment variable is not set.');
+  console.error('   Go to Render → your service → Environment → Add DATABASE_URL');
+  console.error('   Value should be the Internal Database URL from your Render PostgreSQL instance.');
+  process.exit(1);
+}
+
+const db = require('./db/database');
 
 if (isProd) app.set('trust proxy', 1);
 
@@ -32,6 +41,11 @@ app.use(session({
   }
 }));
 
+// ── Health check endpoint ──
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', db: !!process.env.DATABASE_URL, env: isProd ? 'production' : 'development' });
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/league', require('./routes/league'));
 
@@ -42,9 +56,12 @@ app.get('*', (req, res) => {
 // Init DB then start server
 db.init().then(() => {
   app.listen(PORT, () => {
-    console.log(`⛳ GimmePar running on http://localhost:${PORT} [${isProd ? 'production' : 'development'}]`);
+    console.log(`⛳ GimmePar running on port ${PORT} [${isProd ? 'production' : 'development'}]`);
+    console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✓ set' : '✗ MISSING'}`);
+    console.log(`   SESSION_SECRET: ${process.env.SESSION_SECRET ? '✓ set' : '⚠ using default (change in production)'}`);
   });
 }).catch(err => {
-  console.error('Failed to connect to database:', err.message);
+  console.error('❌ Failed to connect to database:', err.message);
+  console.error('   Make sure DATABASE_URL is correct in your Render environment variables.');
   process.exit(1);
 });
