@@ -23,20 +23,20 @@ router.get('/teams', requireAuth, (req, res) => {
 });
 
 router.post('/teams', requireAuth, (req, res) => {
-  const { player1, player2, handicap } = req.body;
+  const { player1, player2, handicap, nine } = req.body;
   const count = db.prepare('SELECT COUNT(*) as c FROM teams WHERE league_id=?').get(req.session.leagueId).c;
-  const result = db.prepare('INSERT INTO teams (league_id, player1, player2, handicap, sort_order) VALUES (?,?,?,?,?)')
-    .run(req.session.leagueId, player1||'', player2||'', handicap||0, count);
-  res.json({ id: result.lastInsertRowid, player1, player2, handicap, sort_order: count });
+  const result = db.prepare('INSERT INTO teams (league_id, player1, player2, handicap, nine, sort_order) VALUES (?,?,?,?,?,?)')
+    .run(req.session.leagueId, player1||'', player2||'', handicap||0, nine||'front', count);
+  res.json({ id: result.lastInsertRowid, player1, player2, handicap, nine: nine||'front', sort_order: count });
 });
 
 router.put('/teams/:id', requireAuth, (req, res) => {
-  const { player1, player2, handicap } = req.body;
+  const { player1, player2, handicap, nine } = req.body;
   // Verify team belongs to this league
   const team = db.prepare('SELECT id FROM teams WHERE id=? AND league_id=?').get(req.params.id, req.session.leagueId);
   if (!team) return res.status(403).json({ error: 'Not your team' });
-  db.prepare('UPDATE teams SET player1=?, player2=?, handicap=? WHERE id=?')
-    .run(player1||'', player2||'', handicap||0, req.params.id);
+  db.prepare('UPDATE teams SET player1=?, player2=?, handicap=?, nine=? WHERE id=?')
+    .run(player1||'', player2||'', handicap||0, nine||'front', req.params.id);
   res.json({ success: true });
 });
 
@@ -62,10 +62,10 @@ router.post('/teams/handicaps', requireAuth, (req, res) => {
 router.post('/teams/roster', requireAuth, (req, res) => {
   const { teams } = req.body;
   const deleteAll = db.prepare('DELETE FROM teams WHERE league_id=?');
-  const insert = db.prepare('INSERT INTO teams (league_id, player1, player2, handicap, sort_order) VALUES (?,?,?,?,?)');
+  const insert = db.prepare('INSERT INTO teams (league_id, player1, player2, handicap, nine, sort_order) VALUES (?,?,?,?,?,?)');
   const saveAll = db.transaction((items) => {
     deleteAll.run(req.session.leagueId);
-    items.forEach((t, i) => insert.run(req.session.leagueId, t.player1||'', t.player2||'', t.handicap||0, i));
+    items.forEach((t, i) => insert.run(req.session.leagueId, t.player1||'', t.player2||'', t.handicap||0, t.nine||'front', i));
   });
   saveAll(teams);
   res.json({ success: true });

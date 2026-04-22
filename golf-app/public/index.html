@@ -16,6 +16,40 @@
 body{font-family:'Libre Baskerville',serif;background:var(--bg);color:var(--cream);min-height:100vh;}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(180deg,transparent 0,transparent 60px,rgba(255,255,255,.012) 60px,rgba(255,255,255,.012) 120px);pointer-events:none;z-index:0;}
 
+
+/* ── NINE TOGGLE ── */
+.nine-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.nine-toggle-btn{background:transparent;border:none;color:var(--muted);font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all .2s;}
+.nine-toggle-btn.active-f{background:var(--green);color:#fff;}
+.nine-toggle-btn.active-b{background:rgba(201,168,76,.35);color:var(--gold2);}
+
+/* ── SCORING FILTERS ── */
+.score-filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.score-search{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:9px 14px;font-family:"Libre Baskerville",serif;font-size:14px;outline:none;}
+.score-search:focus{border-color:var(--gold);}
+.score-search::placeholder{color:var(--muted);}
+.filter-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:1px;padding:8px 16px;border-radius:8px;cursor:pointer;transition:all .2s;}
+.filter-btn.active{border-color:var(--gold);color:var(--gold2);background:rgba(201,168,76,.1);}
+.score-count{font-size:12px;color:var(--muted);font-style:italic;white-space:nowrap;}
+
+/* ── COMPACT SCORE CARD ── */
+.score-team-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+.score-team-header{background:var(--surface2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+.score-team-header:hover{background:rgba(255,255,255,.04);}
+.team-num{font-family:"Bebas Neue",sans-serif;font-size:20px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.team-num.back-nine{background:rgba(201,168,76,.35);color:var(--gold2);border:1px solid var(--gold);}
+.team-name-display{font-weight:700;font-size:13px;flex:1;}
+.card-nine-badge{font-size:10px;letter-spacing:1px;padding:2px 8px;border-radius:4px;font-family:"Bebas Neue",sans-serif;}
+.card-nine-badge.front{background:rgba(74,140,63,.3);color:var(--green2);border:1px solid rgba(74,140,63,.4);}
+.card-nine-badge.back{background:rgba(201,168,76,.2);color:var(--gold2);border:1px solid rgba(201,168,76,.3);}
+.card-collapse-icon{font-size:14px;color:var(--muted);transition:transform .2s;}
+.card-collapse-icon.open{transform:rotate(180deg);}
+.score-team-body{padding:12px 14px;}
+.score-team-body.collapsed{display:none;}
+.card-quick-totals{display:flex;gap:8px;margin-left:auto;align-items:center;}
+.quick-gross{font-family:"Bebas Neue",sans-serif;font-size:18px;color:var(--gold2);}
+.quick-net{font-family:"Bebas Neue",sans-serif;font-size:14px;color:var(--muted);}
+
 /* ── LAYOUT ── */
 .page{display:none;position:relative;z-index:1;}
 .page.active{display:block;}
@@ -289,13 +323,16 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   <!-- SCORING TAB -->
   <div id="tabScoring" class="wrap" style="padding-top:32px;">
-    <div class="scoring-controls">
-      <label style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Playing</label>
-      <select class="nine-select" id="globalNine" onchange="syncAllNines()">
-        <option value="front">Front 9</option>
-        <option value="back">Back 9</option>
-        <option value="mixed">Mixed (per team)</option>
-      </select>
+    <div class="score-filter-bar">
+      <input class="score-search" id="scoreSearch" placeholder="🔍 Search team..." oninput="filterScoringCards()">
+      <button class="filter-btn active" id="filterAll" onclick="setFilter('all',this)">ALL</button>
+      <button class="filter-btn" id="filterFront" onclick="setFilter('front',this)">FRONT 9</button>
+      <button class="filter-btn" id="filterBack" onclick="setFilter('back',this)">BACK 9</button>
+      <span class="score-count" id="scoreCount"></span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
+      <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
     </div>
     <div id="scoringTeams"></div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
@@ -319,7 +356,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         </div>
         <div style="overflow-x:auto;">
           <table class="team-table">
-            <thead><tr><th>#</th><th>Player 1</th><th>Player 2</th><th>Hdcp</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Player 1</th><th>Player 2</th><th>Hdcp</th><th>Nine</th><th></th></tr></thead>
             <tbody id="rosterBody"></tbody>
           </table>
         </div>
@@ -463,12 +500,19 @@ function renderRosterTable() {
   if (!rosterTeams.length) { empty.style.display = ''; return; }
   empty.style.display = 'none';
   rosterTeams.forEach((t, i) => {
+    const nine = t.nine || 'front';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="color:var(--muted);font-size:13px">${i+1}</td>
       <td><input class="team-input" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player 1"></td>
       <td><input class="team-input" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
       <td><input class="team-input hdcp-input-sm" type="number" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" min="0" max="54"></td>
+      <td>
+        <div class="nine-toggle">
+          <button class="nine-toggle-btn ${nine==='front'?'active-f':''}" onclick="setRosterNine(${t.id},'front',this)">F9</button>
+          <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"  onclick="setRosterNine(${t.id},'back',this)">B9</button>
+        </div>
+      </td>
       <td><button class="btn-del" onclick="deleteTeam(${t.id})">✕</button></td>`;
     tbody.appendChild(tr);
   });
@@ -477,6 +521,16 @@ function renderRosterTable() {
 function updateRosterField(id, field, val) {
   const t = rosterTeams.find(t=>t.id===id);
   if (t) t[field] = field === 'handicap' ? parseInt(val)||0 : val;
+}
+
+function setRosterNine(id, nine, btn) {
+  const t = rosterTeams.find(t=>t.id===id);
+  if (!t) return;
+  t.nine = nine;
+  // Update toggle buttons
+  const row = btn.closest('tr');
+  row.querySelectorAll('.nine-toggle-btn').forEach(b => { b.classList.remove('active-f','active-b'); });
+  btn.classList.add(nine==='front'?'active-f':'active-b');
 }
 
 async function addTeamRow() {
@@ -499,8 +553,7 @@ async function deleteTeam(id) {
 }
 
 async function saveRoster() {
-  const updates = rosterTeams.map(t => ({id: t.id, player1: t.player1, player2: t.player2, handicap: t.handicap}));
-  // Update each team
+  const updates = rosterTeams.map(t => ({id: t.id, player1: t.player1, player2: t.player2, handicap: t.handicap, nine: t.nine||'front'}));
   await Promise.all(updates.map(u => api('PUT', `/api/league/teams/${u.id}`, u)));
   buildScoringCards();
   toast('✓ Roster saved');
@@ -612,6 +665,8 @@ async function saveCourse() {
 }
 
 // ══ SCORING CARDS ══
+let currentFilter = 'all';
+
 function buildScoringCards() {
   const container = document.getElementById('scoringTeams');
   if (!container) return;
@@ -623,37 +678,67 @@ function buildScoringCards() {
     return;
   }
 
-  const globalNine = document.getElementById('globalNine')?.value || 'front';
   rosterTeams.forEach((t, idx) => {
-    const nine = globalNine === 'mixed' ? 'front' : globalNine;
+    const nine = t.nine || 'front';
     const st = { id: t.id, nine, holes: Array(9).fill(null) };
     scoreTeams.push(st);
-    container.appendChild(buildScoreCard(t, st, idx, globalNine === 'mixed'));
+    container.appendChild(buildScoreCard(t, st, idx));
   });
+  updateScoreCount();
 }
 
-function buildScoreCard(team, st, idx, showNineSelector) {
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterScoringCards();
+}
+
+function filterScoringCards() {
+  const search = document.getElementById('scoreSearch')?.value.toLowerCase() || '';
+  let visible = 0;
+  rosterTeams.forEach(t => {
+    const card = document.getElementById('scard_'+t.id);
+    if (!card) return;
+    const nine = t.nine || 'front';
+    const nameMatch = !search || (t.player1+' '+t.player2).toLowerCase().includes(search);
+    const nineMatch = currentFilter === 'all' || nine === currentFilter;
+    const show = nameMatch && nineMatch;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const el = document.getElementById('scoreCount');
+  if (el) el.textContent = visible + ' of ' + rosterTeams.length + ' teams';
+}
+
+function updateScoreCount() {
+  const el = document.getElementById('scoreCount');
+  if (el) el.textContent = rosterTeams.length + ' teams';
+}
+
+function buildScoreCard(team, st, idx) {
   const par = getParFor(st.nine);
   const holeNums = st.nine==='back' ? [10,11,12,13,14,15,16,17,18] : [1,2,3,4,5,6,7,8,9];
   const card = document.createElement('div');
   card.className = 'score-team-card';
   card.id = 'scard_'+team.id;
   card.innerHTML = `
-    <div class="score-team-header">
-      <div class="team-num">${idx+1}</div>
-      <div class="fr-info">
-        <div class="team-name-display">${esc(team.player1)} / ${esc(team.player2)}</div>
+    <div class="score-team-header" onclick="toggleCard(${team.id})">
+      <div class="team-num ${st.nine==='back'?'back-nine':''}">${idx+1}</div>
+      <div class="team-name-display">${esc(team.player1)} / ${esc(team.player2)}</div>
+      <span class="card-nine-badge ${st.nine}">${st.nine==='back'?'BACK 9':'FRONT 9'}</span>
+      <div class="card-quick-totals">
+        <span class="quick-gross" id="sgross_${team.id}">—</span>
+        <span class="quick-net" id="snet_${team.id}"></span>
       </div>
-      ${showNineSelector ? `<div class="score-nine-toggle">
-        <button class="nine-btn ${st.nine==='front'?'active':''}" onclick="setNine(${team.id},'front',this)">F9</button>
-        <button class="nine-btn ${st.nine==='back'?'active':''}" onclick="setNine(${team.id},'back',this)">B9</button>
-      </div>` : ''}
+      <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
-    <div class="score-team-body">
+    <div class="score-team-body" id="sbody_${team.id}">
       <div class="hdcp-row">
         <label>Hdcp</label>
         <input class="hdcp-inp" type="number" min="0" max="54" value="${team.handicap}"
                id="shdcp_${team.id}" oninput="recalcCard(${team.id})">
+        <span style="font-size:11px;color:var(--muted);margin-left:8px;">${st.nine==='back'?'Back 9 (holes 10–18)':'Front 9 (holes 1–9)'}</span>
       </div>
       <div class="holes-grid" id="sgrid_${team.id}">
         ${holeNums.map(h=>`<div class="hole-lbl">${h}</div>`).join('')}
@@ -663,12 +748,36 @@ function buildScoreCard(team, st, idx, showNineSelector) {
           oninput="colorHole(this,${team.id},${i}); recalcCard(${team.id})">`).join('')}
       </div>
       <div class="score-totals">
-        <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross_${team.id}">—</div></div>
+        <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross2_${team.id}">—</div></div>
         <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">—</div></div>
-        <div class="total-box"><div class="total-lbl">Net</div><div class="total-val" id="snet_${team.id}">—</div></div>
+        <div class="total-box"><div class="total-lbl">Net</div><div class="total-val" id="snet2_${team.id}">—</div></div>
       </div>
     </div>`;
   return card;
+}
+
+function toggleCard(teamId) {
+  const body = document.getElementById('sbody_'+teamId);
+  const icon = document.getElementById('sicon_'+teamId);
+  if (!body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  icon?.classList.toggle('open', !collapsed);
+}
+
+function collapseAll() {
+  rosterTeams.forEach(t => {
+    document.getElementById('sbody_'+t.id)?.classList.add('collapsed');
+    const icon = document.getElementById('sicon_'+t.id);
+    if (icon) icon.classList.remove('open');
+  });
+}
+
+function expandAll() {
+  rosterTeams.forEach(t => {
+    document.getElementById('sbody_'+t.id)?.classList.remove('collapsed');
+    const icon = document.getElementById('sicon_'+t.id);
+    if (icon) icon.classList.add('open');
+  });
 }
 
 function refreshParLabels(st) {
@@ -693,21 +802,7 @@ function setNine(teamId, nine, btn) {
   refreshParLabels(st);
 }
 
-function syncAllNines() {
-  const val = document.getElementById('globalNine').value;
-  if (val === 'mixed') return;
-  scoreTeams.forEach(st => {
-    st.nine = val;
-    const card = document.getElementById('scard_'+st.id);
-    card?.querySelectorAll('.nine-btn').forEach(b=>b.classList.remove('active'));
-    const targetBtn = card?.querySelector(`.nine-btn:${val==='front'?'first-child':'last-child'}`);
-    targetBtn?.classList.add('active');
-    const holeNums = val==='back'?[10,11,12,13,14,15,16,17,18]:[1,2,3,4,5,6,7,8,9];
-    const grid = document.getElementById('sgrid_'+st.id);
-    grid?.querySelectorAll('.hole-lbl').forEach((lbl,i)=>{ lbl.textContent=holeNums[i]; });
-    refreshParLabels(st);
-  });
-}
+// syncAllNines removed — nine is per-team in roster
 
 function colorHole(input, teamId, holeIdx) {
   const st = scoreTeams.find(s=>s.id===teamId);
@@ -731,14 +826,24 @@ function recalcCard(teamId) {
     if (!isNaN(v)) { gross+=v; filled++; }
   }
   const hdcp = parseInt(document.getElementById(`shdcp_${teamId}`)?.value)||0;
+  const net = gross - hdcp;
   const diff = gross - parTotal;
-  const gEl = document.getElementById(`sgross_${teamId}`);
+  const diffStr = diff===0?'E':diff>0?'+'+diff:''+diff;
+
+  // Header quick totals
+  const gHdr = document.getElementById(`sgross_${teamId}`);
+  const nHdr = document.getElementById(`snet_${teamId}`);
+  if (gHdr) gHdr.textContent = filled>0 ? gross : '—';
+  if (nHdr) nHdr.textContent = filled===9 ? 'Net '+net : '';
+
+  // Body totals
+  const gEl = document.getElementById(`sgross2_${teamId}`);
   const tEl = document.getElementById(`stopar_${teamId}`);
-  const nEl = document.getElementById(`snet_${teamId}`);
+  const nEl = document.getElementById(`snet2_${teamId}`);
   if (filled===0) { if(gEl) gEl.textContent='—'; if(tEl) tEl.textContent='—'; if(nEl) nEl.textContent='—'; return; }
   if (gEl) gEl.textContent = gross;
-  if (tEl) { tEl.textContent = diff===0?'E':diff>0?'+'+diff:''+diff; tEl.className='total-val '+(diff>0?'over':diff<0?'under':'even'); }
-  if (nEl) nEl.textContent = filled===9 ? gross-hdcp : '—';
+  if (tEl) { tEl.textContent = diffStr; tEl.className='total-val '+(diff>0?'over':diff<0?'under':'even'); }
+  if (nEl) nEl.textContent = filled===9 ? net : '—';
 }
 
 // ══ CALCULATE ══
@@ -754,6 +859,7 @@ function calculate() {
     const gross = holes.reduce((a,b)=>b!=null?a+b:a,0);
     const hasAll = holes.every(h=>h!=null);
     return { id:t.id, name:`${t.player1} / ${t.player2}`, player1:t.player1, player2:t.player2, hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine };
+    // nine comes from roster
   });
   lastCalcData = data;
   renderResults(data, parFront, parBack);

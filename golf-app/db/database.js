@@ -32,6 +32,7 @@ db.exec(`
     player1 TEXT NOT NULL DEFAULT '',
     player2 TEXT NOT NULL DEFAULT '',
     handicap INTEGER NOT NULL DEFAULT 0,
+    nine TEXT NOT NULL DEFAULT 'front',
     sort_order INTEGER DEFAULT 0,
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE
   );
@@ -57,5 +58,8 @@ db.exec(`
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
   );
 `);
+
+// Migrate: add nine column if missing
+try { db.exec("ALTER TABLE teams ADD COLUMN nine TEXT NOT NULL DEFAULT 'front'"); } catch(e) {}
 
 module.exports = db;
