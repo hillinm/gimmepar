@@ -34,6 +34,16 @@ async function init() {
         played_on DATE NOT NULL DEFAULT CURRENT_DATE,
         notes TEXT
       );
+      CREATE TABLE IF NOT EXISTS saved_courses (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        location TEXT DEFAULT '',
+        front9par TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
+        back9par  TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS round_scores (
         id SERIAL PRIMARY KEY,
         round_id INTEGER NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,

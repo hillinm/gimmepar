@@ -113,6 +113,28 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .section-sub{font-size:11px;color:var(--muted);font-style:italic;}
 .section-body{padding:20px;}
 
+
+/* ── SAVED COURSES ── */
+.saved-courses-list { margin-bottom: 20px; }
+.saved-course-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 14px; background:var(--bg);
+  border:1px solid var(--border); border-radius:8px;
+  margin-bottom:8px; cursor:pointer; transition:all .2s;
+}
+.saved-course-item:hover { border-color:var(--gold); background:rgba(201,168,76,.06); }
+.saved-course-item.active { border-color:var(--green); background:rgba(74,140,63,.1); }
+.sc-info { flex:1; }
+.sc-name { font-weight:700; font-size:14px; color:var(--cream); }
+.sc-par  { font-size:11px; color:var(--muted); margin-top:2px; }
+.sc-actions { display:flex; gap:6px; }
+.btn-sc-load { background:var(--green); color:#fff; border:none; border-radius:6px; font-family:"Bebas Neue",sans-serif; font-size:13px; letter-spacing:1px; padding:5px 12px; cursor:pointer; transition:all .2s; }
+.btn-sc-load:hover { background:var(--green2); }
+.btn-sc-del  { background:transparent; border:1px solid rgba(180,80,80,.35); color:rgba(200,100,100,.8); border-radius:6px; font-size:13px; padding:5px 10px; cursor:pointer; transition:all .2s; }
+.btn-sc-del:hover { background:rgba(180,80,80,.15); }
+.courses-divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
+.no-courses { font-size:13px; color:var(--muted); font-style:italic; padding:8px 0 16px; }
+
 /* ── COURSE SEARCH ── */
 .search-row{display:flex;gap:10px;margin-bottom:12px;}
 .search-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:10px 14px;font-family:'Libre Baskerville',serif;font-size:14px;outline:none;}
@@ -617,6 +639,19 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         </div>
       </div>
       <div class="section-body">
+
+        <!-- Saved Courses Library -->
+        <div style="margin-bottom:6px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">📋 Saved Courses</div>
+          <div class="saved-courses-list" id="savedCoursesList">
+            <div class="no-courses">No courses saved yet — search or enter par below and save.</div>
+          </div>
+        </div>
+
+        <hr class="courses-divider">
+
+        <!-- Search / Enter New Course -->
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🔍 Add / Edit Course</div>
         <div class="search-row">
           <input class="search-input" id="courseInput" placeholder="Search course name (e.g. Pebble Beach...)" onkeydown="if(event.key==='Enter')searchCourse()">
           <button class="btn-search" id="searchBtn" onclick="searchCourse()">🔍 Search</button>
@@ -629,7 +664,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         <div class="par-section-label">Back 9 — Holes 10–18</div>
         <div class="par-grid" id="parBackGrid"></div>
         <div class="par-totals" id="parTotalsDisplay"></div>
-        <button class="btn-save-course" onclick="saveCourse()">💾 Save Course</button>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+          <button class="btn-save-course" onclick="saveCourse()">💾 Save to Library</button>
+          <button class="btn-save-course" style="background:var(--green);color:#fff;" onclick="setActiveCourse()">⚡ Use This Course Now</button>
+        </div>
       </div>
     </div>
   </div>
@@ -683,6 +721,7 @@ let rosterTeams = [];    // [{id, player1, player2, handicap}]
 let scoreTeams = [];     // runtime scoring state
 let lastCalcData = [];
 let courseSearchResults = [];
+let savedCourses = [];  // [{id, name, location, front9par, back9par}]
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
 
@@ -701,6 +740,7 @@ async function onLogin(data) {
   showPage('app');
   await loadRoster();
   if (league.course) loadCourseData(league.course);
+  await loadSavedCourses();
   buildScoringCards();
   showTab('scoring');
 }
@@ -942,14 +982,100 @@ function selectCourse(idx) {
   toast('✓ '+c.name);
 }
 
-async function saveCourse() {
+// ══ COURSE LIBRARY ══
+async function loadSavedCourses() {
+  try {
+    savedCourses = await api('GET', '/api/league/courses');
+    renderSavedCourses();
+  } catch(e) { console.warn('Could not load courses', e); }
+}
+
+function renderSavedCourses() {
+  const el = document.getElementById('savedCoursesList');
+  if (!el) return;
+  if (!savedCourses.length) {
+    el.innerHTML = '<div class="no-courses">No courses saved yet — search or enter par below and save.</div>';
+    return;
+  }
+  el.innerHTML = savedCourses.map(c => {
+    const fp = JSON.parse(c.front9par||'[]').reduce((a,b)=>a+b,0);
+    const bp = JSON.parse(c.back9par||'[]').reduce((a,b)=>a+b,0);
+    const isActive = league.course && league.course.name === c.name;
+    return `<div class="saved-course-item ${isActive?'active':''}" id="sci_${c.id}">
+      <div class="sc-info">
+        <div class="sc-name">${esc(c.name)}</div>
+        <div class="sc-par">${esc(c.location||'')} &bull; Front ${fp} &bull; Back ${bp} &bull; Total ${fp+bp}</div>
+      </div>
+      <div class="sc-actions">
+        <button class="btn-sc-load" onclick="loadSavedCourse(${c.id});event.stopPropagation()">Load</button>
+        <button class="btn-sc-del"  onclick="deleteSavedCourse(${c.id});event.stopPropagation()">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadSavedCourse(id) {
+  const c = savedCourses.find(c=>c.id===id);
+  if (!c) return;
+  const fp = JSON.parse(c.front9par||'[]');
+  const bp = JSON.parse(c.back9par||'[]');
+  fp.forEach((p,i)=>{ const el=document.getElementById('pf_'+i); if(el) el.value=p; });
+  bp.forEach((p,i)=>{ const el=document.getElementById('pb_'+i); if(el) el.value=p; });
+  updateParTotals();
+  document.getElementById('courseInput').value = c.name;
+  document.getElementById('courseBadge').style.display = 'flex';
+  document.getElementById('courseBadgeName').textContent = c.name + (c.location?' — '+c.location:'');
+  // Set as active course for the league
+  setActiveCourseData({name:c.name, location:c.location||'', front9par:fp, back9par:bp});
+  // Highlight active
+  document.querySelectorAll('.saved-course-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('sci_'+id)?.classList.add('active');
+  toast('✓ '+c.name+' loaded');
+}
+
+async function deleteSavedCourse(id) {
+  if (!confirm('Remove this course from your library?')) return;
+  try {
+    await api('DELETE', '/api/league/courses/'+id);
+    savedCourses = savedCourses.filter(c=>c.id!==id);
+    renderSavedCourses();
+    toast('Course removed');
+  } catch(e) { toast('Error: '+e.message); }
+}
+
+async function setActiveCourse() {
   const name = document.getElementById('courseInput').value.trim() || 'Custom Course';
   const loc  = document.getElementById('courseBadgeName')?.textContent?.split(' — ')[1] || '';
+  await setActiveCourseData({name, location:loc, front9par:getParFront(), back9par:getParBack()});
+  toast('⚡ Course set as active');
+}
+
+async function setActiveCourseData(course) {
   try {
-    await api('PUT', '/api/league/course', { name, location: loc, front9par: getParFront(), back9par: getParBack() });
-    if (league) league.course = { name, location: loc, front9par: getParFront(), back9par: getParBack() };
-    toast('✓ Course saved');
-  } catch(e) { toast('Error saving course'); }
+    await api('PUT', '/api/league/course', course);
+    if (league) league.course = course;
+  } catch(e) { console.warn('Could not set active course', e); }
+}
+
+  const name = document.getElementById('courseInput').value.trim() || 'Custom Course';
+  const loc  = document.getElementById('courseBadgeName')?.textContent?.split(' — ')[1] || '';
+  const course = { name, location: loc, front9par: getParFront(), back9par: getParBack() };
+  try {
+    // Save to library
+    const existing = savedCourses.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      await api('PUT', '/api/league/courses/'+existing.id, course);
+      Object.assign(existing, course);
+      toast('✓ '+name+' updated in library');
+    } else {
+      const saved = await api('POST', '/api/league/courses', course);
+      savedCourses.push(saved);
+      toast('✓ '+name+' saved to library');
+    }
+    renderSavedCourses();
+    // Also set as active
+    await setActiveCourseData(course);
+  } catch(e) { toast('Error saving course: '+e.message); }
 }
 
 // ══ SCORING CARDS ══
