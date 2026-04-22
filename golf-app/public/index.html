@@ -104,7 +104,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-secondary:hover{background:rgba(201,168,76,.1);border-color:var(--gold);}
 .login-toggle{text-align:center;margin-top:18px;font-size:12px;color:var(--muted);}
 .login-toggle a{color:var(--gold2);cursor:pointer;text-decoration:underline;}
-.form-error{background:rgba(192,57,43,.2);border:1px solid rgba(192,57,43,.4);color:#ff9999;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none;}
+.form-error{background:rgba(192,57,43,.25);border:2px solid rgba(220,80,80,.7);color:#ffaaaa;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:700;margin-bottom:14px;display:none;text-align:center;}
 
 /* ── SECTION CARDS ── */
 .section-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px;}
@@ -751,15 +751,22 @@ async function login() {
   const pass = document.getElementById('loginPass').value;
   if (!name) return showError('Please enter your league name.');
   if (!pass) return showError('Please enter your password.');
+  const btn = document.querySelector('#loginForm .btn-primary');
+  if (btn) { btn.textContent = 'SIGNING IN...'; btn.disabled = true; }
+  showError('');
   try {
     const res = await api('POST', '/api/auth/login', {name, password: pass});
     await onLogin(res);
   } catch(e) {
-    if (e.message === 'Failed to fetch' || e.message.includes('NetworkError')) {
-      showError('Cannot reach the server. Please try again in a moment.');
+    console.error('Login error:', e);
+    const msg = e.message || 'Unknown error';
+    if (msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('fetch')) {
+      showError('Cannot reach server. Check your internet connection.');
     } else {
-      showError(e.message);
+      showError(msg);
     }
+  } finally {
+    if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
   }
 }
 
@@ -770,15 +777,22 @@ async function register() {
   if (!name) return showError('Please enter a league name.');
   if (pass.length < 4) return showError('Password must be at least 4 characters.');
   if (pass !== pass2) return showError('Passwords do not match.');
+  const btn = document.querySelector('#registerForm .btn-primary');
+  if (btn) { btn.textContent = 'CREATING...'; btn.disabled = true; }
+  showError('');
   try {
     const res = await api('POST', '/api/auth/register', {name, password: pass});
     await onLogin(res);
   } catch(e) {
-    if (e.message === 'Failed to fetch' || e.message.includes('NetworkError')) {
-      showError('Cannot reach the server. Please try again in a moment.');
+    console.error('Register error:', e);
+    const msg = e.message || 'Unknown error';
+    if (msg === 'Failed to fetch' || msg.includes('NetworkError') || msg.includes('fetch')) {
+      showError('Cannot reach server. Check your internet connection.');
     } else {
-      showError(e.message);
+      showError(msg);
     }
+  } finally {
+    if (btn) { btn.textContent = 'CREATE LEAGUE'; btn.disabled = false; }
   }
 }
 
@@ -800,7 +814,10 @@ function showRegister() {
 }
 function showError(msg) {
   const el = document.getElementById('loginError');
-  el.textContent = msg; el.style.display = 'block';
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 // ══ ROSTER ══
@@ -1628,9 +1645,19 @@ function showPage(name) {
 async function api(method, url, body) {
   const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch(e) {
+    throw new Error('Network error — could not reach server. Is the app deployed and running?');
+  }
+  let data;
+  try {
+    data = await res.json();
+  } catch(e) {
+    throw new Error('Server returned invalid response (status ' + res.status + ')');
+  }
+  if (!res.ok) throw new Error(data.error || 'Request failed (status ' + res.status + ')');
   return data;
 }
 
