@@ -798,20 +798,54 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         </div>
       </div>
       <div class="section-body">
-        <div style="margin-bottom:20px;">
+
+        <!-- CSV Upload -->
+        <div style="margin-bottom:4px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">📤 Upload Players (CSV)</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">CSV must have columns: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;">first_name, last_name, email</code></div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+            CSV columns: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;">first_name, last_name, email</code>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
             <input type="file" id="playerCsvFile" accept=".csv" style="display:none" onchange="handlePlayerCSV(this)">
             <button class="btn-add" onclick="document.getElementById('playerCsvFile').click()">📂 Choose CSV</button>
+            <button class="btn-export-sched" onclick="downloadPlayerTemplate()">⬇ Download Template</button>
             <span id="csvFileName" style="font-size:13px;color:var(--muted);font-style:italic;"></span>
           </div>
-          <div id="csvPreview" style="margin-top:14px;"></div>
-          <button class="btn-save-roster" id="btnUploadPlayers" style="display:none;margin-top:10px;" onclick="uploadPlayers()">⬆ Upload Players</button>
+          <div id="csvPreview" style="margin-top:10px;overflow-x:auto;"></div>
           <div id="uploadResult" style="margin-top:10px;font-size:13px;"></div>
+          <button class="btn-save-roster" id="btnUploadPlayers" style="display:none;margin-top:10px;" onclick="uploadPlayers()">⬆ Upload Players</button>
         </div>
+
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;">👥 Player List</div>
+
+        <!-- Manual Add -->
+        <div style="margin-bottom:4px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">➕ Add Player Manually</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;">FIRST NAME</div>
+              <input class="team-input" id="manualFirst" placeholder="First" style="width:110px;">
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;">LAST NAME</div>
+              <input class="team-input" id="manualLast" placeholder="Last" style="width:110px;">
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;">EMAIL</div>
+              <input class="team-input" id="manualEmail" placeholder="email@example.com" style="width:200px;" type="email" inputmode="email">
+            </div>
+            <button class="btn-add" onclick="addPlayerManually()">+ Add</button>
+          </div>
+          <div id="manualAddResult" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Player List -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);">👥 Player List</div>
+          <button class="btn-export-sched" style="font-size:12px;padding:5px 12px;" onclick="loadPlayersList()">↻ Refresh</button>
+        </div>
         <div id="playersList"><div class="empty-state">No players yet.</div></div>
       </div>
     </div>
@@ -1153,39 +1187,87 @@ async function adminDeleteLeague(leagueId, leagueName) {
 }
 
 // ══ PLAYERS TAB (league admin) ══
+function downloadPlayerTemplate() {
+  var csv = 'first_name,last_name,email\nJohn,Smith,john.smith@email.com\nJane,Doe,jane.doe@email.com';
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'gimmepar_players_template.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
 function handlePlayerCSV(input) {
   var file = input.files[0];
   if (!file) return;
   document.getElementById('csvFileName').textContent = file.name;
+  document.getElementById('uploadResult').innerHTML = '';
+  document.getElementById('btnUploadPlayers').style.display = 'none';
   var reader = new FileReader();
   reader.onload = function(e) {
-    var lines = e.target.result.split(/\r?\n/).filter(function(l) { return l.trim(); });
-    if (!lines.length) { document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">Empty file</p>'; return; }
-    // Parse header
-    var header = lines[0].split(',').map(function(h) { return h.trim().toLowerCase().replace(/['"]/g,''); });
-    var fiIdx = header.indexOf('first_name'); if (fiIdx<0) fiIdx = header.indexOf('firstname');
-    var laIdx = header.indexOf('last_name');  if (laIdx<0) laIdx = header.indexOf('lastname');
+    var raw = e.target.result;
+    // Remove BOM if present
+    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
+    var lines = raw.split(/\r?\n/).filter(function(l) { return l.trim(); });
+    if (!lines.length) {
+      document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">Empty file.</p>';
+      return;
+    }
+    // Parse header — handle both comma and semicolon delimiters
+    var delim = lines[0].indexOf(';') > -1 ? ';' : ',';
+    var header = lines[0].split(delim).map(function(h) { return h.trim().toLowerCase().replace(/[" \r]/g,''); });
+    console.log('CSV headers detected:', header);
+    var fiIdx = header.indexOf('first_name');
+    if (fiIdx < 0) fiIdx = header.indexOf('firstname');
+    if (fiIdx < 0) fiIdx = header.indexOf('first');
+    var laIdx = header.indexOf('last_name');
+    if (laIdx < 0) laIdx = header.indexOf('lastname');
+    if (laIdx < 0) laIdx = header.indexOf('last');
     var emIdx = header.indexOf('email');
-    if (fiIdx<0||laIdx<0||emIdx<0) {
-      document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">CSV must have columns: first_name, last_name, email</p>';
+    if (fiIdx < 0 || laIdx < 0 || emIdx < 0) {
+      document.getElementById('csvPreview').innerHTML =
+        '<p style="color:#ff9999">Could not find required columns.<br>Headers found: <strong>' + header.join(', ') + '</strong><br>Expected: first_name, last_name, email</p>';
       return;
     }
     csvPlayers = [];
-    for (var i=1; i<lines.length; i++) {
-      var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/^"|"$/g,''); });
-      if (cols.length < 3) continue;
-      csvPlayers.push({ first_name: cols[fiIdx], last_name: cols[laIdx], email: cols[emIdx] });
+    for (var i = 1; i < lines.length; i++) {
+      var cols = lines[i].split(delim).map(function(c) { return c.trim().replace(/^"|"$/g,'').trim(); });
+      if (!cols[emIdx] || !cols[emIdx].includes('@')) continue;
+      csvPlayers.push({ first_name: cols[fiIdx]||'', last_name: cols[laIdx]||'', email: cols[emIdx] });
     }
-    var html = '<table class="team-table"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Email</th></tr></thead><tbody>';
-    csvPlayers.slice(0,10).forEach(function(p,i) {
+    if (!csvPlayers.length) {
+      document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">No valid rows found. Make sure emails are present.</p>';
+      return;
+    }
+    var html = '<div style="color:var(--green2);font-size:13px;margin-bottom:8px;">✓ Found '+csvPlayers.length+' players</div>';
+    html += '<div style="overflow-x:auto;"><table class="team-table"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Email</th></tr></thead><tbody>';
+    csvPlayers.slice(0,8).forEach(function(p,i) {
       html += '<tr><td style="color:var(--muted)">'+(i+1)+'</td><td>'+esc(p.first_name)+'</td><td>'+esc(p.last_name)+'</td><td style="color:var(--muted);font-size:12px">'+esc(p.email)+'</td></tr>';
     });
-    if (csvPlayers.length > 10) html += '<tr><td colspan="4" style="color:var(--muted);font-style:italic">...and '+(csvPlayers.length-10)+' more</td></tr>';
-    html += '</tbody></table>';
+    if (csvPlayers.length > 8) html += '<tr><td colspan="4" style="color:var(--muted);font-style:italic;padding:8px">...and '+(csvPlayers.length-8)+' more</td></tr>';
+    html += '</tbody></table></div>';
     document.getElementById('csvPreview').innerHTML = html;
     document.getElementById('btnUploadPlayers').style.display = '';
   };
   reader.readAsText(file);
+}
+
+async function addPlayerManually() {
+  var first = document.getElementById('manualFirst').value.trim();
+  var last  = document.getElementById('manualLast').value.trim();
+  var email = document.getElementById('manualEmail').value.trim().toLowerCase();
+  var result = document.getElementById('manualAddResult');
+  if (!first || !last) { result.innerHTML = '<span style="color:#ff9999">Please enter first and last name.</span>'; return; }
+  if (!email || !email.includes('@')) { result.innerHTML = '<span style="color:#ff9999">Please enter a valid email.</span>'; return; }
+  try {
+    var res = await api('POST', '/api/admin/players/upload', {players:[{first_name:first, last_name:last, email:email}]});
+    result.innerHTML = '<span style="color:var(--green2)">✓ ' + first + ' ' + last + ' added. Default password: ' + last.charAt(0).toUpperCase()+last.slice(1).toLowerCase() + '2026</span>';
+    document.getElementById('manualFirst').value = '';
+    document.getElementById('manualLast').value = '';
+    document.getElementById('manualEmail').value = '';
+    loadPlayersList();
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
 }
 
 async function uploadPlayers() {
