@@ -1624,11 +1624,16 @@ function globalCourseSearch(q) {
       var html = results.map(function(c) {
         var fp = JSON.parse(c.front9par||'[]').reduce(function(a,b){return a+b;},0);
         var bp = JSON.parse(c.back9par||'[]').reduce(function(a,b){return a+b;},0);
+        var delBtn = (currentUser && currentUser.role === 'superadmin')
+          ? '<button class="btn-sc-del" data-cid="'+c.id+'" data-cname="'+esc(c.name)+'" onclick="deleteGlobalCourse(this.dataset.cid,this.dataset.cname);event.stopPropagation()">✕</button>'
+          : '';
         return '<div class="saved-course-item" onclick="loadGlobalCourse('+c.id+')" style="cursor:pointer;">'
           + '<div class="sc-info"><div class="sc-name">'+esc(c.name)+'</div>'
           + '<div class="sc-par">'+(c.location?esc(c.location)+' &bull; ':'')+' F9: '+fp+' &bull; B9: '+bp+' &bull; Total: '+(fp+bp)+'</div></div>'
+          + '<div style="display:flex;gap:6px;">'
           + '<button class="btn-sc-load" onclick="loadGlobalCourse('+c.id+');event.stopPropagation()">Load</button>'
-          + '</div>';
+          + delBtn
+          + '</div></div>';
       }).join('');
       el.innerHTML = html;
     } catch(e) { el.innerHTML = '<div style="color:#ff9999;font-size:12px">Search error: '+e.message+'</div>'; }
@@ -1656,6 +1661,16 @@ async function loadGlobalCourse(id) {
     if (league) league.course = { name: c.name, location: c.location||'', front9par: fp, back9par: bp };
     toast('✓ ' + c.name + ' loaded');
   } catch(e) { toast('Error: '+e.message); }
+}
+
+async function deleteGlobalCourse(id, name) {
+  if (!confirm('Delete "' + name + '" from the global library?')) return;
+  try {
+    await api('DELETE', '/api/league/courses/global/' + id);
+    toast('Deleted: ' + name);
+    // Refresh search results
+    globalCourseSearch(document.getElementById('courseInput').value);
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 // ══ SCORING CARDS ══

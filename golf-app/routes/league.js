@@ -195,3 +195,12 @@ router.get('/courses/global/all', requireAuth, async (req, res) => {
     res.json(courses);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+router.delete('/courses/global/:id', requireAuth, async (req, res) => {
+  try {
+    // Only superadmin can delete global courses
+    if (req.session.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    await query('DELETE FROM global_courses WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
