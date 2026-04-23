@@ -60,6 +60,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   vertical-align: middle;
 }
 
+
+/* ── RESULT SETTINGS ── */
+.result-settings { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; padding:12px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; }
+.result-settings label { font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); font-family:"Bebas Neue",sans-serif; }
+.setting-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.setting-btn { background:transparent; border:none; color:var(--muted); font-family:"Bebas Neue",sans-serif; font-size:12px; letter-spacing:1px; padding:5px 12px; cursor:pointer; transition:all .2s; white-space:nowrap; }
+.setting-btn.active { background:var(--gold); color:var(--bg); }
+.setting-btn.active-off { background:rgba(192,57,43,.3); color:#ff9999; border-color:rgba(192,57,43,.4); }
+
 /* ── FORMAT TOGGLE ── */
 .format-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
 .format-btn { background:transparent; border:none; color:var(--muted); font-family:"Bebas Neue",sans-serif; font-size:12px; letter-spacing:1px; padding:5px 10px; cursor:pointer; transition:all .2s; white-space:nowrap; }
@@ -708,6 +717,18 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
     </div>
     <div id="scoringTeams"></div>
+    <div class="result-settings">
+      <label>Flights</label>
+      <div class="setting-toggle">
+        <button class="setting-btn active" id="flightModeHL" onclick="setFlightMode('hl',this)">High / Low</button>
+        <button class="setting-btn" id="flightModePar" onclick="setFlightMode('par',this)">+3 / +4</button>
+      </div>
+      <label style="margin-left:8px;">Skins</label>
+      <div class="setting-toggle">
+        <button class="setting-btn active" id="skinsOn" onclick="setSkinsMode(true,this)">On</button>
+        <button class="setting-btn" id="skinsOff" onclick="setSkinsMode(false,this)">Off</button>
+      </div>
+    </div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
     <div id="resultsArea" style="display:none"></div>
   </div>
@@ -879,6 +900,8 @@ let rosterTeams = [];
 let scoreTeams = [];
 let lastCalcData = [];
 let courseSearchResults = [];
+let flightMode = 'hl';   // 'hl' = high/low split | 'par' = +3/+4 cutoff
+let skinsEnabled = true;
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -1787,13 +1810,20 @@ function calculate() {
 }
 
 function renderResults(data, parFront, parBack) {
-  // Split flights by score vs par
-  // A Flight = net score +3 or better (even, -1, -2, +1, +2, +3)
-  // B Flight = net score +4 or worse
-  data.forEach(t => {
-    const diff = (t.net ?? 999) - t.parTotal;
-    t.flight = diff <= 3 ? 'A' : 'B';
-  });
+  // Split flights based on current mode
+  if (flightMode === 'par') {
+    // Fixed cutoff: A = +3 and under, B = +4 and over
+    data.forEach(t => {
+      const diff = (t.net ?? 999) - t.parTotal;
+      t.flight = diff <= 3 ? 'A' : 'B';
+    });
+  } else {
+    // High / Low split: lower half = A, upper half = B
+    const sorted = [...data].sort((a,b)=>(a.net??999)-(b.net??999));
+    const mid = Math.ceil(sorted.length / 2);
+    const aSet = new Set(sorted.slice(0, mid).map(t=>t.id));
+    data.forEach(t => { t.flight = aSet.has(t.id) ? 'A' : 'B'; });
+  }
   const fA = data.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
   const fB = data.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
   // For skins: all18 teams play both nines
@@ -1805,8 +1835,8 @@ function renderResults(data, parFront, parBack) {
     if (t.nine==='all18') return {...t, holes: t.holes.slice(9), nine:'back'};
     return t;
   });
-  const skinsFront = computeSkins(frontTeams,'front');
-  const skinsBack  = computeSkins(backTeams,'back');
+  const skinsFront = skinsEnabled ? computeSkins(frontTeams,'front') : [];
+  const skinsBack  = skinsEnabled ? computeSkins(backTeams,'back')  : [];
   const pft = parFront.reduce((a,b)=>a+b,0);
   const pbt = parBack.reduce((a,b)=>a+b,0);
   const cut = 3; // fixed cutoff: A=+3 and under, B=+4 and over
@@ -1814,7 +1844,7 @@ function renderResults(data, parFront, parBack) {
   document.getElementById('resultsArea').innerHTML = `
     <div class="results-title">
       <h2>🏆 Results</h2>
-      <p>${data.length} teams • A Flight: +3 &amp; under • B Flight: +4 &amp; over • Front par ${pft} • Back par ${pbt}</p>
+      <p>${data.length} teams • ${flightMode==='par'?'A: +3 &amp; under / B: +4 &amp; over':'High/Low split'} • Front par ${pft} • Back par ${pbt}</p>
     </div>
     <div class="hdcp-override">
       <div class="hdcp-override-title">✏️ Adjust Handicaps</div>
@@ -1830,8 +1860,8 @@ function renderResults(data, parFront, parBack) {
     <button class="btn-update-hdcp" onclick="saveUpdatedHandicaps()">💾 SAVE UPDATED HANDICAPS TO ROSTER</button>
     <div class="results-grid">
       ${flightHTML('A',fA)} ${flightHTML('B',fB)}
-      ${skinsHTML(skinsFront,'Front 9','Holes 1–9')}
-      ${skinsHTML(skinsBack,'Back 9','Holes 10–18')}
+      ${skinsEnabled ? skinsHTML(skinsFront,'Front 9','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBack,'Back 9','Holes 10–18') : ''}
       ${scoreboardHTML(data)}
     </div>
     <div class="result-actions">
@@ -2207,6 +2237,22 @@ function exportScheduleCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
+
+function setFlightMode(mode, btn) {
+  flightMode = mode;
+  document.querySelectorAll('#flightModeHL,#flightModePar').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSkinsMode(on, btn) {
+  skinsEnabled = on;
+  document.querySelectorAll('#skinsOn,#skinsOff').forEach(function(b) { b.classList.remove('active','active-off'); });
+  if (on) {
+    document.getElementById('skinsOn').classList.add('active');
+  } else {
+    document.getElementById('skinsOff').classList.add('active-off');
+  }
+}
 
 // ══ UTILS ══
 async function api(method, url, body) {
