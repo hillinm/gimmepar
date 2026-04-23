@@ -586,7 +586,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
           <label>Password</label>
           <input class="form-input" type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
         </div>
-        <button class="btn-primary" onclick="login()">SIGN IN</button>
+        <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
         <div class="login-toggle">Don't have a league? <a onclick="showRegister()">Create one</a></div>
       </div>
       <div id="registerForm" style="display:none">
@@ -616,7 +616,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 
 
   <!-- CHANGE PASSWORD MODAL -->
-  <div id="changePassModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;">
+  <div id="changePassModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;margin:20px;">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🔒 Change Password</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">You must set a new password before continuing.</div>
@@ -2189,6 +2189,16 @@ function toast(msg) {
   setTimeout(()=>el.classList.remove('show'), 2500);
 }
 
+// Catch any uncaught JS errors and show them on screen
+window.onerror = function(msg, src, line) {
+  var el = document.getElementById('loginError');
+  if (el) { el.textContent = 'JS Error: ' + msg + ' (line ' + line + ')'; el.style.display = 'block'; }
+  return false;
+};
+window.onunhandledrejection = function(e) {
+  var el = document.getElementById('loginError');
+  if (el) { el.textContent = 'Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)); el.style.display = 'block'; }
+};
 init();
 </script>
 </body>
