@@ -113,6 +113,36 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .section-sub{font-size:11px;color:var(--muted);font-style:italic;}
 .section-body{padding:20px;}
 
+
+/* ── SCHEDULE TAB ── */
+.week-selector { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.week-selector label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+.week-inp { background:var(--bg); border:1px solid var(--border); color:var(--cream); border-radius:8px; padding:9px 14px; font-family:"Libre Baskerville",serif; font-size:14px; outline:none; width:80px; text-align:center; }
+.week-inp:focus { border-color:var(--gold); }
+.btn-gen { background:var(--gold); color:var(--bg); font-family:"Bebas Neue",sans-serif; font-size:17px; letter-spacing:2px; border:none; border-radius:8px; padding:10px 24px; cursor:pointer; transition:all .2s; }
+.btn-gen:hover { background:var(--gold2); }
+.btn-export-sched { background:transparent; border:1px solid var(--green); color:var(--green2); font-family:"Bebas Neue",sans-serif; font-size:15px; letter-spacing:2px; padding:9px 20px; border-radius:8px; cursor:pointer; transition:all .2s; }
+.btn-export-sched:hover { background:rgba(74,140,63,.2); }
+.schedule-week { margin-bottom:28px; }
+.schedule-week-title { font-family:"Bebas Neue",sans-serif; font-size:22px; letter-spacing:2px; color:var(--gold); margin-bottom:12px; display:flex; align-items:center; gap:12px; }
+.week-badge { font-size:11px; background:rgba(201,168,76,.15); border:1px solid var(--border); border-radius:6px; padding:3px 10px; color:var(--muted); font-family:"Libre Baskerville",serif; font-style:italic; }
+.sched-table { width:100%; border-collapse:collapse; font-size:13px; }
+.sched-table th { font-family:"Bebas Neue",sans-serif; font-size:13px; letter-spacing:1.5px; color:var(--gold2); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
+.sched-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; }
+.sched-table tr:last-child td { border-bottom:none; }
+.sched-table tr:hover td { background:rgba(255,255,255,.02); }
+.hole-chip { display:inline-block; font-family:"Bebas Neue",sans-serif; font-size:18px; background:var(--green); color:#fff; width:32px; height:32px; border-radius:50%; text-align:center; line-height:32px; flex-shrink:0; }
+.hole-chip.back { background:rgba(201,168,76,.35); color:var(--gold2); border:1px solid var(--gold); }
+.vs-badge { font-size:11px; color:var(--muted); font-style:italic; margin:0 8px; }
+.team-a-name { font-weight:700; color:var(--cream); }
+.team-b-name { font-weight:700; color:var(--cream); }
+.bye-row td { color:var(--muted); font-style:italic; }
+.sched-info { font-size:12px; color:var(--muted); font-style:italic; margin-bottom:16px; }
+.nine-col { font-size:11px; color:var(--muted); }
+@media(max-width:600px) {
+  .sched-table th:nth-child(3), .sched-table td:nth-child(3) { display:none; }
+}
+
 /* ── COURSE SEARCH ── */
 .search-row{display:flex;gap:10px;margin-bottom:12px;}
 .search-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:10px 14px;font-family:'Libre Baskerville',serif;font-size:14px;outline:none;}
@@ -556,6 +586,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
       <button class="nav-tab active" onclick="showTab('scoring')" id="tab-scoring">Scoring</button>
       <button class="nav-tab" onclick="showTab('roster')" id="tab-roster">Roster</button>
       <button class="nav-tab" onclick="showTab('course')" id="tab-course">Course</button>
+      <button class="nav-tab" onclick="showTab('schedule')" id="tab-schedule">Schedule</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
     <button class="btn-logout" onclick="logout()">Sign Out</button>
@@ -634,6 +665,31 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     </div>
   </div>
 
+  <!-- SCHEDULE TAB -->
+  <div id="tabSchedule" class="wrap" style="padding-top:32px;display:none;">
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">📆</span>
+        <div>
+          <div class="section-title">Schedule Generator</div>
+          <div class="section-sub">Round robin matchups with rotating starting holes</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="week-selector">
+          <label>Generate</label>
+          <input class="week-inp" type="number" id="weeksToGen" value="1" min="1" max="20">
+          <label>week(s) starting week</label>
+          <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99">
+          <button class="btn-gen" onclick="generateSchedule()">📆 Generate</button>
+          <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
+        </div>
+        <div class="sched-info" id="schedInfo"></div>
+        <div id="scheduleOutput"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- HISTORY TAB -->
   <div id="tabHistory" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
@@ -666,6 +722,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
       <button class="bnav-btn" id="bnav-course" onclick="showTab('course')">
         <span class="bnav-icon">🏌️</span>
         <span class="bnav-label">Course</span>
+      </button>
+      <button class="bnav-btn" id="bnav-schedule" onclick="showTab('schedule')">
+        <span class="bnav-icon">📆</span>
+        <span class="bnav-label">Schedule</span>
       </button>
       <button class="bnav-btn" id="bnav-history" onclick="showTab('history')">
         <span class="bnav-icon">📅</span>
@@ -1465,12 +1525,13 @@ async function viewRound(id) {
 
 // ══ NAV ══
 function showTab(tab) {
-  ['scoring','roster','course','history'].forEach(t => {
+  ['scoring','roster','course','schedule','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
   if (tab==='history') loadHistory();
+  if (tab==='schedule') initSchedule();
   // Scroll to top on tab change
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1481,6 +1542,182 @@ function showPage(name) {
   const nav = document.querySelector('.bottom-nav');
   if (nav) nav.style.display = name==='login' ? 'none' : '';
 }
+
+
+// ══ SCHEDULE GENERATOR ══
+let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
+
+function initSchedule() {
+  // Set start week to next week number based on saved rounds
+  const out = document.getElementById('scheduleOutput');
+  if (!out.innerHTML) {
+    document.getElementById('schedInfo').textContent =
+      `${rosterTeams.length} teams loaded. A full round robin needs ${roundRobinWeeks(rosterTeams.length)} weeks.`;
+  }
+}
+
+function roundRobinWeeks(n) {
+  return n % 2 === 0 ? n - 1 : n;
+}
+
+// Standard round-robin algorithm (Berger tables)
+// Returns array of weeks, each week is array of [teamIdxA, teamIdxB] pairs
+function buildRoundRobin(teams) {
+  const n = teams.length;
+  const hasOdd = n % 2 !== 0;
+  const list = [...Array(n).keys()]; // indices
+  if (hasOdd) list.push(null); // null = bye
+  const total = list.length;
+  const weeks = total - 1;
+  const rounds = [];
+
+  for (let w = 0; w < weeks; w++) {
+    const pairs = [];
+    for (let i = 0; i < total / 2; i++) {
+      const a = list[i];
+      const b = list[total - 1 - i];
+      if (a !== null && b !== null) pairs.push([a, b]);
+      else if (a === null) pairs.push([b, null]); // bye
+      else pairs.push([a, null]); // bye
+    }
+    rounds.push(pairs);
+    // Rotate all except first element
+    list.splice(1, 0, list.pop());
+  }
+  return rounds;
+}
+
+// Assign starting holes — 2 teams per hole, rotating each week
+// Holes used: 1-9 for front, 10-18 for back
+function assignHoles(matchups, weekNum) {
+  // Separate front/back teams
+  const frontMatches = matchups.filter(m => {
+    const tA = rosterTeams.find(t=>t.id===m.teamA?.id);
+    const tB = rosterTeams.find(t=>t.id===m.teamB?.id);
+    // If either team is front, put on front. If both back, put on back.
+    if (!tA && !tB) return true;
+    const aNine = tA?.nine || 'front';
+    const bNine = tB?.nine || 'front';
+    return aNine === 'front' || bNine === 'front';
+  });
+  const backMatches = matchups.filter(m => !frontMatches.includes(m));
+
+  // Assign holes with rotation offset by week
+  const assignGroup = (matches, holes) => {
+    const offset = (weekNum - 1) % holes.length;
+    return matches.map((m, i) => ({
+      ...m,
+      hole: holes[(i + offset) % holes.length]
+    }));
+  };
+
+  const frontHoles = [1,2,3,4,5,6,7,8,9];
+  const backHoles  = [10,11,12,13,14,15,16,17,18];
+
+  return [
+    ...assignGroup(frontMatches, frontHoles),
+    ...assignGroup(backMatches, backHoles)
+  ].sort((a,b) => a.hole - b.hole);
+}
+
+function generateSchedule() {
+  if (!rosterTeams.length) {
+    toast('Add teams to the roster first');
+    return;
+  }
+
+  const weeksToGen = parseInt(document.getElementById('weeksToGen').value) || 1;
+  const startWeek  = parseInt(document.getElementById('startWeek').value)  || 1;
+  const teams = rosterTeams;
+  const rounds = buildRoundRobin(teams);
+  const totalWeeks = rounds.length;
+
+  savedSchedule = [];
+  const output = document.getElementById('scheduleOutput');
+  output.innerHTML = '';
+
+  document.getElementById('schedInfo').textContent =
+    `${teams.length} teams • ${totalWeeks} week full season • Showing weeks ${startWeek}–${startWeek+weeksToGen-1}`;
+
+  for (let w = 0; w < weeksToGen; w++) {
+    const weekNum = startWeek + w;
+    const roundIdx = (weekNum - 1) % totalWeeks;
+    const round = rounds[roundIdx];
+
+    // Build matchups with team objects
+    const matchups = round.map(([iA, iB]) => ({
+      teamA: iA !== null ? teams[iA] : null,
+      teamB: iB !== null ? teams[iB] : null,
+    }));
+
+    // Assign starting holes
+    const withHoles = assignHoles(matchups, weekNum);
+
+    savedSchedule.push({ week: weekNum, matchups: withHoles });
+
+    // Render
+    const section = document.createElement('div');
+    section.className = 'schedule-week';
+    const rows = withHoles.map(m => {
+      const hole = m.hole;
+      const isBack = hole >= 10;
+      const tA = m.teamA;
+      const tB = m.teamB;
+      if (!tB) {
+        return `<tr class="bye-row">
+          <td><span class="hole-chip ${isBack?'back':''}">${hole}</span></td>
+          <td class="nine-col">${isBack?'Back 9':'Front 9'}</td>
+          <td class="team-a-name">${esc(tA?.player1||'')} / ${esc(tA?.player2||'')}</td>
+          <td><span class="vs-badge">BYE</span></td>
+          <td>—</td>
+        </tr>`;
+      }
+      return `<tr>
+        <td><span class="hole-chip ${isBack?'back':''}">${hole}</span></td>
+        <td class="nine-col">${isBack?'Back 9':'Front 9'}</td>
+        <td class="team-a-name">${esc(tA?.player1||'')} / ${esc(tA?.player2||'')}</td>
+        <td style="text-align:center"><span class="vs-badge">vs</span></td>
+        <td class="team-b-name">${esc(tB?.player1||'')} / ${esc(tB?.player2||'')}</td>
+      </tr>`;
+    }).join('');
+
+    section.innerHTML = `
+      <div class="schedule-week-title">
+        Week ${weekNum}
+        <span class="week-badge">Round ${roundIdx+1} of ${totalWeeks}</span>
+      </div>
+      <div class="section-card">
+        <table class="sched-table">
+          <thead><tr><th>Hole</th><th>Nine</th><th>Team A</th><th></th><th>Team B</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    output.appendChild(section);
+  }
+}
+
+function exportScheduleCSV() {
+  if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
+  const rows = ['Week,Round,Hole,Nine,Team A Player 1,Team A Player 2,Team B Player 1,Team B Player 2'];
+  const totalWeeks = buildRoundRobin(rosterTeams).length;
+  savedSchedule.forEach(({week, matchups}) => {
+    const roundIdx = (week-1) % totalWeeks;
+    matchups.forEach(m => {
+      rows.push([
+        week, roundIdx+1, m.hole,
+        m.hole >= 10 ? 'Back 9' : 'Front 9',
+        `"${m.teamA?.player1||''}"`, `"${m.teamA?.player2||''}"`,
+        `"${m.teamB?.player1||''}"`, `"${m.teamB?.player2||''}"`
+      ].join(','));
+    });
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'gimmepar_schedule.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
 
 // ══ UTILS ══
 async function api(method, url, body) {
