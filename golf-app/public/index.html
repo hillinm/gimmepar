@@ -25,6 +25,41 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 
 
+
+/* ── SUB TOGGLE ── */
+.btn-sub {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-sub.active {
+  background: rgba(192,57,43,.25);
+  border-color: rgba(220,80,80,.6);
+  color: #ff9999;
+}
+.sub-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  background: rgba(192,57,43,.25);
+  color: #ff9999;
+  border: 1px solid rgba(220,80,80,.4);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 /* ── FORMAT TOGGLE ── */
 .format-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
 .format-btn { background:transparent; border:none; color:var(--muted); font-family:"Bebas Neue",sans-serif; font-size:12px; letter-spacing:1px; padding:5px 10px; cursor:pointer; transition:all .2s; white-space:nowrap; }
@@ -1132,7 +1167,7 @@ function buildScoreCard(team, st, idx) {
   card.innerHTML = `
     <div class="score-team-header" onclick="toggleCard(${team.id})">
       <div class="team-num ${nineNumClass(st.nine)}" id="snum_${team.id}">${idx+1}</div>
-      <div class="team-name-display">
+      <div class="team-name-display" id="sname_${team.id}">
         ${esc(team.player1)} / ${esc(team.player2)}${team.format==='4man'&&team.player3?' / '+esc(team.player3):''}${team.format==='4man'&&team.player4?' / '+esc(team.player4):''}
         <span class="format-badge ${team.format==='4man'?'four':'two'}">${team.format==='4man'?'4-Man':'2-Man'}</span>
       </div>
@@ -1144,10 +1179,15 @@ function buildScoreCard(team, st, idx) {
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
       <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <label>Hdcp</label>
           <input class="hdcp-inp" type="text" inputmode="text" value="${team.handicap}" placeholder="0"
-                 id="shdcp_${team.id}" oninput="recalcCard(${team.id})" inputmode="numeric" pattern="[0-9]*">
+                 id="shdcp_${team.id}" oninput="recalcCard(${team.id})">
+          <button class="btn-sub" id="ssub_${team.id}" onclick="toggleSub(${team.id});event.stopPropagation()">SUB</button>
+          <span id="ssubname_wrap_${team.id}" style="display:none;">
+            <input style="background:var(--bg);border:1px solid rgba(220,80,80,.4);color:var(--cream);border-radius:6px;padding:5px 8px;font-family:'Libre Baskerville',serif;font-size:12px;outline:none;width:130px;"
+              id="ssubname_${team.id}" placeholder="Sub name (optional)" inputmode="text">
+          </span>
         </div>
         <div class="nine-toggle" id="stoggle_${team.id}" onclick="event.stopPropagation()">
           <button class="nine-toggle-btn ${st.nine==='front'?'active-f':''}"
@@ -1166,6 +1206,40 @@ function buildScoreCard(team, st, idx) {
       </div>
     </div>`;
   return card;
+}
+
+function toggleSub(teamId) {
+  const btn = document.getElementById('ssub_'+teamId);
+  const hdcpInp = document.getElementById('shdcp_'+teamId);
+  const nameWrap = document.getElementById('ssubname_wrap_'+teamId);
+  const nameDisp = document.getElementById('sname_'+teamId);
+  if (!btn) return;
+  const isActive = btn.classList.toggle('active');
+  if (isActive) {
+    // Store original handicap and zero it out
+    hdcpInp.dataset.origHdcp = hdcpInp.value;
+    hdcpInp.value = '0';
+    hdcpInp.style.opacity = '0.5';
+    if (nameWrap) nameWrap.style.display = '';
+    btn.title = 'Playing scratch — click to restore handicap';
+    // Add SUB badge to header
+    var existing = nameDisp ? nameDisp.querySelector('.sub-badge') : null;
+    if (!existing && nameDisp) {
+      var badge = document.createElement('span');
+      badge.className = 'sub-badge';
+      badge.id = 'ssubbadge_'+teamId;
+      badge.textContent = 'SUB';
+      nameDisp.appendChild(badge);
+    }
+  } else {
+    // Restore original handicap
+    hdcpInp.value = hdcpInp.dataset.origHdcp || '0';
+    hdcpInp.style.opacity = '';
+    if (nameWrap) nameWrap.style.display = 'none';
+    var badge = document.getElementById('ssubbadge_'+teamId);
+    if (badge) badge.remove();
+  }
+  recalcCard(teamId);
 }
 
 function toggleCard(teamId) {
@@ -1294,12 +1368,17 @@ function calculate() {
     const nine = st?.nine || t.nine || 'front';
     const { par, count } = getHoleConfig(nine);
     const parTotal = par.reduce((a,b)=>a+b,0);
-    const hdcp = parseInt(document.getElementById(`shdcp_${t.id}`)?.value)||0;
+    const hdcpEl = document.getElementById('shdcp_'+t.id);
+    const hdcp = parseInt(hdcpEl?.value)||0;
+    const subBtn = document.getElementById('ssub_'+t.id);
+    const isSub = subBtn ? subBtn.classList.contains('active') : false;
+    const subNameEl = document.getElementById('ssubname_'+t.id);
+    const subName = isSub && subNameEl ? subNameEl.value.trim() : '';
     const holes = Array.from({length:count},(_,i)=>{ const v=parseInt(document.getElementById(`shole_${t.id}_${i}`)?.value); return isNaN(v)?null:v; });
     const gross = holes.reduce((a,b)=>b!=null?a+b:a,0);
     const hasAll = holes.every(h=>h!=null);
     const teamName = [t.player1, t.player2].filter(Boolean).join(' / ') || 'Team';
-    return { id:t.id, name:teamName, player1:t.player1||'', player2:t.player2||'', hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine, holeCount:count };
+    return { id:t.id, name:teamName, player1:t.player1||'', player2:t.player2||'', hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine, holeCount:count, isSub, subName };
   });
   lastCalcData = data;
   renderResults(data, parFront, parBack);
