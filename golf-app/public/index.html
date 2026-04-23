@@ -1548,11 +1548,14 @@ function showPage(name) {
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
 function initSchedule() {
-  // Set start week to next week number based on saved rounds
-  const out = document.getElementById('scheduleOutput');
+  var out = document.getElementById('scheduleOutput');
   if (!out.innerHTML) {
+    var fullRR = roundRobinWeeks(rosterTeams.length);
+    var seasonEl = document.getElementById('seasonWeeks');
+    var season = seasonEl ? parseInt(seasonEl.value) || 29 : 29;
     document.getElementById('schedInfo').textContent =
-      `${rosterTeams.length} teams loaded. A full round robin needs ${roundRobinWeeks(rosterTeams.length)} weeks.`;
+      rosterTeams.length + ' teams loaded. Full round robin = ' + fullRR +
+      ' weeks. Season set to ' + season + ' weeks.';
   }
 }
 
@@ -1587,111 +1590,97 @@ function buildRoundRobin(teams) {
   return rounds;
 }
 
-// Assign starting holes — 2 teams per hole, rotating each week
-// Holes used: 1-9 for front, 10-18 for back
+// Assign one matchup per hole across all 18 holes, rotating start each week
+// With >18 matchups some holes get 2 groups — unavoidable, minimized by spread
 function assignHoles(matchups, weekNum) {
-  // Separate front/back teams
-  const frontMatches = matchups.filter(m => {
-    const tA = rosterTeams.find(t=>t.id===m.teamA?.id);
-    const tB = rosterTeams.find(t=>t.id===m.teamB?.id);
-    // If either team is front, put on front. If both back, put on back.
-    if (!tA && !tB) return true;
-    const aNine = tA?.nine || 'front';
-    const bNine = tB?.nine || 'front';
-    return aNine === 'front' || bNine === 'front';
+  var allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
+  var byes = matchups.filter(function(m) { return !m.teamB; });
+  var offset = (weekNum - 1) % allHoles.length;
+  var rotated = allHoles.slice(offset).concat(allHoles.slice(0, offset));
+  var assigned = realMatchups.map(function(m, i) {
+    return Object.assign({}, m, { hole: rotated[i % allHoles.length] });
   });
-  const backMatches = matchups.filter(m => !frontMatches.includes(m));
-
-  // Assign holes with rotation offset by week
-  const assignGroup = (matches, holes) => {
-    const offset = (weekNum - 1) % holes.length;
-    return matches.map((m, i) => ({
-      ...m,
-      hole: holes[(i + offset) % holes.length]
-    }));
-  };
-
-  const frontHoles = [1,2,3,4,5,6,7,8,9];
-  const backHoles  = [10,11,12,13,14,15,16,17,18];
-
-  return [
-    ...assignGroup(frontMatches, frontHoles),
-    ...assignGroup(backMatches, backHoles)
-  ].sort((a,b) => a.hole - b.hole);
+  assigned.sort(function(a, b) { return a.hole - b.hole; });
+  var byesWithHole = byes.map(function(m) { return Object.assign({}, m, { hole: null }); });
+  return assigned.concat(byesWithHole);
 }
 
 function generateSchedule() {
-  if (!rosterTeams.length) {
-    toast('Add teams to the roster first');
-    return;
-  }
+  if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
 
-  const weeksToGen = parseInt(document.getElementById('weeksToGen').value) || 1;
-  const startWeek  = parseInt(document.getElementById('startWeek').value)  || 1;
-  const teams = rosterTeams;
-  const rounds = buildRoundRobin(teams);
-  const totalWeeks = rounds.length;
+  var weeksToGen  = parseInt(document.getElementById('weeksToGen').value)  || 29;
+  var startWeek   = parseInt(document.getElementById('startWeek').value)   || 1;
+  var seasonWeeks = parseInt(document.getElementById('seasonWeeks').value) || 29;
+  var teams = rosterTeams;
+  var rounds = buildRoundRobin(teams);
+  // Cap round-robin cycle at season length so matchups repeat within the season
+  var totalWeeks = Math.min(rounds.length, seasonWeeks);
+  var matchupsPerWeek = Math.floor(teams.length / 2);
+  var extra = Math.max(0, matchupsPerWeek - 18);
+  var extraNote = extra > 0 ? ' (' + extra + ' hole' + (extra > 1 ? 's' : '') + ' used twice)' : '';
 
   savedSchedule = [];
-  const output = document.getElementById('scheduleOutput');
+  var output = document.getElementById('scheduleOutput');
   output.innerHTML = '';
-
   document.getElementById('schedInfo').textContent =
-    `${teams.length} teams • ${totalWeeks} week full season • Showing weeks ${startWeek}–${startWeek+weeksToGen-1}`;
+    teams.length + ' teams • ' + seasonWeeks + '-week season • ' +
+    matchupsPerWeek + ' matchups/week across 18 holes' + extraNote +
+    ' • Showing weeks ' + startWeek + '–' + (startWeek + weeksToGen - 1);
 
-  for (let w = 0; w < weeksToGen; w++) {
-    const weekNum = startWeek + w;
-    const roundIdx = (weekNum - 1) % totalWeeks;
-    const round = rounds[roundIdx];
+  for (var w = 0; w < weeksToGen; w++) {
+    var weekNum = startWeek + w;
+    var roundIdx = (weekNum - 1) % rounds.length;
+    var round = rounds[roundIdx];
+    var displayRound = ((weekNum - 1) % totalWeeks) + 1;
 
-    // Build matchups with team objects
-    const matchups = round.map(([iA, iB]) => ({
-      teamA: iA !== null ? teams[iA] : null,
-      teamB: iB !== null ? teams[iB] : null,
-    }));
+    var matchups = round.map(function(pair) {
+      return {
+        teamA: pair[0] !== null ? teams[pair[0]] : null,
+        teamB: pair[1] !== null ? teams[pair[1]] : null
+      };
+    });
 
-    // Assign starting holes
-    const withHoles = assignHoles(matchups, weekNum);
-
+    var withHoles = assignHoles(matchups, weekNum);
     savedSchedule.push({ week: weekNum, matchups: withHoles });
 
-    // Render
-    const section = document.createElement('div');
-    section.className = 'schedule-week';
-    const rows = withHoles.map(m => {
-      const hole = m.hole;
-      const isBack = hole >= 10;
-      const tA = m.teamA;
-      const tB = m.teamB;
+    var rows = '';
+    for (var i = 0; i < withHoles.length; i++) {
+      var m = withHoles[i];
+      var tA = m.teamA;
+      var tB = m.teamB;
+      var hole = m.hole;
+      var isBack = hole >= 10;
+      var nineLabel = isBack ? 'Back 9' : 'Front 9';
+      var chipClass = 'hole-chip' + (isBack ? ' back' : '');
+      var nameA = esc((tA && tA.player1) || '') + ' / ' + esc((tA && tA.player2) || '');
       if (!tB) {
-        return `<tr class="bye-row">
-          <td><span class="hole-chip ${isBack?'back':''}">${hole}</span></td>
-          <td class="nine-col">${isBack?'Back 9':'Front 9'}</td>
-          <td class="team-a-name">${esc(tA?.player1||'')} / ${esc(tA?.player2||'')}</td>
-          <td><span class="vs-badge">BYE</span></td>
-          <td>—</td>
-        </tr>`;
+        rows += '<tr class="bye-row">';
+        rows += '<td><span class="hole-chip" style="background:var(--muted)">—</span></td>';
+        rows += '<td class="nine-col">—</td>';
+        rows += '<td class="team-a-name">' + nameA + '</td>';
+        rows += '<td><span class="vs-badge">BYE</span></td>';
+        rows += '<td>—</td></tr>';
+      } else {
+        var nameB = esc((tB && tB.player1) || '') + ' / ' + esc((tB && tB.player2) || '');
+        rows += '<tr>';
+        rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
+        rows += '<td class="nine-col">' + nineLabel + '</td>';
+        rows += '<td class="team-a-name">' + nameA + '</td>';
+        rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
+        rows += '<td class="team-b-name">' + nameB + '</td>';
+        rows += '</tr>';
       }
-      return `<tr>
-        <td><span class="hole-chip ${isBack?'back':''}">${hole}</span></td>
-        <td class="nine-col">${isBack?'Back 9':'Front 9'}</td>
-        <td class="team-a-name">${esc(tA?.player1||'')} / ${esc(tA?.player2||'')}</td>
-        <td style="text-align:center"><span class="vs-badge">vs</span></td>
-        <td class="team-b-name">${esc(tB?.player1||'')} / ${esc(tB?.player2||'')}</td>
-      </tr>`;
-    }).join('');
+    }
 
-    section.innerHTML = `
-      <div class="schedule-week-title">
-        Week ${weekNum}
-        <span class="week-badge">Round ${roundIdx+1} of ${totalWeeks}</span>
-      </div>
-      <div class="section-card">
-        <table class="sched-table">
-          <thead><tr><th>Hole</th><th>Nine</th><th>Team A</th><th></th><th>Team B</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+    var section = document.createElement('div');
+    section.className = 'schedule-week';
+    section.innerHTML =
+      '<div class="schedule-week-title">Week ' + weekNum +
+      ' <span class="week-badge">Round ' + displayRound + ' of ' + totalWeeks + '</span></div>' +
+      '<div class="section-card"><table class="sched-table">' +
+      '<thead><tr><th>Hole</th><th>Nine</th><th>Team A</th><th></th><th>Team B</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
     output.appendChild(section);
   }
 }
@@ -1699,16 +1688,23 @@ function generateSchedule() {
 function exportScheduleCSV() {
   if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
   const rows = ['Week,Round,Hole,Nine,Team A Player 1,Team A Player 2,Team B Player 1,Team B Player 2'];
-  const totalWeeks = buildRoundRobin(rosterTeams).length;
-  savedSchedule.forEach(({week, matchups}) => {
-    const roundIdx = (week-1) % totalWeeks;
-    matchups.forEach(m => {
-      rows.push([
-        week, roundIdx+1, m.hole,
-        m.hole >= 10 ? 'Back 9' : 'Front 9',
-        `"${m.teamA?.player1||''}"`, `"${m.teamA?.player2||''}"`,
-        `"${m.teamB?.player1||''}"`, `"${m.teamB?.player2||''}"`
-      ].join(','));
+  var rrLen = buildRoundRobin(rosterTeams).length;
+  var seasonLen = parseInt((document.getElementById('seasonWeeks')||{}).value) || 29;
+  var capLen = Math.min(rrLen, seasonLen);
+  savedSchedule.forEach(function(sw) {
+    var week = sw.week; var matchups = sw.matchups;
+    var roundIdx = (week-1) % rrLen;
+    matchups.forEach(function(m) {
+      if (m.teamA && m.teamB) {
+        rows.push([
+          week, roundIdx+1, m.hole,
+          m.hole >= 10 ? 'Back 9' : 'Front 9',
+          '"' + ((m.teamA && m.teamA.player1) || '') + '"',
+          '"' + ((m.teamA && m.teamA.player2) || '') + '"',
+          '"' + ((m.teamB && m.teamB.player1) || '') + '"',
+          '"' + ((m.teamB && m.teamB.player2) || '') + '"'
+        ].join(','));
+      }
     });
   });
   const blob = new Blob([rows.join('\n')], {type:'text/csv'});
