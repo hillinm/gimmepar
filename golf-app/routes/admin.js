@@ -5,11 +5,23 @@ const router = express.Router();
 
 function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.session.role || !roles.includes(req.session.role))
-      return res.status(403).json({ error: 'Forbidden' });
+    if (!req.session.role || !roles.includes(req.session.role)) {
+      console.log('requireRole DENIED - session role:', req.session.role, '| required:', roles);
+      return res.status(403).json({ error: 'Forbidden - role ' + (req.session.role||'none') + ' not in ' + roles.join(',') });
+    }
     next();
   };
 }
+
+// Debug endpoint - check session state
+router.get('/session-check', (req, res) => {
+  res.json({
+    role: req.session.role || null,
+    userId: req.session.userId || null,
+    leagueId: req.session.leagueId || null,
+    hasSession: !!req.session.id
+  });
+});
 
 // ── SUPER ADMIN: list all leagues ──
 router.get('/leagues', requireRole('superadmin'), async (req, res) => {

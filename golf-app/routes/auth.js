@@ -151,7 +151,7 @@ router.post('/logout', (req, res) => {
 
 // ── ME ──
 router.get('/me', async (req, res) => {
-  if (!req.session.leagueId && !req.session.userId) return res.status(401).json({ error: 'Not logged in' });
+  if (!req.session.userId && !req.session.leagueId) return res.status(401).json({ error: 'Not logged in' });
   try {
     const role = req.session.role || 'leagueadmin';
 

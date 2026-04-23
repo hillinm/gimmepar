@@ -1025,6 +1025,19 @@ async function loadPlayerView(data) {
 
 // ══ SUPER ADMIN ══
 async function loadSuperAdmin() {
+  // First verify session
+  try {
+    var sess = await api('GET', '/api/admin/session-check');
+    console.log('Admin session:', sess);
+    if (sess.role !== 'superadmin') {
+      document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state" style="color:#ff9999">Session role is "' + sess.role + '" — not superadmin. Try logging out and back in.</div>';
+      return;
+    }
+  } catch(e) {
+    document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state" style="color:#ff9999">Session check failed: ' + e.message + '</div>';
+    return;
+  }
+
   try {
     var leagues = await api('GET', '/api/admin/leagues');
     var leaguesEl = document.getElementById('adminLeaguesList');
@@ -1035,18 +1048,18 @@ async function loadSuperAdmin() {
       leagues.forEach(function(l, i) {
         html += '<tr><td style="color:var(--muted)">' + (i+1) + '</td>';
         html += '<td style="font-weight:700">' + esc(l.name) + '</td>';
-        html += '<td style="color:var(--muted)">' + esc(l.admin_email||'—') + '</td>';
+        html += '<td style="color:var(--muted)">' + esc(l.admin_email||'--') + '</td>';
         html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td></tr>';
       });
       html += '</tbody></table>';
       leaguesEl.innerHTML = html;
     }
-  } catch(e) { document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
+  } catch(e) { document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state" style="color:#ff9999">Error loading leagues: '+e.message+'</div>'; }
 
   try {
     window._adminUsers = await api('GET', '/api/admin/users');
     renderAdminUsers(window._adminUsers);
-  } catch(e) { document.getElementById('adminUsersList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
+  } catch(e) { document.getElementById('adminUsersList').innerHTML = '<div class="empty-state" style="color:#ff9999">Error loading users: '+e.message+'</div>'; }
 }
 
 function filterAdminUsers(search) {
