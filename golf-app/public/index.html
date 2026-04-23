@@ -593,7 +593,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input class="form-input" type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
+          <div style="position:relative;">
+            <input class="form-input" type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')login()" style="padding-right:48px;">
+            <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
+          </div>
         </div>
         <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
         <div class="login-toggle">Don't have a league? <a onclick="showRegister()">Create one</a></div>
@@ -665,13 +668,24 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         <span>GIMME<span style="color:var(--white)">PAR</span></span>
       </div>
       <div class="header-league" style="color:var(--gold)">Super Admin</div>
+      <nav class="nav-tabs">
+        <button class="nav-tab active" onclick="showAdminTab('leagues')" id="satab-leagues">Leagues</button>
+        <button class="nav-tab" onclick="showAdminTab('users')" id="satab-users">Users</button>
+        <button class="nav-tab" onclick="showAdminTab('courses')" id="satab-courses">Courses</button>
+      </nav>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
-    <div class="wrap" style="padding-top:32px;">
-      <div class="section-card" style="margin-bottom:24px;">
+
+    <!-- Leagues tab -->
+    <div id="saTabLeagues" class="wrap" style="padding-top:32px;">
+      <div class="section-card">
         <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">All Leagues</div></div></div>
         <div class="section-body" id="adminLeaguesList"><div class="empty-state">Loading...</div></div>
       </div>
+    </div>
+
+    <!-- Users tab -->
+    <div id="saTabUsers" class="wrap" style="padding-top:32px;display:none;">
       <div class="section-card">
         <div class="section-header">
           <span style="font-size:24px;">👤</span>
@@ -681,6 +695,20 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         <div class="section-body" id="adminUsersList"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
+
+    <!-- Courses tab -->
+    <div id="saTabCourses" class="wrap" style="padding-top:32px;display:none;">
+      <div class="section-card">
+        <div class="section-header"><span style="font-size:24px;">🏌️</span><div><div class="section-title">Global Course Library</div><div class="section-sub">Search, manage and delete courses</div></div></div>
+        <div class="section-body">
+          <div class="search-row" style="margin-bottom:10px;">
+            <input class="search-input" id="adminCourseSearch" placeholder="Search by name or location..." oninput="adminCourseSearch(this.value)">
+          </div>
+          <div id="adminCourseResults"><div class="empty-state">Type to search courses.</div></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 <!-- ══ APP (authenticated) ══ -->
@@ -1111,6 +1139,49 @@ async function loadPlayerView(data) {
 }
 
 // ══ SUPER ADMIN ══
+function showAdminTab(tab) {
+  ['leagues','users','courses'].forEach(function(t) {
+    var panel = document.getElementById('saTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    var btn   = document.getElementById('satab-'+t);
+    if (panel) panel.style.display = t===tab ? '' : 'none';
+    if (btn)   btn.classList.toggle('active', t===tab);
+  });
+  if (tab==='courses') adminCourseSearch('');
+}
+
+function adminCourseSearch(q) {
+  var el = document.getElementById('adminCourseResults');
+  if (!el) return;
+  if (q.length < 1) {
+    // Load all
+    api('GET', '/api/league/courses/global/all').then(function(courses) {
+      renderAdminCourses(courses, el);
+    }).catch(function(e) { el.innerHTML = '<div style="color:#ff9999">Error: '+e.message+'</div>'; });
+    return;
+  }
+  api('GET', '/api/league/courses/global/search?q='+encodeURIComponent(q)).then(function(courses) {
+    renderAdminCourses(courses, el);
+  }).catch(function(e) { el.innerHTML = '<div style="color:#ff9999">Error: '+e.message+'</div>'; });
+}
+
+function renderAdminCourses(courses, el) {
+  if (!courses.length) { el.innerHTML = '<div class="empty-state">No courses found.</div>'; return; }
+  var html = '<table class="team-table" style="width:100%"><thead><tr><th>Course Name</th><th>Location</th><th>F9</th><th>B9</th><th></th></tr></thead><tbody>';
+  courses.forEach(function(c) {
+    var fp = JSON.parse(c.front9par||'[]').reduce(function(a,b){return a+b;},0);
+    var bp = JSON.parse(c.back9par||'[]').reduce(function(a,b){return a+b;},0);
+    html += '<tr>';
+    html += '<td style="font-weight:700">'+esc(c.name)+'</td>';
+    html += '<td style="color:var(--muted);font-size:12px">'+esc(c.location||'—')+'</td>';
+    html += '<td style="color:var(--muted)">'+fp+'</td>';
+    html += '<td style="color:var(--muted)">'+bp+'</td>';
+    html += '<td><button class="btn-del" data-cid="'+c.id+'" data-cname="'+esc(c.name)+'" onclick="deleteGlobalCourse(this.dataset.cid,this.dataset.cname)">Delete</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
 async function loadSuperAdmin() {
   // First verify session
   try {
@@ -1369,6 +1440,13 @@ function showRegister() {
   document.getElementById('registerForm').style.display = '';
   document.getElementById('loginError').style.display = 'none';
 }
+function togglePassVis(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
 function showError(msg) {
   const el = document.getElementById('loginError');
   if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
