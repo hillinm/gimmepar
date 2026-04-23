@@ -1,11 +1,58 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const https = require('https');
 const { getOne, query } = require('../db/database');
 const router = express.Router();
 
 function sendError(res, status, msg) {
   console.error('Auth error:', msg);
   return res.status(status).json({ error: msg });
+}
+
+// Send notification email via Resend — fire and forget, never blocks registration
+function notifyNewLeague(leagueName) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const toEmail = process.env.NOTIFY_EMAIL;
+  if (!apiKey || !toEmail) return; // silently skip if not configured
+
+  const body = JSON.stringify({
+    from: 'GimmePar <onboarding@resend.dev>',
+    to: [toEmail],
+    subject: 'New GimmePar League: ' + leagueName,
+    html: [
+      '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">',
+      '<h2 style="color:#1a2e1a;">⛳ New League Created</h2>',
+      '<p>A new league just signed up on <strong>GimmePar</strong>.</p>',
+      '<table style="width:100%;border-collapse:collapse;margin:16px 0;">',
+      '<tr><td style="padding:8px;color:#666;">League Name</td>',
+      '<td style="padding:8px;font-weight:bold;">' + leagueName + '</td></tr>',
+      '<tr><td style="padding:8px;color:#666;">Time</td>',
+      '<td style="padding:8px;">' + new Date().toLocaleString('en-US', {timeZone:'America/Chicago'}) + ' CT</td></tr>',
+      '</table>',
+      '<p style="color:#888;font-size:12px;">You are receiving this because you are the GimmePar admin.</p>',
+      '</div>'
+    ].join('')
+  });
+
+  const options = {
+    hostname: 'api.resend.com',
+    path: '/emails',
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + apiKey,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+
+  const req = https.request(options, (res) => {
+    let data = '';
+    res.on('data', d => data += d);
+    res.on('end', () => console.log('Notification sent for league:', leagueName, '| Status:', res.statusCode));
+  });
+  req.on('error', (e) => console.warn('Notification failed (non-critical):', e.message));
+  req.write(body);
+  req.end();
 }
 
 router.post('/register', async (req, res) => {
@@ -21,6 +68,8 @@ router.post('/register', async (req, res) => {
     req.session.leagueName = String(name).trim();
     req.session.save(err => {
       if (err) return sendError(res, 500, 'Session save failed: ' + err.message);
+      // Send notification after successful registration (non-blocking)
+      notifyNewLeague(String(name).trim());
       res.json({ success: true, leagueName: String(name).trim() });
     });
   } catch(e) { console.error(e); sendError(res, 500, 'Server error: ' + e.message); }
