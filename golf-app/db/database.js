@@ -13,6 +13,7 @@ async function init() {
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
+        admin_email TEXT DEFAULT '',
         course_name TEXT,
         course_location TEXT,
         front9par TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
@@ -47,6 +48,7 @@ async function init() {
     `);
     // Safe migrations
     await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS nine TEXT NOT NULL DEFAULT 'front'");
+    await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS admin_email TEXT DEFAULT ''");
     console.log('✓ Database tables ready');
   } finally {
     client.release();
