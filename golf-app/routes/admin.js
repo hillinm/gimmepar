@@ -139,3 +139,24 @@ router.delete('/players/:id', requireRole('superadmin','leagueadmin'), async (re
 });
 
 module.exports = router;
+
+// ── SUPER ADMIN: reset league password ──
+router.post('/leagues/:id/reset-password', requireRole('superadmin'), async (req, res) => {
+  try {
+    const { newPassword } = req.body || {};
+    if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'Password too short' });
+    const bcrypt = require('bcryptjs');
+    const hash = bcrypt.hashSync(String(newPassword), 10);
+    await query('UPDATE leagues SET password_hash=$1 WHERE id=$2', [hash, req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── SUPER ADMIN: delete league ──
+router.delete('/leagues/:id', requireRole('superadmin'), async (req, res) => {
+  try {
+    // Delete cascade handles teams, rounds, scores, users
+    await query('DELETE FROM leagues WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

@@ -1044,12 +1044,17 @@ async function loadSuperAdmin() {
     if (!leagues.length) {
       leaguesEl.innerHTML = '<div class="empty-state">No leagues yet.</div>';
     } else {
-      var html = '<table class="team-table" style="width:100%"><thead><tr><th>#</th><th>League Name</th><th>Admin Email</th><th>Created</th></tr></thead><tbody>';
+      var html = '<table class="team-table" style="width:100%"><thead><tr><th>#</th><th>League Name</th><th>Admin Email</th><th>Created</th><th></th></tr></thead><tbody>';
       leagues.forEach(function(l, i) {
+        var safeLName = l.name.replace(/'/g,'');
         html += '<tr><td style="color:var(--muted)">' + (i+1) + '</td>';
         html += '<td style="font-weight:700">' + esc(l.name) + '</td>';
         html += '<td style="color:var(--muted)">' + esc(l.admin_email||'--') + '</td>';
-        html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td></tr>';
+        html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" onclick="adminResetLeaguePassword('+l.id+',''+safeLName+'')">Reset PW</button>';
+        html += '<button class="btn-del" onclick="adminDeleteLeague('+l.id+',''+safeLName+'')">Delete</button>';
+        html += '</td></tr>';
       });
       html += '</tbody></table>';
       leaguesEl.innerHTML = html;
@@ -1096,6 +1101,25 @@ async function adminResetPassword(userId, userName) {
   try {
     await api('POST', '/api/admin/users/'+userId+'/reset-password', {newPassword: newPass});
     toast('Password reset for ' + userName);
+  } catch(e) { toast('Error: '+e.message); }
+}
+
+async function adminResetLeaguePassword(leagueId, leagueName) {
+  var newPass = prompt('New password for league "' + leagueName + '":');
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  try {
+    await api('POST', '/api/admin/leagues/'+leagueId+'/reset-password', {newPassword: newPass});
+    toast('Password reset for ' + leagueName);
+  } catch(e) { toast('Error: '+e.message); }
+}
+
+async function adminDeleteLeague(leagueId, leagueName) {
+  if (!confirm('Permanently delete league "' + leagueName + '" and ALL its teams, scores, and players? This cannot be undone.')) return;
+  if (!confirm('Are you sure? This will delete everything for "' + leagueName + '".')) return;
+  try {
+    await api('DELETE', '/api/admin/leagues/'+leagueId);
+    toast('League deleted: ' + leagueName);
+    loadSuperAdmin(); // Refresh
   } catch(e) { toast('Error: '+e.message); }
 }
 
