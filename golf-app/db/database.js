@@ -65,7 +65,10 @@ async function init() {
 
     // Safe migrations
     await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS nine TEXT NOT NULL DEFAULT 'front'");
+    await client.query("ALTER TABLE round_scores ADD COLUMN IF NOT EXISTS is_sub BOOLEAN DEFAULT FALSE");
+    await client.query("ALTER TABLE round_scores ADD COLUMN IF NOT EXISTS sub_name TEXT DEFAULT ''");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS admin_email TEXT DEFAULT ''");
+    await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS settings TEXT DEFAULT '{}'");
 
     // Always sync super admin from env vars on every startup
     const adminEmail = process.env.SUPER_ADMIN_EMAIL || 'mark.hillin@gmail.com';

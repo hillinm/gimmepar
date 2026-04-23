@@ -725,6 +725,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
       <button class="nav-tab" onclick="showTab('course')" id="tab-course">Course</button>
       <button class="nav-tab" onclick="showTab('players')" id="tab-players">Players</button>
       <button class="nav-tab" onclick="showTab('schedule')" id="tab-schedule">Schedule</button>
+      <button class="nav-tab" onclick="showTab('settings')" id="tab-settings">Settings</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
     <button class="btn-logout" onclick="logout()">Sign Out</button>
@@ -929,6 +930,69 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     </div>
   </div>
 
+  <!-- SETTINGS TAB -->
+  <div id="tabSettings" class="wrap" style="padding-top:32px;display:none;">
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">⚙️</span>
+        <div>
+          <div class="section-title">League Settings</div>
+          <div class="section-sub">Configure rules and scoring options for your league</div>
+        </div>
+      </div>
+      <div class="section-body">
+
+        <!-- Sub Rule -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔄 Substitute Player Rule</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">When a sub is used, the team normally plays scratch. After the team has used a sub a set number of times, they play with full handicap.</div>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <label style="font-size:13px;color:var(--cream);">After</label>
+            <input class="week-inp" type="number" id="subThresholdInp" value="2" min="1" max="20" style="width:70px;">
+            <label style="font-size:13px;color:var(--cream);">sub weeks, team plays with full handicap</label>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;" id="subThresholdHint"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Season Length -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">📅 Season Length</div>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <input class="week-inp" type="number" id="seasonLengthInp" value="29" min="1" max="52" style="width:70px;">
+            <label style="font-size:13px;color:var(--cream);">weeks per season</label>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Flight Mode default -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">✈️ Default Flight Split</div>
+          <div class="setting-toggle">
+            <button class="setting-btn" id="settingFlightHL" onclick="setSettingFlight('hl',this)">High / Low</button>
+            <button class="setting-btn" id="settingFlightPar" onclick="setSettingFlight('par',this)">+3 / +4</button>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Skins default -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🎰 Skins</div>
+          <div class="setting-toggle">
+            <button class="setting-btn" id="settingSkinsOn" onclick="setSettingSkins(true,this)">Enabled</button>
+            <button class="setting-btn" id="settingSkinsOff" onclick="setSettingSkins(false,this)">Disabled</button>
+          </div>
+        </div>
+
+        <button class="btn-save-course" onclick="saveLeagueSettings()">💾 Save Settings</button>
+        <div id="settingsSaveResult" style="margin-top:10px;font-size:13px;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- HISTORY TAB -->
   <div id="tabHistory" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
@@ -970,6 +1034,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         <span class="bnav-icon">📆</span>
         <span class="bnav-label">Schedule</span>
       </button>
+      <button class="bnav-btn" id="bnav-settings" onclick="showTab('settings')">
+        <span class="bnav-icon">⚙️</span>
+        <span class="bnav-label">Settings</span>
+      </button>
       <button class="bnav-btn" id="bnav-history" onclick="showTab('history')">
         <span class="bnav-icon">📅</span>
         <span class="bnav-label">History</span>
@@ -987,8 +1055,9 @@ let rosterTeams = [];
 let scoreTeams = [];
 let lastCalcData = [];
 let courseSearchResults = [];
-let flightMode = 'hl';   // 'hl' = high/low split | 'par' = +3/+4 cutoff
+let flightMode = 'hl';
 let skinsEnabled = true;
+let leagueSettings = { subThreshold: 2, seasonLength: 29, flightMode: 'hl', skinsEnabled: true };
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -1828,7 +1897,9 @@ async function deleteGlobalCourse(id, name) {
 // ══ SCORING CARDS ══
 let currentFilter = 'all';
 
-function buildScoringCards() {
+let subCounts = {}; // {teamId: count}
+
+async function buildScoringCards() {
   const container = document.getElementById('scoringTeams');
   if (!container) return;
   container.innerHTML = '';
@@ -1839,11 +1910,23 @@ function buildScoringCards() {
     return;
   }
 
+  // Load sub counts for this season
+  try { subCounts = await api('GET', '/api/league/sub-counts'); } catch(e) { subCounts = {}; }
+
   rosterTeams.forEach((t, idx) => {
     const nine = t.nine || 'front';
     const st = { id: t.id, nine, holes: Array(9).fill(null), format: t.format||'2man' };
     scoreTeams.push(st);
     container.appendChild(buildScoreCard(t, st, idx));
+  });
+  // Apply sub count badges after cards are built
+  rosterTeams.forEach(function(t) {
+    var count = subCounts[t.id] || 0;
+    var btn = document.getElementById('ssub_'+t.id);
+    if (btn && count > 0) {
+      btn.title = 'Subs used this season: ' + count + (count >= 2 ? ' — Full handicap applies if sub used again' : ' — 1 more sub gets full handicap');
+      btn.innerHTML = 'SUB <span style="font-size:10px;opacity:.8;">('+count+')</span>';
+    }
   });
   updateScoreCount();
 }
@@ -1989,24 +2072,33 @@ function toggleSub(teamId) {
   const nameDisp = document.getElementById('sname_'+teamId);
   if (!btn) return;
   const isActive = btn.classList.toggle('active');
+  const prevSubs = subCounts[teamId] || 0;
+  const subThreshold = (leagueSettings && leagueSettings.subThreshold) || 2;
+  // Full handicap once team has used >= subThreshold subs
+  const useFullHdcp = prevSubs >= subThreshold;
   if (isActive) {
-    // Store original handicap and zero it out
     hdcpInp.dataset.origHdcp = hdcpInp.value;
-    hdcpInp.value = '0';
-    hdcpInp.style.opacity = '0.5';
+    if (useFullHdcp) {
+      // Keep full handicap — don't zero out
+      hdcpInp.style.opacity = '0.7';
+      btn.title = 'Sub #' + (prevSubs+1) + ' — Full handicap applies (used sub ' + prevSubs + ' times this season)';
+    } else {
+      hdcpInp.value = '0';
+      hdcpInp.style.opacity = '0.5';
+      btn.title = 'Playing scratch (sub #' + (prevSubs+1) + ' this season)';
+    }
     if (nameWrap) nameWrap.style.display = '';
-    btn.title = 'Playing scratch — click to restore handicap';
-    // Add SUB badge to header
     var existing = nameDisp ? nameDisp.querySelector('.sub-badge') : null;
     if (!existing && nameDisp) {
       var badge = document.createElement('span');
       badge.className = 'sub-badge';
       badge.id = 'ssubbadge_'+teamId;
-      badge.textContent = 'SUB';
+      badge.textContent = useFullHdcp ? 'SUB (Full Hdcp)' : 'SUB (Scratch)';
       nameDisp.appendChild(badge);
     }
+    // Show toast if full handicap applies
+    if (useFullHdcp) toast('Team has used ' + prevSubs + ' subs — full handicap applies');
   } else {
-    // Restore original handicap
     hdcpInp.value = hdcpInp.dataset.origHdcp || '0';
     hdcpInp.style.opacity = '';
     if (nameWrap) nameWrap.style.display = 'none';
@@ -2245,7 +2337,9 @@ async function saveUpdatedHandicaps() {
 async function saveRound() {
   const scores = lastCalcData.map(t => ({
     team_id: t.id, nine: t.nine, handicap_used: t.hdcp,
-    hole_scores: t.holes, gross: t.gross, net: t.net||0
+    hole_scores: t.holes, gross: t.gross, net: t.net||0,
+    is_sub: t.isSub || false,
+    sub_name: t.subName || ''
   }));
   await api('POST', '/api/league/rounds', { scores });
   toast('✓ Round saved to history');
@@ -2389,7 +2483,7 @@ async function viewRound(id) {
 
 // ══ NAV ══
 function showTab(tab) {
-  ['scoring','roster','course','players','schedule','history'].forEach(t => {
+  ['scoring','roster','course','players','schedule','settings','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
@@ -2397,6 +2491,7 @@ function showTab(tab) {
   if (tab==='history') loadHistory();
   if (tab==='schedule') initSchedule();
   if (tab==='players') loadPlayersList();
+  if (tab==='settings') loadLeagueSettings();
   // Scroll to top on tab change
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -2613,6 +2708,78 @@ function setSkinsMode(on, btn) {
     document.getElementById('skinsOn').classList.add('active');
   } else {
     document.getElementById('skinsOff').classList.add('active-off');
+  }
+}
+
+// ══ LEAGUE SETTINGS ══
+async function loadLeagueSettings() {
+  try {
+    var s = await api('GET', '/api/league/settings');
+    leagueSettings = Object.assign({ subThreshold: 2, seasonLength: 29, flightMode: 'hl', skinsEnabled: true }, s);
+    // Populate UI
+    var st = document.getElementById('subThresholdInp');
+    if (st) st.value = leagueSettings.subThreshold || 2;
+    var sl = document.getElementById('seasonLengthInp');
+    if (sl) sl.value = leagueSettings.seasonLength || 29;
+    updateSubThresholdHint();
+    // Flight toggle
+    var fhl = document.getElementById('settingFlightHL');
+    var fpar = document.getElementById('settingFlightPar');
+    if (fhl && fpar) {
+      fhl.classList.toggle('active', leagueSettings.flightMode !== 'par');
+      fpar.classList.toggle('active', leagueSettings.flightMode === 'par');
+    }
+    // Skins toggle
+    var son = document.getElementById('settingSkinsOn');
+    var soff = document.getElementById('settingSkinsOff');
+    if (son && soff) {
+      son.classList.toggle('active', leagueSettings.skinsEnabled !== false);
+      soff.classList.toggle('active', leagueSettings.skinsEnabled === false);
+    }
+    // Apply to scoring
+    flightMode = leagueSettings.flightMode || 'hl';
+    skinsEnabled = leagueSettings.skinsEnabled !== false;
+  } catch(e) { console.warn('Could not load settings', e); }
+}
+
+function updateSubThresholdHint() {
+  var el = document.getElementById('subThresholdHint');
+  var inp = document.getElementById('subThresholdInp');
+  if (!el || !inp) return;
+  var n = parseInt(inp.value) || 2;
+  el.textContent = 'Example: if set to ' + n + ', a team plays scratch for their first ' + n + ' sub weeks, then uses full handicap on sub week ' + (n+1) + ' and beyond.';
+}
+
+function setSettingFlight(mode, btn) {
+  leagueSettings.flightMode = mode;
+  document.querySelectorAll('#settingFlightHL,#settingFlightPar').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSettingSkins(on, btn) {
+  leagueSettings.skinsEnabled = on;
+  document.querySelectorAll('#settingSkinsOn,#settingSkinsOff').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+async function saveLeagueSettings() {
+  var st = parseInt(document.getElementById('subThresholdInp').value) || 2;
+  var sl = parseInt(document.getElementById('seasonLengthInp').value) || 29;
+  var settings = {
+    subThreshold: st,
+    seasonLength: sl,
+    flightMode: leagueSettings.flightMode || 'hl',
+    skinsEnabled: leagueSettings.skinsEnabled !== false
+  };
+  try {
+    await api('PUT', '/api/league/settings', settings);
+    leagueSettings = settings;
+    flightMode = settings.flightMode;
+    skinsEnabled = settings.skinsEnabled;
+    document.getElementById('settingsSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Settings saved.</span>';
+    toast('Settings saved');
+  } catch(e) {
+    document.getElementById('settingsSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
   }
 }
 

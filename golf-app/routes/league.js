@@ -98,11 +98,29 @@ router.post('/rounds', requireAuth, async (req, res) => {
     const roundRes = await query('INSERT INTO rounds (league_id, notes) VALUES ($1,$2) RETURNING id', [req.session.leagueId, notes||'']);
     const roundId = roundRes.rows[0].id;
     await Promise.all(scores.map(s =>
-      query('INSERT INTO round_scores (round_id, team_id, nine, handicap_used, hole_scores, gross, net) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        [roundId, s.team_id, s.nine, s.handicap_used||0, JSON.stringify(s.hole_scores||[]), s.gross||0, s.net||0])
+      query('INSERT INTO round_scores (round_id, team_id, nine, handicap_used, hole_scores, gross, net, is_sub, sub_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+        [roundId, s.team_id, s.nine, s.handicap_used||0, JSON.stringify(s.hole_scores||[]), s.gross||0, s.net||0, !!s.is_sub, s.sub_name||''])
     ));
     res.json({ success: true, roundId });
   } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Sub usage count for each team this season
+router.get('/sub-counts', requireAuth, async (req, res) => {
+  try {
+    const rows = await getAll(
+      \`SELECT rs.team_id, COUNT(*) as sub_count
+       FROM round_scores rs
+       JOIN rounds r ON r.id = rs.round_id
+       WHERE r.league_id = $1 AND rs.is_sub = TRUE
+       GROUP BY rs.team_id\`,
+      [req.session.leagueId]
+    );
+    // Return as {teamId: count}
+    const counts = {};
+    rows.forEach(r => { counts[r.team_id] = parseInt(r.sub_count); });
+    res.json(counts);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/rounds/:id', requireAuth, async (req, res) => {
@@ -241,5 +259,24 @@ router.get('/schedule/current', requireAuth, async (req, res) => {
       [leagueId]
     );
     res.json({ currentWeek: row ? row.week_number : null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── LEAGUE SETTINGS ──
+router.get('/settings', requireAuth, async (req, res) => {
+  try {
+    const league = await getOne('SELECT settings FROM leagues WHERE id=$1', [req.session.leagueId]);
+    const settings = JSON.parse(league?.settings || '{}');
+    res.json(settings);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/settings', requireAuth, async (req, res) => {
+  try {
+    const current = await getOne('SELECT settings FROM leagues WHERE id=$1', [req.session.leagueId]);
+    const existing = JSON.parse(current?.settings || '{}');
+    const updated = Object.assign({}, existing, req.body);
+    await query('UPDATE leagues SET settings=$1 WHERE id=$2', [JSON.stringify(updated), req.session.leagueId]);
+    res.json({ success: true, settings: updated });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
