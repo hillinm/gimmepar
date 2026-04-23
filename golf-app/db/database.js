@@ -87,6 +87,20 @@ async function init() {
       console.log('✓ Super admin synced:', adminEmail);
     }
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS global_courses (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        location TEXT DEFAULT '',
+        state TEXT DEFAULT '',
+        front9par TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
+        back9par  TEXT DEFAULT '[4,3,4,4,4,5,3,4,5]',
+        added_by_league_id INTEGER REFERENCES leagues(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    // Unique index on course name
+    await client.query('CREATE UNIQUE INDEX IF NOT EXISTS global_courses_name_idx ON global_courses (LOWER(name))');
     console.log('✓ Database tables ready');
   } finally {
     client.release();

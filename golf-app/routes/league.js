@@ -152,3 +152,46 @@ Up to 3 results. Real hole pars for known courses. Always 9 values per nine.` }]
 });
 
 module.exports = router;
+
+// ── GLOBAL COURSE LIBRARY ──
+const { getAll: getAllCourses, getOne: getOneCourse, query: queryCourse } = require('../db/database');
+
+router.get('/courses/global/search', requireAuth, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q || q.length < 2) return res.json([]);
+    const results = await getAll(
+      "SELECT * FROM global_courses WHERE name ILIKE $1 OR location ILIKE $1 OR state ILIKE $1 ORDER BY name LIMIT 10",
+      ['%' + q + '%']
+    );
+    res.json(results);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/courses/global', requireAuth, async (req, res) => {
+  try {
+    const { name, location, state, front9par, back9par } = req.body || {};
+    if (!name) return res.status(400).json({ error: 'Course name required' });
+    // Upsert — if course already exists update par values
+    const existing = await getOne("SELECT id FROM global_courses WHERE LOWER(name)=LOWER($1)", [name]);
+    if (existing) {
+      await query(
+        'UPDATE global_courses SET location=$1, state=$2, front9par=$3, back9par=$4 WHERE id=$5',
+        [location||'', state||'', JSON.stringify(front9par), JSON.stringify(back9par), existing.id]
+      );
+      return res.json({ success: true, updated: true, id: existing.id });
+    }
+    const result = await query(
+      'INSERT INTO global_courses (name, location, state, front9par, back9par, added_by_league_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [name, location||'', state||'', JSON.stringify(front9par), JSON.stringify(back9par), req.session.leagueId || null]
+    );
+    res.json({ success: true, updated: false, ...result.rows[0] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/courses/global/all', requireAuth, async (req, res) => {
+  try {
+    const courses = await getAll('SELECT * FROM global_courses ORDER BY name', []);
+    res.json(courses);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

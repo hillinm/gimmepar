@@ -770,19 +770,44 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         </div>
       </div>
       <div class="section-body">
-        <div class="search-row">
-          <input class="search-input" id="courseInput" placeholder="Search course name (e.g. Pebble Beach...)" onkeydown="if(event.key==='Enter')searchCourse()">
-          <button class="btn-search" id="searchBtn" onclick="searchCourse()">🔍 Search</button>
+
+        <!-- Global Course Search -->
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🔍 Search Course Library</div>
+        <div class="search-row" style="margin-bottom:6px;">
+          <input class="search-input" id="courseInput" placeholder="Search by course name or city..." oninput="globalCourseSearch(this.value)" onkeydown="if(event.key==='Enter')globalCourseSearch(this.value)">
+          <button class="btn-search" id="searchBtn" onclick="globalCourseSearch(document.getElementById('courseInput').value)">🔍</button>
         </div>
+        <div id="globalCourseResults" style="margin-bottom:12px;"></div>
         <div class="status-text" id="courseStatus"></div>
         <div class="search-results" id="courseResults"></div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+        <!-- Course Name + Location -->
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">✏️ Enter / Edit Course</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="flex:2;min-width:180px;">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">COURSE NAME</div>
+            <input class="search-input" id="courseNameInp" placeholder="e.g. Pebble Beach Golf Links" style="width:100%;box-sizing:border-box;">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">CITY / LOCATION</div>
+            <input class="search-input" id="courseLocInp" placeholder="e.g. Pebble Beach, CA" style="width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+
         <div id="courseBadge" style="display:none" class="course-badge">✓ <span id="courseBadgeName"></span></div>
         <div class="par-section-label">Front 9 — Holes 1–9</div>
         <div class="par-grid" id="parFrontGrid"></div>
         <div class="par-section-label">Back 9 — Holes 10–18</div>
         <div class="par-grid" id="parBackGrid"></div>
         <div class="par-totals" id="parTotalsDisplay"></div>
-        <button class="btn-save-course" onclick="saveCourse()">💾 Save Course</button>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+          <button class="btn-save-course" onclick="saveCourse()">💾 Save as My Course</button>
+          <button class="btn-save-course" style="background:var(--green);color:#fff;" onclick="saveToGlobalLibrary()">🌐 Save to Global Library</button>
+        </div>
+        <div id="courseSaveResult" style="margin-top:8px;font-size:13px;"></div>
       </div>
     </div>
   </div>
@@ -1546,14 +1571,94 @@ function selectCourse(idx) {
   toast('✓ '+c.name);
 }
 
+function getCourseNameLoc() {
+  var nameEl = document.getElementById('courseNameInp');
+  var locEl  = document.getElementById('courseLocInp');
+  var name = (nameEl && nameEl.value.trim()) || (document.getElementById('courseInput').value.trim()) || 'Custom Course';
+  var loc  = (locEl  && locEl.value.trim())  || '';
+  return { name, loc };
+}
+
 async function saveCourse() {
-  const name = document.getElementById('courseInput').value.trim() || 'Custom Course';
-  const loc  = document.getElementById('courseBadgeName')?.textContent?.split(' — ')[1] || '';
+  var nl = getCourseNameLoc();
   try {
-    await api('PUT', '/api/league/course', { name, location: loc, front9par: getParFront(), back9par: getParBack() });
-    if (league) league.course = { name, location: loc, front9par: getParFront(), back9par: getParBack() };
-    toast('✓ Course saved');
-  } catch(e) { toast('Error saving course'); }
+    await api('PUT', '/api/league/course', { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() });
+    if (league) league.course = { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() };
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Saved as your league course.</span>';
+    toast('Course saved');
+  } catch(e) {
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+async function saveToGlobalLibrary() {
+  var nl = getCourseNameLoc();
+  if (!nl.name || nl.name === 'Custom Course') {
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:#ff9999">Please enter a course name first.</span>';
+    return;
+  }
+  try {
+    var res = await api('POST', '/api/league/courses/global', { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() });
+    // Also save as league course
+    await api('PUT', '/api/league/course', { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() });
+    if (league) league.course = { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() };
+    var msg = res.updated ? '✓ Course updated in global library.' : '✓ Course added to global library!';
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">'+msg+' Any league can now search and find it.</span>';
+    toast(nl.name + ' saved to library');
+  } catch(e) {
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+// ── Global course search ──
+var _courseSearchTimer = null;
+function globalCourseSearch(q) {
+  clearTimeout(_courseSearchTimer);
+  var el = document.getElementById('globalCourseResults');
+  if (!q || q.length < 2) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;font-style:italic;">Searching...</div>';
+  _courseSearchTimer = setTimeout(async function() {
+    try {
+      var results = await api('GET', '/api/league/courses/global/search?q='+encodeURIComponent(q));
+      if (!results.length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:13px;font-style:italic;">No courses found — enter par below and save to library.</div>';
+        return;
+      }
+      var html = results.map(function(c) {
+        var fp = JSON.parse(c.front9par||'[]').reduce(function(a,b){return a+b;},0);
+        var bp = JSON.parse(c.back9par||'[]').reduce(function(a,b){return a+b;},0);
+        return '<div class="saved-course-item" onclick="loadGlobalCourse('+c.id+')" style="cursor:pointer;">'
+          + '<div class="sc-info"><div class="sc-name">'+esc(c.name)+'</div>'
+          + '<div class="sc-par">'+(c.location?esc(c.location)+' &bull; ':'')+' F9: '+fp+' &bull; B9: '+bp+' &bull; Total: '+(fp+bp)+'</div></div>'
+          + '<button class="btn-sc-load" onclick="loadGlobalCourse('+c.id+');event.stopPropagation()">Load</button>'
+          + '</div>';
+      }).join('');
+      el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<div style="color:#ff9999;font-size:12px">Search error: '+e.message+'</div>'; }
+  }, 350);
+}
+
+async function loadGlobalCourse(id) {
+  try {
+    var all = await api('GET', '/api/league/courses/global/all');
+    var c = all.find(function(x){return x.id===id;});
+    if (!c) return;
+    var fp = JSON.parse(c.front9par||'[]');
+    var bp = JSON.parse(c.back9par||'[]');
+    fp.forEach(function(p,i){ var el=document.getElementById('pf_'+i); if(el) el.value=p; });
+    bp.forEach(function(p,i){ var el=document.getElementById('pb_'+i); if(el) el.value=p; });
+    updateParTotals();
+    // Fill name/loc inputs
+    var ni = document.getElementById('courseNameInp'); if(ni) ni.value = c.name;
+    var li = document.getElementById('courseLocInp');  if(li) li.value = c.location||'';
+    document.getElementById('courseInput').value = c.name;
+    document.getElementById('globalCourseResults').innerHTML = '';
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">✓ '+esc(c.name)+' loaded.</span>';
+    // Auto-save as league course
+    await api('PUT', '/api/league/course', { name: c.name, location: c.location||'', front9par: fp, back9par: bp });
+    if (league) league.course = { name: c.name, location: c.location||'', front9par: fp, back9par: bp };
+    toast('✓ ' + c.name + ' loaded');
+  } catch(e) { toast('Error: '+e.message); }
 }
 
 // ══ SCORING CARDS ══
