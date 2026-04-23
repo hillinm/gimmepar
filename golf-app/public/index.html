@@ -893,37 +893,43 @@ async function init() {
 }
 
 async function onLogin(data) {
-  currentUser = data;
-  showError('');
+  try {
+    currentUser = data;
+    showError('');
 
-  if (data.mustChangePassword) {
-    showPage('app'); // need the modal to be visible
-    showChangePasswordModal();
-    return;
+    if (data.mustChangePassword) {
+      showPage('app');
+      showChangePasswordModal();
+      return;
+    }
+
+    if (data.role === 'superadmin') {
+      showPage('superadmin');
+      loadSuperAdmin();
+      return;
+    }
+
+    if (data.role === 'player') {
+      var pln = document.getElementById('playerLeagueName');
+      if (pln) pln.textContent = (data.leagueName || '') + ' League';
+      showPage('player');
+      await loadPlayerView(data);
+      return;
+    }
+
+    // leagueadmin
+    league = data;
+    var hl = document.getElementById('headerLeague');
+    if (hl) hl.textContent = (data.leagueName || '') + ' League';
+    showPage('app');
+    await loadRoster();
+    if (league.course) loadCourseData(league.course);
+    buildScoringCards();
+    showTab('scoring');
+  } catch(e) {
+    console.error('onLogin error:', e);
+    showError('Login error: ' + e.message);
   }
-
-  if (data.role === 'superadmin') {
-    showPage('superadmin');
-    loadSuperAdmin();
-    return;
-  }
-
-  if (data.role === 'player') {
-    document.getElementById('playerLeagueName').textContent = (data.leagueName || '') + ' League';
-    showPage('player');
-    await loadPlayerView(data);
-    return;
-  }
-
-  // leagueadmin
-  league = data;
-  var hl = document.getElementById('headerLeague');
-  if (hl) hl.textContent = (data.leagueName || '') + ' League';
-  showPage('app');
-  await loadRoster();
-  if (league.course) loadCourseData(league.course);
-  buildScoringCards();
-  showTab('scoring');
 }
 
 // ══ AUTH ══
@@ -932,15 +938,15 @@ async function login() {
   const pass = document.getElementById('loginPass').value;
   if (!name) return showError('Please enter your email or league name.');
   if (!pass) return showError('Please enter your password.');
-  const btn = document.querySelector('#loginForm .btn-primary');
-  if (btn) { btn.textContent = 'SIGNING IN...'; btn.disabled = true; }
+  const btn = document.getElementById('loginBtn');
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
   showError('');
   try {
     const res = await api('POST', '/api/auth/login', {name, password: pass});
+    if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
     await onLogin(res);
   } catch(e) {
-    showError(e.message);
-  } finally {
+    showError(e.message || 'Login failed — check your credentials.');
     if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
   }
 }
@@ -1052,9 +1058,9 @@ async function loadSuperAdmin() {
         html += '<td style="color:var(--muted)">' + esc(l.admin_email||'--') + '</td>';
         html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td>';
         html += '<td style="white-space:nowrap">';
-        html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" onclick="adminResetLeaguePassword('+l.id+',''+safeLName+'')">Reset PW</button>';
-        html += '<button class="btn-del" onclick="adminDeleteLeague('+l.id+',''+safeLName+'')">Delete</button>';
-        html += '</td></tr>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="adminResetLeaguePassword(this.dataset.lid,this.dataset.lname)">Reset PW</button>';
+        html += '<button class="btn-del" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="adminDeleteLeague(this.dataset.lid,this.dataset.lname)">Delete</button>';
       });
       html += '</tbody></table>';
       leaguesEl.innerHTML = html;
@@ -1087,8 +1093,8 @@ function renderAdminUsers(users) {
     html += '<td style="color:var(--muted);font-size:12px">' + esc(u.email) + '</td>';
     html += '<td><span style="color:'+roleColor+';font-size:11px;letter-spacing:1px">' + u.role.toUpperCase() + '</span></td>';
     html += '<td style="color:var(--muted);font-size:12px">' + esc(u.league_name||'--') + '</td>';
-    var safeName = (u.first_name+' '+u.last_name).replace(/'/g, '');
-    html += '<td><button class="btn-del" onclick="adminResetPassword('+u.id+',\''+safeName+'\')">Reset PW</button></td>';
+    var safeName = (u.first_name+' '+u.last_name).replace(/'/g,'');
+    html += '<td><button class="btn-del" data-uid="'+u.id+'" data-uname="'+safeName+'" onclick="adminResetPassword(this.dataset.uid,this.dataset.uname)">Reset PW</button></td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
@@ -1199,7 +1205,7 @@ async function loadPlayersList() {
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
       html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'No')+'</td>';
       var safePName = (p.first_name+' '+p.last_name).replace(/'/g,'');
-      html += '<td><button class="btn-del" onclick="leagueResetPassword('+p.id+',\''+safePName+'\')">Reset</button></td>';
+      html += '<td><button class="btn-del" data-uid="'+p.id+'" data-uname="'+safePName+'" onclick="leagueResetPassword(this.dataset.uid,this.dataset.uname)">Reset</button></td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
