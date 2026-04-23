@@ -67,18 +67,24 @@ async function init() {
     await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS nine TEXT NOT NULL DEFAULT 'front'");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS admin_email TEXT DEFAULT ''");
 
-    // Create super admin if not exists
+    // Always sync super admin from env vars on every startup
     const adminEmail = process.env.SUPER_ADMIN_EMAIL || 'mark.hillin@gmail.com';
     const adminPass  = process.env.SUPER_ADMIN_PASSWORD || 'GimmePar2026!';
     const bcrypt = require('bcryptjs');
+    const hash = bcrypt.hashSync(adminPass, 10);
     const existing = await client.query('SELECT id FROM users WHERE role=$1', ['superadmin']);
     if (existing.rows.length === 0) {
-      const hash = bcrypt.hashSync(adminPass, 10);
       await client.query(
         "INSERT INTO users (first_name, last_name, email, password_hash, role, must_change_password, league_id) VALUES ($1,$2,$3,$4,$5,$6,NULL)",
         ['Super', 'Admin', adminEmail, hash, 'superadmin', false]
       );
       console.log('✓ Super admin created:', adminEmail);
+    } else {
+      await client.query(
+        "UPDATE users SET email=$1, password_hash=$2 WHERE role=$3",
+        [adminEmail, hash, 'superadmin']
+      );
+      console.log('✓ Super admin synced:', adminEmail);
     }
 
     console.log('✓ Database tables ready');
