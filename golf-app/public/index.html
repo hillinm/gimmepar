@@ -920,6 +920,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
           <label>week(s) starting week</label>
           <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99">
           <button class="btn-gen" onclick="generateSchedule()">📆 Generate</button>
+          <button class="btn-export-sched" onclick="saveScheduleToDB()">💾 Save</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
         </div>
         <div class="sched-info" id="schedInfo"></div>
@@ -1123,19 +1124,92 @@ async function loadPlayerView(data) {
   var team = data.team;
   var course = data.course;
   if (course) {
-    // Load par into grids so buildScoreCard works
     course.front9par.forEach(function(p,i) { var el=document.getElementById('pf_'+i); if(el) el.value=p; });
     course.back9par.forEach(function(p,i)  { var el=document.getElementById('pb_'+i); if(el) el.value=p; });
     updateParTotals();
   }
-  rosterTeams = [team];
-  scoreTeams  = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
-  buildScoringCards();
-  // Move scoring cards into player view
-  var scoringTeams = document.getElementById('scoringTeams');
-  if (scoringTeams) container.innerHTML = scoringTeams.innerHTML;
-  // Add calculate button
-  container.innerHTML += '<button class="btn-calculate" onclick="calculate()" style="margin-top:20px;">&#9971; CALCULATE RESULTS</button><div id="playerResultsArea" style="display:none;margin-top:20px;"></div>';
+
+  // Load all teams for roster reference
+  try { rosterTeams = await api('GET', '/api/league/teams'); } catch(e) { rosterTeams = [team]; }
+
+  // Find current week matchup
+  var opponent = null;
+  var matchupHole = null;
+  try {
+    var curr = await api('GET', '/api/league/schedule/current');
+    if (curr.currentWeek) {
+      var weekData = await api('GET', '/api/league/schedule/week/' + curr.currentWeek);
+      var myMatchup = weekData.matchups.find(function(m) {
+        return (m.teamA && m.teamA.id === team.id) || (m.teamB && m.teamB.id === team.id);
+      });
+      if (myMatchup) {
+        var opponentTeam = (myMatchup.teamA && myMatchup.teamA.id === team.id) ? myMatchup.teamB : myMatchup.teamA;
+        if (opponentTeam) {
+          opponent = rosterTeams.find(function(t) { return t.id === opponentTeam.id; }) || opponentTeam;
+          matchupHole = myMatchup.hole;
+        }
+      }
+      // Show week info
+      container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek + (matchupHole ? ' &nbsp;|&nbsp; STARTING HOLE ' + matchupHole : '') + '</div>';
+    } else {
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px;">No schedule set for this week yet.</div>';
+    }
+  } catch(e) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px;">Schedule not available.</div>';
+  }
+
+  // Build own editable scorecard
+  scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
+  var myCard = buildScoreCard(team, scoreTeams[0], 0);
+  container.appendChild(myCard);
+
+  // Build opponent read-only card if found
+  if (opponent) {
+    var oppSt = { id: opponent.id, nine: opponent.nine || 'front', holes: Array(9).fill(null) };
+    scoreTeams.push(oppSt);
+    var oppCard = buildReadOnlyCard(opponent, oppSt);
+    container.appendChild(oppCard);
+  } else {
+    var noOpp = document.createElement('div');
+    noOpp.style.cssText = 'color:var(--muted);font-size:13px;font-style:italic;margin-top:16px;';
+    noOpp.textContent = 'Opponent not found in schedule.';
+    container.appendChild(noOpp);
+  }
+
+  // Calculate button
+  var calcBtn = document.createElement('button');
+  calcBtn.className = 'btn-calculate';
+  calcBtn.style.marginTop = '20px';
+  calcBtn.innerHTML = '&#9971; CALCULATE RESULTS';
+  calcBtn.onclick = calculate;
+  container.appendChild(calcBtn);
+}
+
+function buildReadOnlyCard(team, st) {
+  var card = document.createElement('div');
+  card.className = 'score-team-card';
+  card.style.opacity = '0.85';
+  var nine = st.nine || 'front';
+  var nineLabel = nine === 'back' ? 'B9' : nine === 'all18' ? 'ALL' : 'F9';
+  var holesCount = nine === 'all18' ? 18 : 9;
+  var holeCells = '';
+  for (var i = 0; i < holesCount; i++) {
+    holeCells += '<div style="text-align:center;">'
+      + '<div style="font-size:10px;color:var(--muted);margin-bottom:3px;">H'+(i+1)+'</div>'
+      + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">—</div>'
+      + '</div>';
+  }
+  card.innerHTML = '<div class="score-team-header">'
+    + '<div class="team-num" style="background:rgba(122,138,106,.3)">VS</div>'
+    + '<div class="team-name-display">' + esc(team.player1) + ' / ' + esc(team.player2)
+    + ' <span style="font-size:10px;color:var(--muted);font-style:italic;">(view only)</span></div>'
+    + '</div>'
+    + '<div class="score-team-body">'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Hdcp: ' + team.handicap + ' &bull; ' + nineLabel + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + holeCells + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:10px;">Opponent scores will appear here when entered by your opponent or league admin.</div>'
+    + '</div>';
+  return card;
 }
 
 // ══ SUPER ADMIN ══
@@ -2512,6 +2586,17 @@ function exportScheduleCSV() {
   const a = document.createElement('a');
   a.href = url; a.download = 'gimmepar_schedule.csv';
   a.click(); URL.revokeObjectURL(url);
+}
+
+async function saveScheduleToDB() {
+  if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
+  try {
+    var res = await api('POST', '/api/league/schedule/save', { weeks: savedSchedule });
+    // Also save current week setting
+    var cwEl = document.getElementById('currentWeekInp');
+    if (cwEl && league) league.currentWeek = parseInt(cwEl.value) || 1;
+    toast('✓ ' + res.saved + ' weeks saved — players can now see their matchups');
+  } catch(e) { toast('Error saving schedule: ' + e.message); }
 }
 
 

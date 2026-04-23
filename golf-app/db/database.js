@@ -101,6 +101,15 @@ async function init() {
     `);
     // Unique index on course name
     await client.query('CREATE UNIQUE INDEX IF NOT EXISTS global_courses_name_idx ON global_courses (LOWER(name))');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schedule_weeks (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        week_number INTEGER NOT NULL,
+        matchups TEXT NOT NULL,
+        UNIQUE(league_id, week_number)
+      );
+    `);
     console.log('✓ Database tables ready');
   } finally {
     client.release();

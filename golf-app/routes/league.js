@@ -204,3 +204,42 @@ router.delete('/courses/global/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── SCHEDULE STORAGE ──
+router.post('/schedule/save', requireAuth, async (req, res) => {
+  try {
+    const { weeks } = req.body || {};
+    if (!weeks || !weeks.length) return res.status(400).json({ error: 'No weeks provided' });
+    for (const w of weeks) {
+      await query(
+        `INSERT INTO schedule_weeks (league_id, week_number, matchups)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (league_id, week_number) DO UPDATE SET matchups=$3`,
+        [req.session.leagueId, w.week, JSON.stringify(w.matchups)]
+      );
+    }
+    res.json({ success: true, saved: weeks.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/schedule/week/:weekNum', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    const weekNum = parseInt(req.params.weekNum);
+    const row = await getOne('SELECT * FROM schedule_weeks WHERE league_id=$1 AND week_number=$2', [leagueId, weekNum]);
+    if (!row) return res.status(404).json({ error: 'No schedule for week ' + weekNum });
+    res.json({ week: row.week_number, matchups: JSON.parse(row.matchups) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/schedule/current', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    // Return the highest saved week number as "current"
+    const row = await getOne(
+      'SELECT week_number FROM schedule_weeks WHERE league_id=$1 ORDER BY week_number DESC LIMIT 1',
+      [leagueId]
+    );
+    res.json({ currentWeek: row ? row.week_number : null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
