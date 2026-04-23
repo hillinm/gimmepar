@@ -840,7 +840,7 @@ function renderRosterTable() {
       <td><input class="team-input" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
       <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player3||'')}" onchange="updateRosterField(${t.id},'player3',this.value)" placeholder="Player 3"></td>
       <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player4||'')}" onchange="updateRosterField(${t.id},'player4',this.value)" placeholder="Player 4"></td>
-      <td><input class="team-input hdcp-input-sm" type="number" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" min="-10" max="54"></td>
+      <td><input class="team-input hdcp-input-sm" type="text" inputmode="text" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" placeholder="0"></td>
       <td>
         <div class="nine-toggle">
           <button class="nine-toggle-btn ${nine==='front'?'active-f':''}"  onclick="setRosterNine(${t.id},'front',this)">F9</button>
@@ -1142,7 +1142,7 @@ function buildScoreCard(team, st, idx) {
       <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <label>Hdcp</label>
-          <input class="hdcp-inp" type="number" min="-10" max="54" value="${team.handicap}"
+          <input class="hdcp-inp" type="text" inputmode="text" value="${team.handicap}" placeholder="0"
                  id="shdcp_${team.id}" oninput="recalcCard(${team.id})" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="nine-toggle" id="stoggle_${team.id}" onclick="event.stopPropagation()">
@@ -1339,7 +1339,7 @@ function renderResults(data, parFront, parBack) {
       <div class="hdcp-override-grid">
         ${data.map(t=>`<div class="hdcp-override-row">
           <div class="hdcp-override-name" title="${esc(t.name)}">${esc(t.name)}</div>
-          <input class="hdcp-override-inp" type="number" min="-10" max="54" value="${t.hdcp}" id="ovr_${t.id}" onchange="this.classList.add('hdcp-changed')">
+          <input class="hdcp-override-inp" type="text" inputmode="text" value="${t.hdcp}" id="ovr_${t.id}" onchange="this.classList.add('hdcp-changed')">
         </div>`).join('')}
       </div>
     </div>
