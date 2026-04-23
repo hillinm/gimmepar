@@ -574,12 +574,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     <div class="login-card">
       <div style="width:100px;height:100px;margin:0 auto 16px;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
       <div class="login-title">GIMMEPAR</div>
-      <div class="login-sub">Sign in to your league</div>
+      <div class="login-sub" id="loginSub">Sign in with your email or league name</div>
       <div class="form-error" id="loginError"></div>
       <div id="loginForm">
         <div class="form-group">
-          <label>League Name</label>
-          <input class="form-input" id="loginName" placeholder="Your league name" onkeydown="if(event.key==='Enter')login()">
+          <label>Email or League Name</label>
+          <input class="form-input" id="loginName" placeholder="Email or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="username" inputmode="email">
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -608,10 +608,70 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         <button class="btn-primary" onclick="register()">CREATE LEAGUE</button>
         <div class="login-toggle">Already have a league? <a onclick="showLogin()">Sign in</a></div>
       </div>
-    <p style="margin-top:28px;text-align:center;font-size:10px;color:rgba(122,138,106,0.4);letter-spacing:1px;font-style:italic;">&copy; 2025 GimmePar. All rights reserved.</p>
+    <p style="margin-top:28px;text-align:center;font-size:10px;color:rgba(122,138,106,0.4);letter-spacing:1px;font-style:italic;">&copy; 2026 GimmePar. All rights reserved.</p>
     </div>
   </div>
 </div>
+
+
+  <!-- CHANGE PASSWORD MODAL -->
+  <div id="changePassModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;margin:20px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🔒 Change Password</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">You must set a new password before continuing.</div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input class="form-input" type="password" id="newPass1" placeholder="Min 4 characters">
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input class="form-input" type="password" id="newPass2" placeholder="Confirm password" onkeydown="if(event.key==='Enter')submitChangePassword()">
+      </div>
+      <div style="color:#ff9999;font-size:13px;margin-bottom:12px;display:none;" id="changePassError"></div>
+      <button class="btn-primary" onclick="submitChangePassword()">SET PASSWORD</button>
+    </div>
+  </div>
+
+  <!-- PLAYER VIEW -->
+  <div id="playerPage" class="page">
+    <div class="app-header">
+      <div class="app-logo" style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;flex-shrink:0;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
+        <span>GIMME<span style="color:var(--white)">PAR</span></span>
+      </div>
+      <div class="header-league" id="playerLeagueName"></div>
+      <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+    <div class="wrap" style="padding-top:32px;">
+      <div id="playerScoreCard"></div>
+    </div>
+  </div>
+
+  <!-- SUPER ADMIN VIEW -->
+  <div id="superAdminPage" class="page">
+    <div class="app-header">
+      <div class="app-logo" style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;flex-shrink:0;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
+        <span>GIMME<span style="color:var(--white)">PAR</span></span>
+      </div>
+      <div class="header-league" style="color:var(--gold)">Super Admin</div>
+      <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+    <div class="wrap" style="padding-top:32px;">
+      <div class="section-card" style="margin-bottom:24px;">
+        <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">All Leagues</div></div></div>
+        <div class="section-body" id="adminLeaguesList"><div class="empty-state">Loading...</div></div>
+      </div>
+      <div class="section-card">
+        <div class="section-header">
+          <span style="font-size:24px;">👤</span>
+          <div><div class="section-title">All Users</div></div>
+          <input class="score-search" style="margin-left:auto;max-width:200px;" placeholder="Search..." oninput="filterAdminUsers(this.value)" id="adminUserSearch">
+        </div>
+        <div class="section-body" id="adminUsersList"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
+  </div>
 
 <!-- ══ APP (authenticated) ══ -->
 <div id="appPage" class="page">
@@ -625,6 +685,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
       <button class="nav-tab active" onclick="showTab('scoring')" id="tab-scoring">Scoring</button>
       <button class="nav-tab" onclick="showTab('roster')" id="tab-roster">Roster</button>
       <button class="nav-tab" onclick="showTab('course')" id="tab-course">Course</button>
+      <button class="nav-tab" onclick="showTab('players')" id="tab-players">Players</button>
       <button class="nav-tab" onclick="showTab('schedule')" id="tab-schedule">Schedule</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
@@ -704,6 +765,36 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     </div>
   </div>
 
+  <!-- PLAYERS TAB -->
+  <div id="tabPlayers" class="wrap" style="padding-top:32px;display:none;">
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">👤</span>
+        <div>
+          <div class="section-title">Player Accounts</div>
+          <div class="section-sub">Upload a CSV or manage individual players</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="margin-bottom:20px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">📤 Upload Players (CSV)</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">CSV must have columns: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;">first_name, last_name, email</code></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <input type="file" id="playerCsvFile" accept=".csv" style="display:none" onchange="handlePlayerCSV(this)">
+            <button class="btn-add" onclick="document.getElementById('playerCsvFile').click()">📂 Choose CSV</button>
+            <span id="csvFileName" style="font-size:13px;color:var(--muted);font-style:italic;"></span>
+          </div>
+          <div id="csvPreview" style="margin-top:14px;"></div>
+          <button class="btn-save-roster" id="btnUploadPlayers" style="display:none;margin-top:10px;" onclick="uploadPlayers()">⬆ Upload Players</button>
+          <div id="uploadResult" style="margin-top:10px;font-size:13px;"></div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;">👥 Player List</div>
+        <div id="playersList"><div class="empty-state">No players yet.</div></div>
+      </div>
+    </div>
+  </div>
+
   <!-- SCHEDULE TAB -->
   <div id="tabSchedule" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
@@ -762,6 +853,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
         <span class="bnav-icon">🏌️</span>
         <span class="bnav-label">Course</span>
       </button>
+      <button class="bnav-btn" id="bnav-players" onclick="showTab('players')">
+        <span class="bnav-icon">👤</span>
+        <span class="bnav-label">Players</span>
+      </button>
       <button class="bnav-btn" id="bnav-schedule" onclick="showTab('schedule')">
         <span class="bnav-icon">📆</span>
         <span class="bnav-label">Schedule</span>
@@ -777,11 +872,13 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 
 <script>
 // ══ STATE ══
-let league = null;       // {leagueId, leagueName, course}
-let rosterTeams = [];    // [{id, player1, player2, handicap}]
-let scoreTeams = [];     // runtime scoring state
+let league = null;
+let currentUser = null;  // {role, userId, leagueId, leagueName, teamId, ...}
+let rosterTeams = [];
+let scoreTeams = [];
 let lastCalcData = [];
 let courseSearchResults = [];
+let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
 
@@ -795,8 +892,32 @@ async function init() {
 }
 
 async function onLogin(data) {
+  currentUser = data;
+  showError('');
+
+  if (data.mustChangePassword) {
+    showPage('app'); // need the modal to be visible
+    showChangePasswordModal();
+    return;
+  }
+
+  if (data.role === 'superadmin') {
+    showPage('superadmin');
+    loadSuperAdmin();
+    return;
+  }
+
+  if (data.role === 'player') {
+    document.getElementById('playerLeagueName').textContent = (data.leagueName || '') + ' League';
+    showPage('player');
+    await loadPlayerView(data);
+    return;
+  }
+
+  // leagueadmin
   league = data;
-  document.getElementById('headerLeague').textContent = league.leagueName + ' League';
+  var hl = document.getElementById('headerLeague');
+  if (hl) hl.textContent = (data.leagueName || '') + ' League';
   showPage('app');
   await loadRoster();
   if (league.course) loadCourseData(league.course);
@@ -808,27 +929,259 @@ async function onLogin(data) {
 async function login() {
   const name = document.getElementById('loginName').value.trim();
   const pass = document.getElementById('loginPass').value;
+  if (!name) return showError('Please enter your email or league name.');
+  if (!pass) return showError('Please enter your password.');
+  const btn = document.querySelector('#loginForm .btn-primary');
+  if (btn) { btn.textContent = 'SIGNING IN...'; btn.disabled = true; }
+  showError('');
   try {
     const res = await api('POST', '/api/auth/login', {name, password: pass});
     await onLogin(res);
-  } catch(e) { showError(e.message); }
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
+  }
 }
 
 async function register() {
-  const name = document.getElementById('regName').value.trim();
-  const pass = document.getElementById('regPass').value;
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
-  if (pass !== pass2) return showError('Passwords do not match');
+  if (!name) return showError('Please enter a league name.');
+  if (!email || !email.includes('@')) return showError('Please enter a valid email.');
+  if (pass.length < 4) return showError('Password must be at least 4 characters.');
+  if (pass !== pass2) return showError('Passwords do not match.');
+  const btn = document.querySelector('#registerForm .btn-primary');
+  if (btn) { btn.textContent = 'CREATING...'; btn.disabled = true; }
+  showError('');
   try {
-    const res = await api('POST', '/api/auth/register', {name, password: pass});
+    const res = await api('POST', '/api/auth/register', {name, email, password: pass});
     await onLogin(res);
-  } catch(e) { showError(e.message); }
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    if (btn) { btn.textContent = 'CREATE LEAGUE'; btn.disabled = false; }
+  }
 }
 
 async function logout() {
   await api('POST', '/api/auth/logout');
-  league = null; rosterTeams = []; scoreTeams = []; lastCalcData = [];
+  league = null; currentUser = null; rosterTeams = []; scoreTeams = []; lastCalcData = [];
   showPage('login');
+}
+
+// ══ CHANGE PASSWORD ══
+function showChangePasswordModal() {
+  var m = document.getElementById('changePassModal');
+  if (m) { m.style.display = 'flex'; }
+}
+
+async function submitChangePassword() {
+  var p1 = document.getElementById('newPass1').value;
+  var p2 = document.getElementById('newPass2').value;
+  var err = document.getElementById('changePassError');
+  if (p1.length < 4) { err.textContent = 'Password must be at least 4 characters.'; err.style.display = ''; return; }
+  if (p1 !== p2) { err.textContent = 'Passwords do not match.'; err.style.display = ''; return; }
+  try {
+    await api('POST', '/api/auth/change-password', {newPassword: p1});
+    var m = document.getElementById('changePassModal');
+    if (m) m.style.display = 'none';
+    currentUser.mustChangePassword = false;
+    await onLogin(currentUser); // re-route to proper page
+  } catch(e) {
+    var err = document.getElementById('changePassError');
+    err.textContent = e.message; err.style.display = '';
+  }
+}
+
+// ══ PLAYER VIEW ══
+async function loadPlayerView(data) {
+  var container = document.getElementById('playerScoreCard');
+  if (!container) return;
+  if (!data.team) {
+    container.innerHTML = '<div class="section-card"><div class="section-body"><div class="empty-state">You have not been assigned to a team yet.<br>Contact your league admin.</div></div></div>';
+    return;
+  }
+  var team = data.team;
+  var course = data.course;
+  if (course) {
+    // Load par into grids so buildScoreCard works
+    course.front9par.forEach(function(p,i) { var el=document.getElementById('pf_'+i); if(el) el.value=p; });
+    course.back9par.forEach(function(p,i)  { var el=document.getElementById('pb_'+i); if(el) el.value=p; });
+    updateParTotals();
+  }
+  rosterTeams = [team];
+  scoreTeams  = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
+  buildScoringCards();
+  // Move scoring cards into player view
+  var scoringTeams = document.getElementById('scoringTeams');
+  if (scoringTeams) container.innerHTML = scoringTeams.innerHTML;
+  // Add calculate button
+  container.innerHTML += '<button class="btn-calculate" onclick="calculate()" style="margin-top:20px;">&#9971; CALCULATE RESULTS</button><div id="playerResultsArea" style="display:none;margin-top:20px;"></div>';
+}
+
+// ══ SUPER ADMIN ══
+async function loadSuperAdmin() {
+  try {
+    var leagues = await api('GET', '/api/admin/leagues');
+    var leaguesEl = document.getElementById('adminLeaguesList');
+    if (!leagues.length) {
+      leaguesEl.innerHTML = '<div class="empty-state">No leagues yet.</div>';
+    } else {
+      var html = '<table class="team-table" style="width:100%"><thead><tr><th>#</th><th>League Name</th><th>Admin Email</th><th>Created</th></tr></thead><tbody>';
+      leagues.forEach(function(l, i) {
+        html += '<tr><td style="color:var(--muted)">' + (i+1) + '</td>';
+        html += '<td style="font-weight:700">' + esc(l.name) + '</td>';
+        html += '<td style="color:var(--muted)">' + esc(l.admin_email||'—') + '</td>';
+        html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      leaguesEl.innerHTML = html;
+    }
+  } catch(e) { document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
+
+  try {
+    window._adminUsers = await api('GET', '/api/admin/users');
+    renderAdminUsers(window._adminUsers);
+  } catch(e) { document.getElementById('adminUsersList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
+}
+
+function filterAdminUsers(search) {
+  if (!window._adminUsers) return;
+  var q = search.toLowerCase();
+  var filtered = window._adminUsers.filter(function(u) {
+    return (u.first_name+' '+u.last_name+' '+u.email+' '+(u.league_name||'')).toLowerCase().includes(q);
+  });
+  renderAdminUsers(filtered);
+}
+
+function renderAdminUsers(users) {
+  var el = document.getElementById('adminUsersList');
+  if (!users.length) { el.innerHTML = '<div class="empty-state">No users found.</div>'; return; }
+  var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>League</th><th></th></tr></thead><tbody>';
+  users.forEach(function(u) {
+    var roleColor = u.role==='superadmin'?'var(--gold)':u.role==='leagueadmin'?'var(--green2)':'var(--muted)';
+    html += '<tr>';
+    html += '<td style="font-weight:700">' + esc(u.first_name+' '+u.last_name) + '</td>';
+    html += '<td style="color:var(--muted);font-size:12px">' + esc(u.email) + '</td>';
+    html += '<td><span style="color:'+roleColor+';font-size:11px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px">' + u.role.toUpperCase() + '</span></td>';
+    html += '<td style="color:var(--muted);font-size:12px">' + esc(u.league_name||'—') + '</td>';
+    html += '<td><button class="btn-del" onclick="adminResetPassword('+u.id+',''+esc(u.first_name+' '+u.last_name)+'')">Reset PW</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+async function adminResetPassword(userId, userName) {
+  var newPass = prompt('New password for ' + userName + ':');
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  try {
+    await api('POST', '/api/admin/users/'+userId+'/reset-password', {newPassword: newPass});
+    toast('Password reset for ' + userName);
+  } catch(e) { toast('Error: '+e.message); }
+}
+
+// ══ PLAYERS TAB (league admin) ══
+function handlePlayerCSV(input) {
+  var file = input.files[0];
+  if (!file) return;
+  document.getElementById('csvFileName').textContent = file.name;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var lines = e.target.result.split(/\r?\n/).filter(function(l) { return l.trim(); });
+    if (!lines.length) { document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">Empty file</p>'; return; }
+    // Parse header
+    var header = lines[0].split(',').map(function(h) { return h.trim().toLowerCase().replace(/['"]/g,''); });
+    var fiIdx = header.indexOf('first_name'); if (fiIdx<0) fiIdx = header.indexOf('firstname');
+    var laIdx = header.indexOf('last_name');  if (laIdx<0) laIdx = header.indexOf('lastname');
+    var emIdx = header.indexOf('email');
+    if (fiIdx<0||laIdx<0||emIdx<0) {
+      document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">CSV must have columns: first_name, last_name, email</p>';
+      return;
+    }
+    csvPlayers = [];
+    for (var i=1; i<lines.length; i++) {
+      var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/^"|"$/g,''); });
+      if (cols.length < 3) continue;
+      csvPlayers.push({ first_name: cols[fiIdx], last_name: cols[laIdx], email: cols[emIdx] });
+    }
+    var html = '<table class="team-table"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Email</th></tr></thead><tbody>';
+    csvPlayers.slice(0,10).forEach(function(p,i) {
+      html += '<tr><td style="color:var(--muted)">'+(i+1)+'</td><td>'+esc(p.first_name)+'</td><td>'+esc(p.last_name)+'</td><td style="color:var(--muted);font-size:12px">'+esc(p.email)+'</td></tr>';
+    });
+    if (csvPlayers.length > 10) html += '<tr><td colspan="4" style="color:var(--muted);font-style:italic">...and '+(csvPlayers.length-10)+' more</td></tr>';
+    html += '</tbody></table>';
+    document.getElementById('csvPreview').innerHTML = html;
+    document.getElementById('btnUploadPlayers').style.display = '';
+  };
+  reader.readAsText(file);
+}
+
+async function uploadPlayers() {
+  if (!csvPlayers.length) return;
+  var btn = document.getElementById('btnUploadPlayers');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  try {
+    var res = await api('POST', '/api/admin/players/upload', {players: csvPlayers});
+    var html = '<div style="color:var(--green2)">✓ '+res.created+' created, '+res.updated+' updated</div>';
+    if (res.errors && res.errors.length) html += '<div style="color:#ff9999;font-size:12px">Errors: '+res.errors.join(', ')+'</div>';
+    html += '<div style="color:var(--muted);font-size:12px;margin-top:4px">'+res.defaultPasswordNote+'</div>';
+    document.getElementById('uploadResult').innerHTML = html;
+    csvPlayers = [];
+    document.getElementById('csvPreview').innerHTML = '';
+    document.getElementById('csvFileName').textContent = '';
+    btn.style.display = 'none';
+    loadPlayersList();
+  } catch(e) {
+    document.getElementById('uploadResult').innerHTML = '<div style="color:#ff9999">Error: '+e.message+'</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Upload Players';
+}
+
+async function loadPlayersList() {
+  try {
+    var players = await api('GET', '/api/admin/players');
+    var teams = rosterTeams;
+    var el = document.getElementById('playersList');
+    if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
+    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Email</th><th>Team</th><th>Temp PW</th><th></th></tr></thead><tbody>';
+    players.forEach(function(p) {
+      var teamOpts = '<option value="">— unassigned —</option>';
+      teams.forEach(function(t) {
+        var sel = p.team_id===t.id ? ' selected' : '';
+        teamOpts += '<option value="'+t.id+'"'+sel+'>'+esc(t.player1)+' / '+esc(t.player2)+'</option>';
+      });
+      html += '<tr>';
+      html += '<td style="font-weight:700">'+esc(p.first_name+' '+p.last_name)+'</td>';
+      html += '<td style="color:var(--muted);font-size:12px">'+esc(p.email)+'</td>';
+      html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
+      html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'No')+'</td>';
+      html += '<td><button class="btn-del" onclick="leagueResetPassword('+p.id+',''+esc(p.first_name+' '+p.last_name)+'')">Reset</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch(e) { document.getElementById('playersList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
+}
+
+async function assignTeam(playerId, teamId) {
+  try {
+    await api('PUT', '/api/admin/players/'+playerId+'/team', {teamId: teamId||null});
+    toast('Team assigned');
+  } catch(e) { toast('Error: '+e.message); }
+}
+
+async function leagueResetPassword(userId, userName) {
+  var newPass = prompt('New password for ' + userName + ':');
+  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  try {
+    await api('POST', '/api/admin/users/'+userId+'/reset-password', {newPassword: newPass});
+    toast('Password reset for '+userName);
+    loadPlayersList();
+  } catch(e) { toast('Error: '+e.message); }
 }
 
 function showLogin() {
@@ -1608,22 +1961,29 @@ async function viewRound(id) {
 
 // ══ NAV ══
 function showTab(tab) {
-  ['scoring','roster','course','schedule','history'].forEach(t => {
+  ['scoring','roster','course','players','schedule','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
   if (tab==='history') loadHistory();
   if (tab==='schedule') initSchedule();
+  if (tab==='players') loadPlayersList();
   // Scroll to top on tab change
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function showPage(name) {
-  document.getElementById('loginPage').classList.toggle('active', name==='login');
-  document.getElementById('appPage').classList.toggle('active', name==='app');
-  const nav = document.querySelector('.bottom-nav');
-  if (nav) nav.style.display = name==='login' ? 'none' : '';
+  ['loginPage','appPage','playerPage','superAdminPage'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  var pageMap = { login:'loginPage', app:'appPage', player:'playerPage', superadmin:'superAdminPage' };
+  var pageId = pageMap[name] || 'loginPage';
+  var target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
+  var nav = document.querySelector('.bottom-nav');
+  if (nav) nav.style.display = (name==='login'||name==='player'||name==='superadmin') ? 'none' : '';
 }
 
 

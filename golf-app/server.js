@@ -15,14 +15,13 @@ const db = require('./db/database');
 
 if (isProd) app.set('trust proxy', 1);
 
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ── API routes FIRST ──
 app.get('/api/health', async (req, res) => {
   try {
     await db.query('SELECT 1');
-    res.json({ status: 'ok', db: true, env: isProd ? 'production' : 'development' });
+    res.json({ status: 'ok', db: true });
   } catch(e) {
     res.json({ status: 'error', db: false, error: e.message });
   }
@@ -43,19 +42,16 @@ function setupSession(store) {
     }
   }));
 
-  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/auth',  require('./routes/auth'));
   app.use('/api/league', require('./routes/league'));
+  app.use('/api/admin', require('./routes/admin'));
 
-  // ── Static AFTER API ──
   app.use(express.static(path.join(__dirname, 'public')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
+  app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
   db.init().then(() => {
     app.listen(PORT, () => {
-      console.log(`⛳ GimmePar running on port ${PORT} [${isProd ? 'production' : 'development'}]`);
-      console.log(`   DATABASE_URL: ✓ set`);
+      console.log('⛳ GimmePar running on port ' + PORT + ' [' + (isProd ? 'production' : 'development') + ']');
     });
   }).catch(err => {
     console.error('❌ DB init failed:', err.message);
@@ -65,15 +61,10 @@ function setupSession(store) {
 
 try {
   const pgSession = require('connect-pg-simple')(session);
-  const pgStore = new pgSession({
-    pool: db.pool,
-    tableName: 'user_sessions',
-    createTableIfMissing: true
-  });
+  const pgStore = new pgSession({ pool: db.pool, tableName: 'user_sessions', createTableIfMissing: true });
   pgStore.on('error', err => console.error('Session store error:', err.message));
-  console.log('Using PostgreSQL session store');
   setupSession(pgStore);
 } catch(e) {
-  console.warn('⚠ pg session store failed, using memory store:', e.message);
+  console.warn('pg session store failed, using memory:', e.message);
   setupSession(new session.MemoryStore());
 }
