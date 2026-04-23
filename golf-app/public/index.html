@@ -1587,31 +1587,37 @@ function buildRoundRobin(teams) {
   return rounds;
 }
 
-// Assign starting holes across all 18 holes
-// Strategy: spread matchups across holes 1-18, rotating the start offset each week
-// Minimize doubling up — only double up when matchups > 18
+// Assign starting holes — 2 teams per hole, rotating each week
+// Holes used: 1-9 for front, 10-18 for back
 function assignHoles(matchups, weekNum) {
-  const allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
-  const realMatchups = matchups.filter(m => m.teamA && m.teamB);
-  const byes = matchups.filter(m => !m.teamB);
-  const n = realMatchups.length;
+  // Separate front/back teams
+  const frontMatches = matchups.filter(m => {
+    const tA = rosterTeams.find(t=>t.id===m.teamA?.id);
+    const tB = rosterTeams.find(t=>t.id===m.teamB?.id);
+    // If either team is front, put on front. If both back, put on back.
+    if (!tA && !tB) return true;
+    const aNine = tA?.nine || 'front';
+    const bNine = tB?.nine || 'front';
+    return aNine === 'front' || bNine === 'front';
+  });
+  const backMatches = matchups.filter(m => !frontMatches.includes(m));
 
-  // Rotate starting hole each week so teams don't always start same hole
-  const offset = (weekNum - 1) % allHoles.length;
-  // Build rotated hole list
-  const rotatedHoles = [...allHoles.slice(offset), ...allHoles.slice(0, offset)];
+  // Assign holes with rotation offset by week
+  const assignGroup = (matches, holes) => {
+    const offset = (weekNum - 1) % holes.length;
+    return matches.map((m, i) => ({
+      ...m,
+      hole: holes[(i + offset) % holes.length]
+    }));
+  };
 
-  // Assign: first 18 matchups get unique holes, overflow wraps (unavoidable with >18 matchups)
-  const assigned = realMatchups.map((m, i) => ({
-    ...m,
-    hole: rotatedHoles[i % allHoles.length],
-    doubled: i >= allHoles.length // flag if we had to double up
-  }));
+  const frontHoles = [1,2,3,4,5,6,7,8,9];
+  const backHoles  = [10,11,12,13,14,15,16,17,18];
 
-  // Sort by hole number
-  assigned.sort((a, b) => a.hole - b.hole);
-
-  return [...assigned, ...byes.map(m => ({ ...m, hole: null }))];
+  return [
+    ...assignGroup(frontMatches, frontHoles),
+    ...assignGroup(backMatches, backHoles)
+  ].sort((a,b) => a.hole - b.hole);
 }
 
 function generateSchedule() {
@@ -1630,10 +1636,8 @@ function generateSchedule() {
   const output = document.getElementById('scheduleOutput');
   output.innerHTML = '';
 
-  const matchupsPerWeek = Math.floor(teams.length / 2);
-  const doublesNeeded = Math.max(0, matchupsPerWeek - 18);
   document.getElementById('schedInfo').textContent =
-    `${teams.length} teams • ${totalWeeks}-week full season • ${matchupsPerWeek} matchups/week across 18 holes${doublesNeeded > 0 ? ' ('+doublesNeeded+' hole'+(doublesNeeded>1?'s':'')+' shared*)' : ''} • Showing weeks ${startWeek}–${startWeek+weeksToGen-1}`;
+    `${teams.length} teams • ${totalWeeks} week full season • Showing weeks ${startWeek}–${startWeek+weeksToGen-1}`;
 
   for (let w = 0; w < weeksToGen; w++) {
     const weekNum = startWeek + w;
@@ -1661,16 +1665,16 @@ function generateSchedule() {
       const tB = m.teamB;
       if (!tB) {
         return `<tr class="bye-row">
-          <td><span class="hole-chip" style="background:var(--muted)">—</span></td>
-          <td class="nine-col">—</td>
+          <td><span class="hole-chip ${isBack?'back':''}">${hole}</span></td>
+          <td class="nine-col">${isBack?'Back 9':'Front 9'}</td>
           <td class="team-a-name">${esc(tA?.player1||'')} / ${esc(tA?.player2||'')}</td>
           <td><span class="vs-badge">BYE</span></td>
           <td>—</td>
         </tr>`;
       }
-      return `<tr ${m.doubled?'style="opacity:.75"':''}>
-        <td><span class="hole-chip ${isBack?'back':''}">${hole}${m.doubled?'*':''}</span></td>
-        <td class="nine-col">${isBack?'Back 9':'Front 9'}${m.doubled?' <span style='color:#e07070;font-size:10px'>(shared)</span>':''}</td>
+      return `<tr>
+        <td><span class="hole-chip ${isBack?'back':''}">${hole}</span></td>
+        <td class="nine-col">${isBack?'Back 9':'Front 9'}</td>
         <td class="team-a-name">${esc(tA?.player1||'')} / ${esc(tA?.player2||'')}</td>
         <td style="text-align:center"><span class="vs-badge">vs</span></td>
         <td class="team-b-name">${esc(tB?.player1||'')} / ${esc(tB?.player2||'')}</td>
