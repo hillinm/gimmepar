@@ -109,6 +109,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 /* ── LAYOUT ── */
 .page{display:none;position:relative;z-index:1;}
 .page.active{display:block;}
+#loginPage.active{display:flex;flex-direction:column;}
 .wrap{max-width:960px;margin:0 auto;padding:0 20px 80px;padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 
 /* ── HEADER ── */
@@ -1196,6 +1197,7 @@ function showRegister() {
 }
 function showError(msg) {
   const el = document.getElementById('loginError');
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
   el.textContent = msg; el.style.display = 'block';
 }
 
