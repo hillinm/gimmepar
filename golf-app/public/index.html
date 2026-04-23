@@ -796,7 +796,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
           </div>
         </div>
 
-        <div id="courseBadge" style="display:none;" class="course-badge">✓ <span id="courseBadgeName"></span></div>
         <div class="par-section-label">Front 9 — Holes 1–9</div>
         <div class="par-grid" id="parFrontGrid"></div>
         <div class="par-section-label">Back 9 — Holes 10–18</div>
@@ -1518,8 +1517,7 @@ function loadCourseData(course) {
   course.front9par.forEach((p,i) => { const el = document.getElementById('pf_'+i); if(el) el.value=p; });
   course.back9par.forEach((p,i)  => { const el = document.getElementById('pb_'+i); if(el) el.value=p; });
   updateParTotals();
-  const badge = document.getElementById('courseBadge');
-  if (badge) { badge.style.display='flex'; document.getElementById('courseBadgeName').textContent = course.name + ' — ' + course.location; }
+
   const inp = document.getElementById('courseInput');
   if (inp) inp.value = course.name;
 }
@@ -1566,8 +1564,7 @@ function selectCourse(idx) {
   updateParTotals();
   document.getElementById('courseResults').style.display='none';
   document.getElementById('courseStatus').textContent='';
-  document.getElementById('courseBadge').style.display='flex';
-  document.getElementById('courseBadgeName').textContent = c.name+' — '+c.location;
+
   toast('✓ '+c.name);
 }
 
