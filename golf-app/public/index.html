@@ -1609,12 +1609,15 @@ function assignHoles(matchups, weekNum) {
 function generateSchedule() {
   if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
 
-  var weeksToGen  = parseInt(document.getElementById('weeksToGen').value)  || 29;
-  var startWeek   = parseInt(document.getElementById('startWeek').value)   || 1;
-  var seasonWeeks = parseInt(document.getElementById('seasonWeeks').value) || 29;
+  var weeksToGenEl  = document.getElementById('weeksToGen');
+  var startWeekEl   = document.getElementById('startWeek');
+  var seasonWeeksEl = document.getElementById('seasonWeeks');
+  var weeksToGen  = weeksToGenEl  ? (parseInt(weeksToGenEl.value)  || 29) : 29;
+  var startWeek   = startWeekEl   ? (parseInt(startWeekEl.value)   || 1)  : 1;
+  var seasonWeeks = seasonWeeksEl ? (parseInt(seasonWeeksEl.value) || 29) : 29;
   var teams = rosterTeams;
   var rounds = buildRoundRobin(teams);
-  // Cap round-robin cycle at season length so matchups repeat within the season
+  if (!rounds.length) { toast('Need at least 2 teams'); return; }
   var totalWeeks = Math.min(rounds.length, seasonWeeks);
   var matchupsPerWeek = Math.floor(teams.length / 2);
   var extra = Math.max(0, matchupsPerWeek - 18);
@@ -1624,9 +1627,9 @@ function generateSchedule() {
   var output = document.getElementById('scheduleOutput');
   output.innerHTML = '';
   document.getElementById('schedInfo').textContent =
-    teams.length + ' teams • ' + seasonWeeks + '-week season • ' +
+    teams.length + ' teams | ' + seasonWeeks + '-week season | ' +
     matchupsPerWeek + ' matchups/week across 18 holes' + extraNote +
-    ' • Showing weeks ' + startWeek + '–' + (startWeek + weeksToGen - 1);
+    ' | Showing weeks ' + startWeek + ' to ' + (startWeek + weeksToGen - 1);
 
   for (var w = 0; w < weeksToGen; w++) {
     var weekNum = startWeek + w;
