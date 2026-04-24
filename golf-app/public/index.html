@@ -2770,7 +2770,11 @@ async function generateAndSaveWeek() {
     renderSavedSchedule(savedSchedule);
     // Advance week input to next week
     document.getElementById('startWeek').value = weekNum + 1;
-    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved. ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups.</span>';
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved. ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click Generate &amp; Save Week to add week ' + (weekNum+1) + '.</span>';
+    // Scroll to the week just saved
+    var allTitles = document.querySelectorAll('.schedule-week-title');
+    var lastTitle = allTitles[allTitles.length - 1];
+    if (lastTitle) lastTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
