@@ -565,7 +565,7 @@ router.get('/handicaps/calculated', requireAuth, async (req, res) => {
       }
       const avgDiff = cappedDiffs.reduce((a,b)=>a+b,0) / cappedDiffs.length;
 
-      let calcHdcp = Math.round(avgDiff * 10) / 10;
+      let calcHdcp = Math.round(avgDiff);
       let useHandicap = true;
       let status = 'active';
 
@@ -576,7 +576,7 @@ router.get('/handicaps/calculated', requireAuth, async (req, res) => {
           status = 'establishing';
           calcHdcp = null;
         } else {
-          calcHdcp = Math.round(avgDiff * (hdcpPct / 100) * 10) / 10;
+          calcHdcp = Math.round(avgDiff * (hdcpPct / 100));
           status = 'established';
         }
       }
@@ -585,7 +585,7 @@ router.get('/handicaps/calculated', requireAuth, async (req, res) => {
         teamId: t.id,
         calculatedHdcp: calcHdcp,
         roundsPlayed: scores.length,
-        avgDiff: Math.round(avgDiff * 10) / 10,
+        avgDiff: Math.round(avgDiff * 10) / 10,  // keep 1 decimal for display
         status,
         useHandicap,
         hdcpSystem,
