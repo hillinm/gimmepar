@@ -1139,6 +1139,18 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
+        <!-- Handicap -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">⛳ Handicap</div>
+          <div class="setting-toggle">
+            <button class="setting-btn" id="settingHdcpOn" onclick="setSettingNoHdcp(false,this)">Use Handicap</button>
+            <button class="setting-btn" id="settingHdcpOff" onclick="setSettingNoHdcp(true,this)">No Handicap (Gross Only)</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:6px;">When disabled, net score = gross score and handicap fields are hidden.</div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
         <!-- Alternate Nines -->
         <div style="margin-bottom:28px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔀 Alternate Nines (Schedule)</div>
@@ -1262,7 +1274,7 @@ let lastCalcData = [];
 let courseSearchResults = [];
 let flightMode = 'hl';
 let skinsEnabled = true;
-let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2, playoffBrackets: 2, playoffFormat: 'single' };
+let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, noHandicap: false, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2, playoffBrackets: 2, playoffFormat: 'single' };
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -2230,6 +2242,10 @@ async function buildScoringCards() {
     }
   });
   updateScoreCount();
+  // Hide hdcp rows if no handicap mode
+  if (leagueSettings && leagueSettings.noHandicap) {
+    document.querySelectorAll('[id^="hdcpRow_"]').forEach(function(el) { el.style.display = 'none'; });
+  }
 }
 
 function setFilter(filter, btn) {
@@ -2336,7 +2352,7 @@ function buildScoreCard(team, st, idx) {
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
-      <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;" id="hdcpRow_${team.id}">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <label>Hdcp</label>
           <input class="hdcp-inp" type="text" inputmode="text" value="${team.handicap}" placeholder="0"
@@ -2536,7 +2552,7 @@ function calculate() {
     const { par, count } = getHoleConfig(nine);
     const parTotal = par.reduce((a,b)=>a+b,0);
     const hdcpEl = document.getElementById('shdcp_'+t.id);
-    const hdcp = parseInt(hdcpEl?.value)||0;
+    const hdcp = (leagueSettings && leagueSettings.noHandicap) ? 0 : (parseInt(hdcpEl?.value)||0);
     const subBtn = document.getElementById('ssub_'+t.id);
     const isSub = subBtn ? subBtn.classList.contains('active') : false;
     const subNameEl = document.getElementById('ssubname_'+t.id);
@@ -2818,10 +2834,13 @@ function showPage(name) {
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
 async function initSchedule() {
-  // Show random draw button for random team leagues
+  var isRandom = leagueSettings && leagueSettings.teamFormat === 'random';
   var rdBtn = document.getElementById('btnRandomDraw');
-  var genBtn = document.querySelector('.btn-gen[onclick*="generateAndSaveWeek"]');
-  if (rdBtn) rdBtn.style.display = (leagueSettings && leagueSettings.teamFormat === 'random') ? '' : 'none';
+  if (rdBtn) rdBtn.style.display = isRandom ? '' : 'none';
+  // Show team builder for random leagues
+  var tbSection = document.getElementById('teamBuilderSection');
+  if (tbSection) tbSection.style.display = isRandom ? '' : 'none';
+  if (isRandom) initTeamBuilder();
   var out = document.getElementById('scheduleOutput');
   // Always try to load saved schedule from DB
   try {
@@ -3302,6 +3321,12 @@ async function loadLeagueSettings() {
     if (pctEl) pctEl.value = leagueSettings.hdcpPct || 80;
     var mcEl = document.getElementById('hdcpMaxChange');
     if (mcEl) mcEl.value = leagueSettings.hdcpMaxChange !== undefined ? leagueSettings.hdcpMaxChange : 2;
+    var nhOn  = document.getElementById('settingHdcpOn');
+    var nhOff = document.getElementById('settingHdcpOff');
+    if (nhOn && nhOff) {
+      nhOn.classList.toggle('active',  leagueSettings.noHandicap !== true);
+      nhOff.classList.toggle('active', leagueSettings.noHandicap === true);
+    }
     var pbEl = document.getElementById('playoffBrackets');
     if (pbEl) pbEl.value = leagueSettings.playoffBrackets || 2;
     var ps = document.getElementById('settingPlayoffSingle');
@@ -3345,6 +3370,12 @@ function setSettingFlight(mode, btn) {
 function setSettingSkins(on, btn) {
   leagueSettings.skinsEnabled = on;
   document.querySelectorAll('#settingSkinsOn,#settingSkinsOff').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSettingNoHdcp(noHdcp, btn) {
+  leagueSettings.noHandicap = noHdcp;
+  document.querySelectorAll('#settingHdcpOn,#settingHdcpOff').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
 }
 
@@ -3401,6 +3432,7 @@ async function saveLeagueSettings() {
     hdcpPct: parseInt((document.getElementById('hdcpPct')||{}).value) || 80,
     hdcpMaxChange: parseFloat((document.getElementById('hdcpMaxChange')||{}).value) || 0,
     playoffBrackets: parseInt((document.getElementById('playoffBrackets')||{}).value) || 2,
+    noHandicap: leagueSettings.noHandicap === true,
     playoffFormat: leagueSettings.playoffFormat || 'single'
   };
   try {
@@ -3908,6 +3940,90 @@ async function drawRandomTeams() {
 
   var warn = warnings.length ? '<div style="color:var(--gold);font-size:12px;margin-top:6px;">⚠ Repeat pairings (unavoidable): ' + warnings.join(', ') + '</div>' : '';
   drawResult.innerHTML = '<span style="color:var(--green2)">✓ ' + paired.filter(function(p){return p[1];}).length + ' teams drawn' + (paired.some(function(p){return !p[1];}) ? ' (1 bye)' : '') + '. Click 💾 Save Roster to keep these pairings.</span>' + warn;
+}
+
+// ══ TEAM BUILDER ══
+var builtTeams = [];
+
+function initTeamBuilder() {
+  var container = document.getElementById('teamBuilderRows');
+  if (!container || container.children.length > 0) return;
+  // Start with a few empty rows
+  builtTeams = [];
+  for (var i = 0; i < 3; i++) addTeamBuilderRow();
+}
+
+function addTeamBuilderRow() {
+  builtTeams.push({ p1: '', p2: '' });
+  renderTeamBuilderRows();
+}
+
+function renderTeamBuilderRows() {
+  var container = document.getElementById('teamBuilderRows');
+  if (!container) return;
+  // Build player options from roster
+  var playerOpts = '<option value="">-- select player --</option>';
+  rosterTeams.forEach(function(t) {
+    if (t.player1) playerOpts += '<option value="' + esc(t.player1) + '">' + esc(t.player1) + '</option>';
+    if (t.player2) playerOpts += '<option value="' + esc(t.player2) + '">' + esc(t.player2) + '</option>';
+  });
+  var html = '';
+  builtTeams.forEach(function(team, i) {
+    html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">';
+    html += '<span style="font-size:12px;color:var(--muted);width:20px;">' + (i+1) + '</span>';
+    html += '<select class="week-inp" style="flex:1;min-width:140px;" onchange="builtTeams['+i+'].p1=this.value"><option value="">Player 1</option>' + playerOpts + '</select>';
+    html += '<select class="week-inp" style="flex:1;min-width:140px;" onchange="builtTeams['+i+'].p2=this.value"><option value="">Player 2</option>' + playerOpts + '</select>';
+    html += '<button class="btn-del" onclick="builtTeams.splice('+i+',1);renderTeamBuilderRows()">✕</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+async function saveBuiltTeams() {
+  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
+  var resultEl = document.getElementById('teamBuilderResult');
+  var validTeams = builtTeams.filter(function(t) { return t.p1 && t.p2; });
+  if (!validTeams.length) { resultEl.innerHTML = '<span style="color:#ff9999">Add at least one complete team.</span>'; return; }
+
+  // Build matchup pairs from teams
+  var matchups = [];
+  for (var i = 0; i < validTeams.length - 1; i += 2) {
+    matchups.push({
+      teamA: { id: 'built_'+i, player1: validTeams[i].p1, player2: validTeams[i].p2, handicap: 0 },
+      teamB: { id: 'built_'+(i+1), player1: validTeams[i+1].p1, player2: validTeams[i+1].p2, handicap: 0 }
+    });
+  }
+  if (validTeams.length % 2 !== 0) {
+    var last = validTeams[validTeams.length-1];
+    matchups.push({ teamA: { id: 'built_bye', player1: last.p1, player2: last.p2, handicap: 0 }, teamB: null });
+  }
+
+  var withHoles = assignHoles(matchups, weekNum);
+  var slim = [{ week: weekNum, matchups: withHoles.map(function(m) {
+    return { hole: m.hole, nine: m.nine||'front',
+      teamAId: m.teamA ? m.teamA.id : null,
+      teamBId: m.teamB ? m.teamB.id : null,
+      teamAName: m.teamA ? (m.teamA.player1 + (m.teamA.player2?' / '+m.teamA.player2:'')) : null,
+      teamBName: m.teamB ? (m.teamB.player1 + (m.teamB.player2?' / '+m.teamB.player2:'')) : null
+    };
+  })}];
+  try {
+    await api('POST', '/api/league/schedule/save', { weeks: slim });
+    await api('PUT', '/api/league/settings', { currentWeek: weekNum });
+    var weekData = { week: weekNum, matchups: withHoles };
+    var existing = savedSchedule.findIndex(function(w){return w.week===weekNum;});
+    if (existing >= 0) savedSchedule[existing] = weekData;
+    else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b){return a.week-b.week;});
+    renderSavedSchedule(savedSchedule);
+    document.getElementById('startWeek').value = weekNum + 1;
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved with ' + matchups.length + ' matchups.</span>';
+    // Reset builder
+    builtTeams = []; for(var j=0;j<3;j++) builtTeams.push({p1:'',p2:''});
+    renderTeamBuilderRows();
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
 }
 
 // ══ UTILS ══
