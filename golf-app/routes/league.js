@@ -255,8 +255,11 @@ router.get('/schedule/week/:weekNum', requireAuth, async (req, res) => {
     const matchups = rawMatchups.map(m => ({
       hole: m.hole,
       nine: m.nine || 'front',
-      teamA: m.teamAId ? teamMap[m.teamAId] || null : null,
-      teamB: m.teamBId ? teamMap[m.teamBId] || null : null
+      teamA: m.teamAId ? (teamMap[m.teamAId] || null) : null,
+      teamB: m.teamBId ? (teamMap[m.teamBId] || null) : null,
+      // Fallback to stored names if team not found (random draw teams)
+      teamAName: m.teamAName || null,
+      teamBName: m.teamBName || null
     }));
     res.json({ week: row.week_number, matchups });
   } catch(e) { res.status(500).json({ error: e.message }); }

@@ -2875,17 +2875,18 @@ function renderSavedSchedule(weeks) {
       var isBack = hole >= 10;
       var chipClass = 'hole-chip' + (isBack ? ' back' : '');
       var nineDisplay = m.nine === 'back' ? 'Back 9' : 'Front 9';
-      var nameA = tA ? esc(tA.player1||'') + ' / ' + esc(tA.player2||'') : 'BYE';
-      if (!tB) {
+      // Support both full team objects and name strings from saved schedule
+      var nameA = tA ? (esc(tA.player1||'') + (tA.player2 ? ' / ' + esc(tA.player2) : '')) : (m.teamAName || 'BYE');
+      var nameB = tB ? (esc(tB.player1||'') + (tB.player2 ? ' / ' + esc(tB.player2) : '')) : (m.teamBName || null);
+      if (!tB && !m.teamBName) {
         rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
       } else {
-        var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
         rows += '<tr>';
         rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
         rows += '<td class="nine-col">' + nineDisplay + '</td>';
         rows += '<td class="team-a-name">' + nameA + '</td>';
         rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
-        rows += '<td class="team-b-name">' + nameB + '</td>';
+        rows += '<td class="team-b-name">' + (nameB || '—') + '</td>';
         rows += '</tr>';
       }
     });
@@ -3136,7 +3137,11 @@ async function randomDrawWeek() {
 }
 
 async function generateAndSaveWeek() {
-  if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
+  if (!rosterTeams.length) {
+    // Try loading roster first
+    try { await loadRoster(); } catch(e) {}
+    if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
+  }
   var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
   var resultEl = document.getElementById('weekGenResult');
   var btn = document.querySelector('.btn-gen');
@@ -3177,6 +3182,7 @@ async function generateAndSaveWeek() {
     } else {
       // Static round robin
       var rounds = buildRoundRobin(rosterTeams);
+      if (!rounds.length) { resultEl.innerHTML = '<span style="color:#ff9999">Need at least 2 teams in roster.</span>'; if(btn){btn.textContent='📆 Generate & Save Week';btn.disabled=false;} return; }
       var roundIdx = (weekNum - 1) % rounds.length;
       var round = rounds[roundIdx];
       matchups = round.map(function(pair) {
@@ -3184,7 +3190,7 @@ async function generateAndSaveWeek() {
           teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
           teamB: pair[1] !== null ? rosterTeams[pair[1]] : null
         };
-      });
+      }).filter(function(m) { return m.teamA; });
     }
     var withHoles = assignHoles(matchups, weekNum);
     // Slim for DB
