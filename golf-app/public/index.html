@@ -932,6 +932,31 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
     </div>
 
+    <!-- Email League -->
+    <div class="section-card" style="margin-top:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">📧</span>
+        <div>
+          <div class="section-title">Email League</div>
+          <div class="section-sub">Send a message to all players in your league</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SUBJECT</div>
+          <input class="search-input" id="leagueEmailSubject" placeholder="e.g. Week 3 Schedule" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">MESSAGE</div>
+          <textarea id="leagueEmailBody" placeholder="Type your message here..." style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:10px 14px;font-family:'Libre Baskerville',serif;font-size:13px;outline:none;resize:vertical;min-height:120px;line-height:1.6;"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="btn-save-roster" onclick="sendLeagueEmail()">📧 Send to All Players</button>
+          <span id="leagueEmailResult" style="font-size:13px;"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- Calculated Handicaps -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
@@ -1723,7 +1748,7 @@ async function loadPlayersList() {
     var teams = rosterTeams;
     var el = document.getElementById('playersList');
     if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
-    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Email</th><th>Team</th><th>Temp PW</th><th></th></tr></thead><tbody>';
+    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
     players.forEach(function(p) {
       var teamOpts = '<option value="">— unassigned —</option>';
       teams.forEach(function(t) {
@@ -1734,9 +1759,11 @@ async function loadPlayersList() {
       html += '<td style="font-weight:700">'+esc(p.first_name+' '+p.last_name)+'</td>';
       html += '<td style="color:var(--muted);font-size:12px">'+esc(p.email)+'</td>';
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
-      html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'No')+'</td>';
-      var safePName = (p.first_name+' '+p.last_name).replace(/'/g,'');
-      html += '<td><button class="btn-del" data-uid="'+p.id+'" data-uname="'+safePName+'" onclick="leagueResetPassword(this.dataset.uid,this.dataset.uname)">Reset</button></td>';
+      html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
+      html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
+      html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" onclick="editPlayer(this)">Edit</button>';
+      html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
+      html += '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -1751,14 +1778,54 @@ async function assignTeam(playerId, teamId) {
   } catch(e) { toast('Error: '+e.message); }
 }
 
-async function leagueResetPassword(userId, userName) {
-  var newPass = prompt('New password for ' + userName + ':');
-  if (!newPass || newPass.length < 4) { alert('Password must be at least 4 characters.'); return; }
+async function sendResetEmail(userId, userEmail) {
+  if (!confirm('Send a password reset email to ' + userEmail + '?')) return;
   try {
-    await api('POST', '/api/admin/users/'+userId+'/reset-password', {newPassword: newPass});
-    toast('Password reset for '+userName);
-    loadPlayersList();
+    await api('POST', '/api/admin/users/'+userId+'/send-reset', {});
+    toast('Reset email sent to ' + userEmail);
   } catch(e) { toast('Error: '+e.message); }
+}
+
+function editPlayer(btn) {
+  var pid    = btn.dataset.pid;
+  var pfirst = btn.dataset.pfirst;
+  var plast  = btn.dataset.plast;
+  var pemail = btn.dataset.pemail;
+
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;max-width:380px;width:90%;margin:20px;">' +
+    '<div style="font-size:18px;font-weight:700;color:var(--gold);margin-bottom:16px;">Edit Player</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">FIRST NAME</div><input id="epFirst" class="team-input" value="'+pfirst+'" style="width:100%;box-sizing:border-box;"></div>' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LAST NAME</div><input id="epLast" class="team-input" value="'+plast+'" style="width:100%;box-sizing:border-box;"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">EMAIL</div><input id="epEmail" class="team-input" type="email" value="'+pemail+'" style="width:100%;box-sizing:border-box;"></div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button class="btn-save-roster" style="flex:1;" id="epSaveBtn">Save</button>' +
+    '<button class="btn-export-sched" style="flex:1;" id="epCancelBtn">Cancel</button>' +
+    '</div>' +
+    '<div id="epErr" style="color:#ff9999;font-size:12px;margin-top:8px;"></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  document.getElementById('epCancelBtn').onclick = function() { overlay.remove(); };
+  document.getElementById('epSaveBtn').onclick = async function() {
+    var first = document.getElementById('epFirst').value.trim();
+    var last  = document.getElementById('epLast').value.trim();
+    var email = document.getElementById('epEmail').value.trim().toLowerCase();
+    if (!first || !last) { document.getElementById('epErr').textContent = 'Name required.'; return; }
+    if (!email || !email.includes('@')) { document.getElementById('epErr').textContent = 'Valid email required.'; return; }
+    try {
+      await api('PUT', '/api/admin/players/'+pid+'/info', {first_name: first, last_name: last, email: email});
+      overlay.remove();
+      toast('Player updated');
+      loadPlayersList();
+    } catch(e) {
+      document.getElementById('epErr').textContent = 'Error: ' + e.message;
+    }
+  };
 }
 
 function showLogin() {
@@ -3593,6 +3660,22 @@ function renderBracket(bracket, bi) {
   html += '</div></div>';
   html += '</div>';
   return html;
+}
+
+// ══ LEAGUE EMAIL ══
+async function sendLeagueEmail() {
+  var subject = document.getElementById('leagueEmailSubject').value.trim();
+  var body    = document.getElementById('leagueEmailBody').value.trim();
+  var result  = document.getElementById('leagueEmailResult');
+  if (!subject) { result.innerHTML = '<span style="color:#ff9999">Please enter a subject.</span>'; return; }
+  if (!body)    { result.innerHTML = '<span style="color:#ff9999">Please enter a message.</span>'; return; }
+  result.innerHTML = '<span style="color:var(--muted)">Sending...</span>';
+  try {
+    var res = await api('POST', '/api/league/email', { subject, body });
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + '.</span>';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
 }
 
 // ══ UTILS ══

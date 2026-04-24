@@ -178,3 +178,76 @@ router.get('/league/:id', requireRole('superadmin'), async (req, res) => {
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── Update player info (name + email) ──
+router.put('/players/:id/info', requireRole('superadmin','leagueadmin'), async (req, res) => {
+  try {
+    const { first_name, last_name, email } = req.body || {};
+    if (!first_name || !last_name || !email) return res.status(400).json({ error: 'Name and email required' });
+    // Verify player is in league
+    if (req.session.role === 'leagueadmin') {
+      const user = await getOne('SELECT id FROM users WHERE id=$1 AND league_id=$2', [req.params.id, req.session.leagueId]);
+      if (!user) return res.status(403).json({ error: 'Not your player' });
+    }
+    // Check email not taken by someone else
+    const existing = await getOne('SELECT id FROM users WHERE email=$1 AND id!=$2', [email.toLowerCase().trim(), req.params.id]);
+    if (existing) return res.status(409).json({ error: 'Email already in use by another account' });
+    await query('UPDATE users SET first_name=$1, last_name=$2, email=$3 WHERE id=$4',
+      [first_name.trim(), last_name.trim(), email.toLowerCase().trim(), req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Send password reset email ──
+router.post('/users/:id/send-reset', requireRole('superadmin','leagueadmin'), async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const https  = require('https');
+    const user = await getOne('SELECT * FROM users WHERE id=$1', [req.params.id]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (req.session.role === 'leagueadmin') {
+      if (user.league_id !== req.session.leagueId) return res.status(403).json({ error: 'Not your player' });
+    }
+    // Generate a temp password: FirstLastNNNN
+    const temp = user.first_name.charAt(0).toUpperCase() + user.last_name.toLowerCase() + Math.floor(1000+Math.random()*9000);
+    const hash = bcrypt.hashSync(temp, 10);
+    await query('UPDATE users SET password_hash=$1, must_change_password=TRUE WHERE id=$2', [hash, user.id]);
+
+    // Send email via Resend
+    const apiKey = process.env.RESEND_API_KEY;
+    const appUrl = process.env.APP_URL || 'https://gimmepar.com';
+    if (!apiKey) return res.json({ success: true, note: 'Email not sent - RESEND_API_KEY not set. Temp password: ' + temp });
+
+    const body = JSON.stringify({
+      from: 'GimmePar <onboarding@resend.dev>',
+      to: [user.email],
+      subject: 'GimmePar - Your Password Has Been Reset',
+      html: [
+        '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">',
+        '<h2 style="color:#1a2e1a;">⛳ GimmePar Password Reset</h2>',
+        '<p>Hi ' + user.first_name + ',</p>',
+        '<p>Your league coordinator has reset your GimmePar password.</p>',
+        '<table style="width:100%;border-collapse:collapse;margin:16px 0;background:#f8f8f8;border-radius:8px;">',
+        '<tr><td style="padding:12px;">Email</td><td style="padding:12px;font-weight:bold;">' + user.email + '</td></tr>',
+        '<tr><td style="padding:12px;">Temporary Password</td><td style="padding:12px;font-weight:bold;font-size:18px;">' + temp + '</td></tr>',
+        '</table>',
+        '<p><a href="' + appUrl + '" style="background:#4a8c3f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Log In to GimmePar</a></p>',
+        '<p style="color:#888;font-size:12px;">You will be asked to set a new password when you log in.</p>',
+        '</div>'
+      ].join('')
+    });
+
+    const options = {
+      hostname: 'api.resend.com', path: '/emails', method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    };
+    const emailReq = https.request(options, (r) => {
+      let d = ''; r.on('data', c => d += c);
+      r.on('end', () => console.log('Reset email sent to', user.email, 'status:', r.statusCode));
+    });
+    emailReq.on('error', e => console.warn('Reset email failed:', e.message));
+    emailReq.write(body); emailReq.end();
+
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
