@@ -699,6 +699,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <button class="nav-tab active" onclick="showAdminTab('leagues')" id="satab-leagues">Leagues</button>
         <button class="nav-tab" onclick="showAdminTab('users')" id="satab-users">Users</button>
         <button class="nav-tab" onclick="showAdminTab('courses')" id="satab-courses">Courses</button>
+        <button class="nav-tab" onclick="showAdminTab('scorecard')" id="satab-scorecard">My Scorecard</button>
       </nav>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
@@ -721,6 +722,34 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         </div>
         <div class="section-body" id="adminUsersList"><div class="empty-state">Loading...</div></div>
       </div>
+    </div>
+
+    <!-- Scorecard tab -->
+    <div id="saTabScorecard" class="wrap" style="padding-top:32px;display:none;">
+      <div class="section-card" style="margin-bottom:20px;">
+        <div class="section-header">
+          <span style="font-size:24px;">⛳</span>
+          <div><div class="section-title">My Player Setup</div><div class="section-sub">Link your admin account to a league and team</div></div>
+        </div>
+        <div class="section-body">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+            <div>
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LEAGUE</div>
+              <select class="week-inp" id="adminLeagueSelect" onchange="loadAdminTeams()" style="width:220px;padding:8px 10px;font-family:inherit;">
+                <option value="">Select a league...</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">MY TEAM</div>
+              <select class="week-inp" id="adminTeamSelect" style="width:220px;padding:8px 10px;font-family:inherit;">
+                <option value="">Select your team...</option>
+              </select>
+            </div>
+            <button class="btn-gen" style="font-size:14px;padding:9px 18px;" onclick="loadAdminScorecard()">Load Scorecard</button>
+          </div>
+        </div>
+      </div>
+      <div id="adminScorecardArea"></div>
     </div>
 
     <!-- Courses tab -->
@@ -1470,13 +1499,14 @@ function buildReadOnlyCard(team, st) {
 
 // ══ SUPER ADMIN ══
 function showAdminTab(tab) {
-  ['leagues','users','courses'].forEach(function(t) {
+  ['leagues','users','courses','scorecard'].forEach(function(t) {
     var panel = document.getElementById('saTab'+t.charAt(0).toUpperCase()+t.slice(1));
     var btn   = document.getElementById('satab-'+t);
     if (panel) panel.style.display = t===tab ? '' : 'none';
     if (btn)   btn.classList.toggle('active', t===tab);
   });
   if (tab==='courses') adminCourseSearch('');
+  if (tab==='scorecard') initAdminScorecard();
 }
 
 function adminCourseSearch(q) {

@@ -160,3 +160,21 @@ router.delete('/leagues/:id', requireRole('superadmin'), async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// Super admin: get league info (course, settings)
+router.get('/league/:id', requireRole('superadmin'), async (req, res) => {
+  try {
+    const league = await getOne('SELECT * FROM leagues WHERE id=$1', [req.params.id]);
+    if (!league) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      id: league.id,
+      name: league.name,
+      course: league.course_name ? {
+        name: league.course_name,
+        location: league.course_location,
+        front9par: JSON.parse(league.front9par || '[4,3,4,4,4,5,3,4,5]'),
+        back9par:  JSON.parse(league.back9par  || '[4,3,4,4,4,5,3,4,5]')
+      } : null
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
