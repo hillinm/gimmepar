@@ -247,3 +247,61 @@ router.get('/me', async (req, res) => {
 });
 
 module.exports = router;
+
+// ── FORGOT PASSWORD ──
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const user = await getOne('SELECT * FROM users WHERE email=$1', [email.toLowerCase().trim()]);
+    // Always return success to prevent email enumeration
+    if (!user) return res.json({ success: true });
+
+    const bcrypt = require('bcryptjs');
+    const https  = require('https');
+
+    // Generate temp password
+    const temp = user.first_name.charAt(0).toUpperCase() + user.last_name.toLowerCase() + Math.floor(1000 + Math.random() * 9000);
+    const hash = bcrypt.hashSync(temp, 10);
+    await query('UPDATE users SET password_hash=$1, must_change_password=TRUE WHERE id=$2', [hash, user.id]);
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const appUrl = process.env.APP_URL || 'https://gimmepar.com';
+    if (!apiKey) return res.json({ success: true });
+
+    const html = [
+      '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">',
+      '<div style="background:#1a2e1a;padding:16px 24px;border-radius:8px 8px 0 0;">',
+      '<span style="color:#c9a84c;font-size:20px;font-weight:700;letter-spacing:2px;">⛳ GimmePar</span>',
+      '</div>',
+      '<div style="border:1px solid #ddd;border-top:none;padding:24px;border-radius:0 0 8px 8px;">',
+      '<h2 style="color:#1a2e1a;margin-top:0;">Password Reset</h2>',
+      '<p>Hi ' + user.first_name + ',</p>',
+      '<p>We received a request to reset your GimmePar password. Here is your temporary password:</p>',
+      '<div style="background:#f4f4f4;border-radius:8px;padding:16px;text-align:center;margin:20px 0;">',
+      '<span style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#1a2e1a;">' + temp + '</span>',
+      '</div>',
+      '<p><a href="' + appUrl + '" style="background:#4a8c3f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">Log In to GimmePar</a></p>',
+      '<p style="color:#888;font-size:12px;">You will be asked to set a new password when you log in. If you did not request this reset, you can ignore this email.</p>',
+      '</div></div>'
+    ].join('');
+
+    const body = JSON.stringify({
+      from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
+      to: [user.email],
+      subject: 'GimmePar - Password Reset',
+      html
+    });
+
+    const options = {
+      hostname: 'api.resend.com', path: '/emails', method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    };
+    const req2 = https.request(options, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>console.log('Forgot PW email status:',r.statusCode)); });
+    req2.on('error', e => console.warn('Forgot PW email error:', e.message));
+    req2.write(body); req2.end();
+
+    res.json({ success: true });
+  } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
+});

@@ -2123,6 +2123,43 @@ async function pickLeague(leagueId) {
   } catch(e) { showError(e.message); }
 }
 
+function showForgotPassword() {
+  var overlay = document.createElement('div');
+  overlay.id = 'forgotPwOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
+
+  var inner = document.createElement('div');
+  inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:380px;width:90%;margin:20px;';
+  inner.innerHTML =
+    '<div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:6px;">Forgot Password?</div>' +
+    '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Enter your email and we will send you a reset link.</div>' +
+    '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">EMAIL</div>' +
+    '<input id="forgotEmail" class="form-input" type="email" placeholder="your@email.com" style="margin-bottom:14px;" autocomplete="email">' +
+    '<button class="btn-login" id="forgotBtn" onclick="sendForgotEmail()" style="margin-bottom:10px;">Send Reset Email</button>' +
+    '<div id="forgotResult" style="font-size:13px;text-align:center;"></div>' +
+    '<div style="text-align:center;margin-top:12px;"><button onclick="document.getElementById(\'forgotPwOverlay\').remove()" style="background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;">Cancel</button></div>';
+
+  overlay.appendChild(inner);
+  document.body.appendChild(overlay);
+  setTimeout(function() { var el = document.getElementById('forgotEmail'); if(el) el.focus(); }, 100);
+}
+
+async function sendForgotEmail() {
+  var email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+  var result = document.getElementById('forgotResult');
+  var btn = document.getElementById('forgotBtn');
+  if (!email || !email.includes('@')) { result.innerHTML = '<span style="color:#ff9999">Please enter a valid email.</span>'; return; }
+  btn.textContent = 'Sending...'; btn.disabled = true;
+  try {
+    await api('POST', '/api/auth/forgot-password', { email });
+    result.innerHTML = '<span style="color:var(--green2)">✓ If that email is registered, a reset link has been sent.</span>';
+    btn.style.display = 'none';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+    btn.textContent = 'Send Reset Email'; btn.disabled = false;
+  }
+}
+
 function togglePassVis(inputId, btn) {
   var inp = document.getElementById(inputId);
   if (!inp) return;
