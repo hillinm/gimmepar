@@ -2898,8 +2898,11 @@ function renderSavedSchedule(weeks) {
     w.matchups.forEach(function(m) {
       var tA = m.teamA;
       var tB = m.teamB;
-      var hole = m.hole;
+      var hole = m.hole ? parseInt(m.hole) : null;
       if (!hole) return;
+      // Use teamAName/teamBName as fallback when team objects aren't found
+      if (!m.teamA && m.teamAName) m.teamA = { player1: m.teamAName, player2: '' };
+      if (!m.teamB && m.teamBName) m.teamB = { player1: m.teamBName, player2: '' };
       var isBack = hole >= 10;
       var chipClass = 'hole-chip' + (isBack ? ' back' : '');
       var nineDisplay = m.nine === 'back' ? 'Back 9' : 'Front 9';
