@@ -341,3 +341,105 @@ router.delete('/schedule/all', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── SEASON STANDINGS ──
+// Returns W/L/T per team, grouped by flight, based on saved schedule matchups + round scores
+router.get('/standings', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+
+    // Get all teams
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1', [leagueId]);
+    const teamMap = {};
+    teams.forEach(t => { teamMap[t.id] = t; });
+
+    // Get all round scores (all-time for this league)
+    const scores = await getAll(
+      `SELECT rs.*, r.played_on
+       FROM round_scores rs
+       JOIN rounds r ON r.id = rs.round_id
+       WHERE r.league_id = $1
+       ORDER BY r.played_on ASC, r.id ASC`,
+      [leagueId]
+    );
+
+    // Get all saved schedule weeks to determine matchups
+    const scheduleRows = await getAll(
+      'SELECT week_number, matchups FROM schedule_weeks WHERE league_id=$1 ORDER BY week_number',
+      [leagueId]
+    );
+
+    // Build per-round score lookup: roundId -> [scores]
+    // Group scores by round
+    const roundScores = {};
+    scores.forEach(s => {
+      if (!roundScores[s.round_id]) roundScores[s.round_id] = [];
+      roundScores[s.round_id].push(s);
+    });
+
+    // Get rounds in order
+    const rounds = await getAll(
+      'SELECT * FROM rounds WHERE league_id=$1 ORDER BY played_on ASC, id ASC',
+      [leagueId]
+    );
+
+    // Initialize standings per team
+    const standings = {};
+    teams.forEach(t => {
+      standings[t.id] = {
+        team: t,
+        wins: 0, losses: 0, ties: 0, points: 0,
+        played: 0, flight: null
+      };
+    });
+
+    // Match each round to a schedule week by position (round 1 = week 1, etc)
+    rounds.forEach((round, roundIdx) => {
+      const weekNum = roundIdx + 1;
+      const schedRow = scheduleRows.find(s => s.week_number === weekNum);
+      if (!schedRow) return;
+
+      const matchups = JSON.parse(schedRow.matchups);
+      const roundScoreList = roundScores[round.id] || [];
+
+      // Build net score map for this round: teamId -> net
+      const netMap = {};
+      roundScoreList.forEach(s => { netMap[s.team_id] = s.net; });
+
+      matchups.forEach(m => {
+        if (!m.teamAId || !m.teamBId) return;
+        const netA = netMap[m.teamAId];
+        const netB = netMap[m.teamBId];
+        if (netA == null || netB == null) return; // scores not entered
+
+        const sA = standings[m.teamAId];
+        const sB = standings[m.teamBId];
+        if (!sA || !sB) return;
+
+        sA.played++;
+        sB.played++;
+
+        if (netA < netB) {
+          sA.wins++; sA.points += 1;
+          sB.losses++;
+        } else if (netB < netA) {
+          sB.wins++; sB.points += 1;
+          sA.losses++;
+        } else {
+          sA.ties++; sA.points += 0.5;
+          sB.ties++; sB.points += 0.5;
+        }
+      });
+    });
+
+    // Assign flights based on handicap (lower hdcp = A flight)
+    // Use the same high/low split logic: lower half = A, upper half = B
+    const teamList = teams.slice().sort((a, b) => a.handicap - b.handicap);
+    const mid = Math.ceil(teamList.length / 2);
+    teamList.forEach((t, i) => {
+      if (standings[t.id]) standings[t.id].flight = i < mid ? 'A' : 'B';
+    });
+
+    res.json(Object.values(standings).sort((a, b) => b.points - a.points));
+  } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
+});

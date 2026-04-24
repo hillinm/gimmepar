@@ -61,6 +61,23 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 }
 
 
+
+/* ── STANDINGS ── */
+.standings-flight { margin-bottom:28px; }
+.standings-flight-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; margin-bottom:12px; }
+.standings-flight-title.a { color:var(--green2); }
+.standings-flight-title.b { color:var(--gold); }
+.standings-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.standings-tbl th { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:1.5px; color:var(--gold2); padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); }
+.standings-tbl th.num { text-align:center; }
+.standings-tbl td { padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.04); }
+.standings-tbl td.num { text-align:center; color:var(--muted); }
+.standings-tbl tr:last-child td { border-bottom:none; }
+.standings-tbl tr:first-child td { font-weight:700; }
+.standings-tbl .pts { font-weight:700; color:var(--cream); font-size:15px; }
+.standings-tbl .rank { color:var(--muted); font-size:12px; width:28px; }
+.playoff-note { font-size:12px; color:var(--muted); font-style:italic; margin-top:8px; }
+
 /* ── RESULT SETTINGS ── */
 .result-settings { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; padding:12px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; }
 .result-settings label { font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); font-family:"Bebas Neue",sans-serif; }
@@ -726,6 +743,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="nav-tab" onclick="showTab('players')" id="tab-players">Players</button>
       <button class="nav-tab" onclick="showTab('schedule')" id="tab-schedule">Schedule</button>
       <button class="nav-tab" onclick="showTab('settings')" id="tab-settings">Settings</button>
+      <button class="nav-tab" onclick="showTab('standings')" id="tab-standings">Standings</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
     <button class="btn-logout" onclick="logout()">Sign Out</button>
@@ -955,17 +973,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
-        <!-- Season Length -->
-        <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">📅 Season Length</div>
-          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <input class="week-inp" type="number" id="seasonLengthInp" value="29" min="1" max="52" style="width:70px;">
-            <label style="font-size:13px;color:var(--cream);">weeks per season</label>
-          </div>
-        </div>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-
         <!-- Flight Mode default -->
         <div style="margin-bottom:28px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">✈️ Default Flight Split</div>
@@ -1001,6 +1008,23 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <button class="btn-save-course" onclick="saveLeagueSettings()">💾 Save Settings</button>
         <div id="settingsSaveResult" style="margin-top:10px;font-size:13px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STANDINGS TAB -->
+  <div id="tabStandings" class="wrap" style="padding-top:32px;display:none;">
+    <div class="section-card" style="margin-bottom:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">🏆</span>
+        <div>
+          <div class="section-title">Season Standings</div>
+          <div class="section-sub">Win/loss record by flight — based on saved schedule matchups</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadStandings()">↻ Refresh</button>
+      </div>
+      <div class="section-body" id="standingsContent">
+        <div class="empty-state">Loading...</div>
       </div>
     </div>
   </div>
@@ -1049,6 +1073,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="bnav-btn" id="bnav-settings" onclick="showTab('settings')">
         <span class="bnav-icon">⚙️</span>
         <span class="bnav-label">Settings</span>
+      </button>
+      <button class="bnav-btn" id="bnav-standings" onclick="showTab('standings')">
+        <span class="bnav-icon">🏆</span>
+        <span class="bnav-label">Standings</span>
       </button>
       <button class="bnav-btn" id="bnav-history" onclick="showTab('history')">
         <span class="bnav-icon">📅</span>
@@ -2495,13 +2523,14 @@ async function viewRound(id) {
 
 // ══ NAV ══
 function showTab(tab) {
-  ['scoring','roster','course','players','schedule','settings','history'].forEach(t => {
+  ['scoring','roster','course','players','schedule','settings','standings','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
   if (tab==='history') loadHistory();
   if (tab==='schedule') initSchedule();
+  if (tab==='standings') loadStandings();
   if (tab==='players') loadPlayersList();
   if (tab==='settings') loadLeagueSettings();
   // Scroll to top on tab change
@@ -2881,6 +2910,54 @@ async function saveLeagueSettings() {
   } catch(e) {
     document.getElementById('settingsSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
   }
+}
+
+// ══ STANDINGS ══
+async function loadStandings() {
+  var el = document.getElementById('standingsContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var data = await api('GET', '/api/league/standings');
+    if (!data.length) {
+      el.innerHTML = '<div class="empty-state">No standings yet. Save rounds to history to build standings.</div>';
+      return;
+    }
+
+    var flightA = data.filter(function(s) { return s.flight === 'A'; }).sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
+    var flightB = data.filter(function(s) { return s.flight === 'B'; }).sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
+
+    el.innerHTML = renderFlightStandings('A Flight', 'a', flightA) +
+                   renderFlightStandings('B Flight', 'b', flightB);
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderFlightStandings(title, cls, teams) {
+  if (!teams.length) return '';
+  var rows = teams.map(function(s, i) {
+    var t = s.team;
+    var name = esc(t.player1||'') + ' / ' + esc(t.player2||'');
+    var pct = s.played > 0 ? Math.round((s.points / s.played) * 100) : 0;
+    return '<tr>' +
+      '<td class="rank">' + (i+1) + '</td>' +
+      '<td style="font-weight:700">' + name + '</td>' +
+      '<td class="num">' + t.handicap + '</td>' +
+      '<td class="num pts">' + s.points + '</td>' +
+      '<td class="num" style="color:var(--green2)">' + s.wins + '</td>' +
+      '<td class="num" style="color:#ff9999">' + s.losses + '</td>' +
+      '<td class="num" style="color:var(--muted)">' + s.ties + '</td>' +
+      '<td class="num">' + s.played + '</td>' +
+      '</tr>';
+  }).join('');
+  return '<div class="standings-flight">' +
+    '<div class="standings-flight-title ' + cls + '">' + title + '</div>' +
+    '<table class="standings-tbl">' +
+    '<thead><tr><th class="rank">#</th><th>Team</th><th class="num">Hdcp</th><th class="num">Pts</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Played</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>' +
+    '<div class="playoff-note">Top teams from each flight advance to the playoff tournament.</div>' +
+    '</div>';
 }
 
 // ══ UTILS ══
