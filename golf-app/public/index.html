@@ -366,9 +366,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 /* Touch targets — all interactive elements min 44px */
 button, input, select { touch-action: manipulation; }
-input[type=number] { -moz-appearance: textfield; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; }
 
 /* ── HEADER mobile ── */
 @media(max-width:600px) {

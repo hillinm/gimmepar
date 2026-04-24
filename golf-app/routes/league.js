@@ -109,11 +109,11 @@ router.post('/rounds', requireAuth, async (req, res) => {
 router.get('/sub-counts', requireAuth, async (req, res) => {
   try {
     const rows = await getAll(
-      \`SELECT rs.team_id, COUNT(*) as sub_count
+      `SELECT rs.team_id, COUNT(*) as sub_count
        FROM round_scores rs
        JOIN rounds r ON r.id = rs.round_id
        WHERE r.league_id = $1 AND rs.is_sub = TRUE
-       GROUP BY rs.team_id\`,
+       GROUP BY rs.team_id`,
       [req.session.leagueId]
     );
     // Return as {teamId: count}
