@@ -487,3 +487,114 @@ router.put('/info', requireAuth, async (req, res) => {
     req.session.save(() => res.json({ success: true }));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── CALCULATED HANDICAPS ──
+// Returns calculated handicap for each team based on round history
+router.get('/handicaps/calculated', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    const league = await getOne('SELECT settings FROM leagues WHERE id=$1', [leagueId]);
+    const settings = JSON.parse(league?.settings || '{}');
+    const hdcpSystem   = settings.hdcpSystem   || 'live';
+    const hdcpEstWeeks = parseInt(settings.hdcpEstWeeks) || 5;
+    const hdcpPct      = parseInt(settings.hdcpPct) || 80;
+    const hdcpMaxChange = parseFloat(settings.hdcpMaxChange) || 0;
+
+    // Get all rounds in order
+    const rounds = await getAll(
+      'SELECT * FROM rounds WHERE league_id=$1 ORDER BY played_on ASC, id ASC',
+      [leagueId]
+    );
+    const roundCount = rounds.length;
+
+    // Get all scores
+    const scores = await getAll(
+      `SELECT rs.team_id, rs.gross, rs.nine,
+              r.id as round_id,
+              ROW_NUMBER() OVER (ORDER BY r.played_on ASC, r.id ASC) as round_num
+       FROM round_scores rs
+       JOIN rounds r ON r.id = rs.round_id
+       WHERE r.league_id = $1
+       ORDER BY r.played_on ASC, r.id ASC`,
+      [leagueId]
+    );
+
+    // Get par totals per round per team's nine
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1', [leagueId]);
+    const teamMap = {};
+    teams.forEach(t => { teamMap[t.id] = t; });
+
+    // Group scores by team
+    const teamScores = {};
+    scores.forEach(s => {
+      if (!teamScores[s.team_id]) teamScores[s.team_id] = [];
+      teamScores[s.team_id].push(s);
+    });
+
+    // Get par info from league
+    const leagueRow = await getOne('SELECT front9par, back9par FROM leagues WHERE id=$1', [leagueId]);
+    const front9par = JSON.parse(leagueRow?.front9par || '[4,3,4,4,4,5,3,4,5]').reduce((a,b)=>a+b,0);
+    const back9par  = JSON.parse(leagueRow?.back9par  || '[4,3,4,4,4,5,3,4,5]').reduce((a,b)=>a+b,0);
+    const all18par  = front9par + back9par;
+
+    const result = {};
+    teams.forEach(t => {
+      const scores = teamScores[t.id] || [];
+      if (!scores.length) {
+        result[t.id] = { teamId: t.id, calculatedHdcp: t.handicap, roundsPlayed: 0, avgDiff: null, status: 'no_rounds', useHandicap: false };
+        return;
+      }
+
+      // Calculate diff per round, applying max change cap if set
+      const rawDiffs = scores.map(s => {
+        const par = s.nine === 'all18' ? all18par : s.nine === 'back' ? back9par : front9par;
+        return s.gross - par;
+      });
+
+      // Apply rolling cap: each round's diff cannot deviate more than hdcpMaxChange from prior round
+      let cappedDiffs = [rawDiffs[0]];
+      for (let i = 1; i < rawDiffs.length; i++) {
+        if (hdcpMaxChange > 0) {
+          const prev = cappedDiffs[i - 1];
+          const raw  = rawDiffs[i];
+          const capped = Math.max(prev - hdcpMaxChange, Math.min(prev + hdcpMaxChange, raw));
+          cappedDiffs.push(capped);
+        } else {
+          cappedDiffs.push(rawDiffs[i]);
+        }
+      }
+      const avgDiff = cappedDiffs.reduce((a,b)=>a+b,0) / cappedDiffs.length;
+
+      let calcHdcp = Math.round(avgDiff * 10) / 10;
+      let useHandicap = true;
+      let status = 'active';
+
+      if (hdcpSystem === 'establish') {
+        const roundsPlayed = scores.length;
+        if (roundsPlayed < hdcpEstWeeks) {
+          useHandicap = false;
+          status = 'establishing';
+          calcHdcp = null;
+        } else {
+          calcHdcp = Math.round(avgDiff * (hdcpPct / 100) * 10) / 10;
+          status = 'established';
+        }
+      }
+
+      result[t.id] = {
+        teamId: t.id,
+        calculatedHdcp: calcHdcp,
+        roundsPlayed: scores.length,
+        avgDiff: Math.round(avgDiff * 10) / 10,
+        status,
+        useHandicap,
+        hdcpSystem,
+        hdcpEstWeeks,
+        hdcpPct,
+        hdcpMaxChange
+      };
+    });
+
+    res.json(result);
+  } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
+});

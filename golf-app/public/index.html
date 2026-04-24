@@ -797,7 +797,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <span style="font-size:24px;">👥</span>
         <div>
           <div class="section-title">Team Roster</div>
-          <div class="section-sub">Names and handicaps saved per league — updates carry forward each week</div>
+          <div class="section-sub" id="rosterSubtitle">Names and handicaps saved per league — updates carry forward each week</div>
         </div>
       </div>
       <div class="section-body">
@@ -930,6 +930,21 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div id="playersList"><div class="empty-state">No players yet.</div></div>
       </div>
     </div>
+
+    <!-- Calculated Handicaps -->
+    <div class="section-card" style="margin-top:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">📊</span>
+        <div>
+          <div class="section-title">Calculated Handicaps</div>
+          <div class="section-sub">Based on round history and your handicap system setting</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadCalculatedHandicaps()">↻ Refresh</button>
+      </div>
+      <div class="section-body" id="calcHdcpContent">
+        <div class="empty-state">Click Refresh to calculate.</div>
+      </div>
+    </div>
   </div>
 
   <!-- SCHEDULE TAB -->
@@ -1007,6 +1022,49 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <label style="font-size:13px;color:var(--cream);">sub weeks, team plays with full handicap</label>
           </div>
           <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;" id="subThresholdHint"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Team Format -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">👥 Team Format</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Choose how teams are formed each week.</div>
+          <div class="setting-toggle">
+            <button class="setting-btn" id="settingTeamStatic" onclick="setSettingTeamFormat('static',this)">Static Partners</button>
+            <button class="setting-btn" id="settingTeamRandom" onclick="setSettingTeamFormat('random',this)">Random Teams</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;" id="teamFormatHint"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Handicap System -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">📊 Handicap System</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">How handicaps are calculated from round scores.</div>
+          <div class="setting-toggle" style="margin-bottom:12px;">
+            <button class="setting-btn" id="settingHdcpLive" onclick="setSettingHdcp('live',this)">Live (applies each week)</button>
+            <button class="setting-btn" id="settingHdcpEstablish" onclick="setSettingHdcp('establish',this)">Establish Period</button>
+          </div>
+          <div id="hdcpEstablishOpts" style="display:none;margin-top:10px;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+              <label style="font-size:13px;color:var(--cream);">Establish period:</label>
+              <input class="week-inp" type="number" id="hdcpEstWeeks" value="5" min="1" max="20" style="width:65px;">
+              <label style="font-size:13px;color:var(--cream);">weeks, then apply</label>
+              <input class="week-inp" type="number" id="hdcpPct" value="80" min="1" max="100" style="width:65px;">
+              <label style="font-size:13px;color:var(--cream);">% of handicap</label>
+            </div>
+            <div style="font-size:12px;color:var(--muted);font-style:italic;">First N weeks: no handicap applied. After that: handicap = avg(gross - par) × percentage.</div>
+          </div>
+          <div id="hdcpLiveDesc" style="font-size:12px;color:var(--muted);font-style:italic;margin-top:6px;">Handicap = average (gross - par) across all rounds, applied every week.</div>
+          <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <label style="font-size:13px;color:var(--cream);">Max change per week:</label>
+            <input class="week-inp" type="number" id="hdcpMaxChange" value="2" min="0" max="10" step="0.5" style="width:65px;">
+            <label style="font-size:13px;color:var(--cream);">strokes</label>
+            <span style="font-size:11px;color:var(--muted);font-style:italic;">(0 = no cap)</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">Handicap cannot go up or down more than this amount in a single week.</div>
         </div>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
@@ -1135,7 +1193,7 @@ let lastCalcData = [];
 let courseSearchResults = [];
 let flightMode = 'hl';
 let skinsEnabled = true;
-let leagueSettings = { subThreshold: 2, seasonLength: 29, flightMode: 'hl', skinsEnabled: true, alternateNines: false };
+let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2 };
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -2603,6 +2661,7 @@ function showTab(tab) {
   if (tab==='schedule') initSchedule();
   if (tab==='standings') loadStandings();
   if (tab==='players') loadPlayersList();
+  if (tab==='roster') loadCalculatedHandicaps();
   if (tab==='settings') loadLeagueSettings();
   // Scroll to top on tab change
   window.scrollTo({top:0, behavior:'smooth'});
@@ -2833,17 +2892,49 @@ async function generateAndSaveWeek() {
   if (btn) { btn.textContent = '...'; btn.disabled = true; }
   resultEl.innerHTML = '';
   try {
-    // Build the matchup for this specific week
-    var rounds = buildRoundRobin(rosterTeams);
-    var seasonWeeks = (leagueSettings && leagueSettings.seasonLength) || 29;
-    var roundIdx = (weekNum - 1) % rounds.length;
-    var round = rounds[roundIdx];
-    var matchups = round.map(function(pair) {
-      return {
-        teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
-        teamB: pair[1] !== null ? rosterTeams[pair[1]] : null
-      };
-    });
+    var matchups;
+    if (leagueSettings && leagueSettings.teamFormat === 'random') {
+      // Random draw — shuffle all players and pair them up
+      var allPlayers = [];
+      rosterTeams.forEach(function(t) {
+        if (t.player1) allPlayers.push({ name: t.player1, handicap: t.handicap, nine: t.nine, id: t.id, origTeam: t });
+        if (t.player2) allPlayers.push({ name: t.player2, handicap: t.handicap, nine: t.nine, id: t.id*1000, origTeam: t });
+      });
+      // Fisher-Yates shuffle
+      for (var i = allPlayers.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = allPlayers[i]; allPlayers[i] = allPlayers[j]; allPlayers[j] = tmp;
+      }
+      matchups = [];
+      for (var k = 0; k < allPlayers.length - 1; k += 2) {
+        var pA = allPlayers[k];
+        var pB = allPlayers[k+1];
+        // Create synthetic team objects for display
+        matchups.push({
+          teamA: { id: pA.id, player1: pA.name, player2: '', handicap: pA.handicap, nine: pA.nine },
+          teamB: { id: pB.id, player1: pB.name, player2: '', handicap: pB.handicap, nine: pB.nine }
+        });
+      }
+      // Handle odd player out as bye
+      if (allPlayers.length % 2 !== 0) {
+        var last = allPlayers[allPlayers.length - 1];
+        matchups.push({
+          teamA: { id: last.id, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine },
+          teamB: null
+        });
+      }
+    } else {
+      // Static round robin
+      var rounds = buildRoundRobin(rosterTeams);
+      var roundIdx = (weekNum - 1) % rounds.length;
+      var round = rounds[roundIdx];
+      matchups = round.map(function(pair) {
+        return {
+          teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
+          teamB: pair[1] !== null ? rosterTeams[pair[1]] : null
+        };
+      });
+    }
     var withHoles = assignHoles(matchups, weekNum);
     // Slim for DB
     var slim = [{
@@ -2956,12 +3047,42 @@ async function loadLeagueSettings() {
       anon.classList.toggle('active', leagueSettings.alternateNines === true);
       anoff.classList.toggle('active', leagueSettings.alternateNines !== true);
     }
+    var tst = document.getElementById('settingTeamStatic');
+    var trnd = document.getElementById('settingTeamRandom');
+    if (tst && trnd) {
+      tst.classList.toggle('active', leagueSettings.teamFormat !== 'random');
+      trnd.classList.toggle('active', leagueSettings.teamFormat === 'random');
+    }
+    updateTeamFormatHint();
+    var hl = document.getElementById('settingHdcpLive');
+    var he = document.getElementById('settingHdcpEstablish');
+    if (hl && he) {
+      hl.classList.toggle('active', leagueSettings.hdcpSystem !== 'establish');
+      he.classList.toggle('active', leagueSettings.hdcpSystem === 'establish');
+    }
+    var opts = document.getElementById('hdcpEstablishOpts');
+    var desc = document.getElementById('hdcpLiveDesc');
+    if (opts) opts.style.display = leagueSettings.hdcpSystem === 'establish' ? '' : 'none';
+    if (desc) desc.style.display = leagueSettings.hdcpSystem !== 'establish' ? '' : 'none';
+    var ewEl = document.getElementById('hdcpEstWeeks');
+    var pctEl = document.getElementById('hdcpPct');
+    if (ewEl) ewEl.value = leagueSettings.hdcpEstWeeks || 5;
+    if (pctEl) pctEl.value = leagueSettings.hdcpPct || 80;
+    var mcEl = document.getElementById('hdcpMaxChange');
+    if (mcEl) mcEl.value = leagueSettings.hdcpMaxChange !== undefined ? leagueSettings.hdcpMaxChange : 2;
     // Apply to scoring
     flightMode = leagueSettings.flightMode || 'hl';
     skinsEnabled = leagueSettings.skinsEnabled !== false;
     // Populate league name field
     var lni = document.getElementById('leagueNameInp');
     if (lni && league) lni.value = league.leagueName || '';
+    // Update roster subtitle
+    var rst = document.getElementById('rosterSubtitle');
+    if (rst) {
+      rst.textContent = leagueSettings.teamFormat === 'random'
+        ? 'Random teams mode — roster is a list of individual players drawn each week'
+        : 'Static partners — same teams every week';
+    }
   } catch(e) { console.warn('Could not load settings', e); }
 }
 
@@ -2985,6 +3106,34 @@ function setSettingSkins(on, btn) {
   if (btn) btn.classList.add('active');
 }
 
+function setSettingHdcp(mode, btn) {
+  leagueSettings.hdcpSystem = mode;
+  document.querySelectorAll('#settingHdcpLive,#settingHdcpEstablish').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var opts = document.getElementById('hdcpEstablishOpts');
+  var desc = document.getElementById('hdcpLiveDesc');
+  if (opts) opts.style.display = mode === 'establish' ? '' : 'none';
+  if (desc) desc.style.display = mode === 'live' ? '' : 'none';
+}
+
+function setSettingTeamFormat(format, btn) {
+  leagueSettings.teamFormat = format;
+  document.querySelectorAll('#settingTeamStatic,#settingTeamRandom').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  updateTeamFormatHint();
+}
+
+function updateTeamFormatHint() {
+  var el = document.getElementById('teamFormatHint');
+  if (!el) return;
+  var fmt = leagueSettings.teamFormat || 'static';
+  if (fmt === 'random') {
+    el.textContent = 'Random: teams are randomly drawn each week. The roster is used as a list of individual players.';
+  } else {
+    el.textContent = 'Static: same partners every week as set in the Roster tab.';
+  }
+}
+
 function setSettingAltNines(on, btn) {
   leagueSettings.alternateNines = on;
   document.querySelectorAll('#settingAltNinesOn,#settingAltNinesOff').forEach(function(b) { b.classList.remove('active'); });
@@ -2996,10 +3145,14 @@ async function saveLeagueSettings() {
   var sl = parseInt(document.getElementById('seasonLengthInp').value) || 29;
   var settings = {
     subThreshold: st,
-    seasonLength: sl,
     flightMode: leagueSettings.flightMode || 'hl',
     skinsEnabled: leagueSettings.skinsEnabled !== false,
-    alternateNines: leagueSettings.alternateNines === true
+    alternateNines: leagueSettings.alternateNines === true,
+    teamFormat: leagueSettings.teamFormat || 'static',
+    hdcpSystem: leagueSettings.hdcpSystem || 'live',
+    hdcpEstWeeks: parseInt((document.getElementById('hdcpEstWeeks')||{}).value) || 5,
+    hdcpPct: parseInt((document.getElementById('hdcpPct')||{}).value) || 80,
+    hdcpMaxChange: parseFloat((document.getElementById('hdcpMaxChange')||{}).value) || 0
   };
   try {
     await api('PUT', '/api/league/settings', settings);
@@ -3163,6 +3316,62 @@ async function editStandingsRow(btn) {
       document.getElementById('adjErr').textContent = 'Error: ' + e.message;
     }
   };
+}
+
+// ══ CALCULATED HANDICAPS ══
+async function loadCalculatedHandicaps() {
+  var el = document.getElementById('calcHdcpContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var data = await api('GET', '/api/league/handicaps/calculated');
+    if (!Object.keys(data).length) {
+      el.innerHTML = '<div class="empty-state">No rounds saved yet.</div>';
+      return;
+    }
+    var rows = rosterTeams.map(function(t) {
+      var h = data[t.id];
+      if (!h) return '';
+      var name = esc(t.player1||'') + (t.player2 ? ' / ' + esc(t.player2) : '');
+      var hdcpDisplay, statusBadge;
+      if (h.status === 'establishing') {
+        hdcpDisplay = '<span style="color:var(--muted)">—</span>';
+        statusBadge = '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,.15);padding:2px 7px;border-radius:4px;border:1px solid rgba(201,168,76,.3);">Week ' + h.roundsPlayed + ' of ' + h.hdcpEstWeeks + ' (establishing)</span>';
+      } else if (h.status === 'no_rounds') {
+        hdcpDisplay = '<span style="color:var(--muted)">—</span>';
+        statusBadge = '<span style="font-size:10px;color:var(--muted);font-style:italic;">No rounds played</span>';
+      } else {
+        var pct = h.hdcpSystem === 'establish' ? ' (' + h.hdcpPct + '%)' : '';
+        var cap = (h.hdcpMaxChange && h.hdcpMaxChange > 0) ? ' | cap ±' + h.hdcpMaxChange : '';
+        hdcpDisplay = '<strong style="color:var(--cream);font-size:15px;">' + (h.calculatedHdcp > 0 ? '+' : '') + h.calculatedHdcp + '</strong>';
+        statusBadge = '<span style="font-size:11px;color:var(--muted);">avg diff: ' + (h.avgDiff > 0 ? '+' : '') + h.avgDiff + pct + ' over ' + h.roundsPlayed + ' rounds</span>';
+      }
+      var applyBtn = (h.status !== 'establishing' && h.status !== 'no_rounds')
+        ? '<button class="btn-sc-load" style="font-size:11px;padding:4px 10px;" onclick="applyCalcHandicap(' + t.id + ',' + h.calculatedHdcp + ')">Apply</button>'
+        : '';
+      return '<tr><td style="font-weight:700">' + name + '</td>' +
+        '<td style="text-align:center">' + hdcpDisplay + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td style="text-align:center">' + applyBtn + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<table class="team-table" style="width:100%">' +
+      '<thead><tr><th>Team</th><th style="text-align:center">Calc Hdcp</th><th>Status</th><th></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:10px;">Click Apply to update a team roster handicap with the calculated value.</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
+
+async function applyCalcHandicap(teamId, hdcp) {
+  try {
+    await api('PUT', '/api/league/teams/' + teamId, { handicap: hdcp });
+    var team = rosterTeams.find(function(t) { return t.id === teamId; });
+    if (team) team.handicap = hdcp;
+    renderRosterTable();
+    toast('Handicap updated to ' + hdcp);
+    loadCalculatedHandicaps();
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 // ══ UTILS ══
