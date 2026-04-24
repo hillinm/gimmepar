@@ -295,3 +295,38 @@ router.put('/settings', requireAuth, async (req, res) => {
     res.json({ success: true, settings: updated });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// Get all saved schedule weeks for a league
+router.get('/schedule/all', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    const rows = await getAll(
+      'SELECT week_number, matchups FROM schedule_weeks WHERE league_id=$1 ORDER BY week_number',
+      [leagueId]
+    );
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1', [leagueId]);
+    const teamMap = {};
+    teams.forEach(t => { teamMap[t.id] = t; });
+    const weeks = rows.map(row => {
+      const raw = JSON.parse(row.matchups);
+      return {
+        week: row.week_number,
+        matchups: raw.map(m => ({
+          hole: m.hole,
+          nine: m.nine || 'front',
+          teamA: m.teamAId ? teamMap[m.teamAId] || null : null,
+          teamB: m.teamBId ? teamMap[m.teamBId] || null : null
+        }))
+      };
+    });
+    res.json(weeks);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Delete all saved schedule weeks for a league
+router.delete('/schedule/all', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM schedule_weeks WHERE league_id=$1', [req.session.leagueId]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

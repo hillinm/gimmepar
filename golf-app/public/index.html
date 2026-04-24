@@ -923,6 +923,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <button class="btn-gen" onclick="generateSchedule()">📆 Generate</button>
           <button class="btn-export-sched" onclick="saveScheduleToDB()">💾 Save</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
+          <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear</button>
         </div>
         <div class="sched-info" id="schedInfo"></div>
         <div id="scheduleOutput"></div>
@@ -2526,16 +2527,75 @@ function showPage(name) {
 // ══ SCHEDULE GENERATOR ══
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
-function initSchedule() {
+async function initSchedule() {
   var out = document.getElementById('scheduleOutput');
-  if (!out.innerHTML) {
-    var fullRR = roundRobinWeeks(rosterTeams.length);
-    var seasonEl = document.getElementById('seasonWeeks');
-    var season = seasonEl ? parseInt(seasonEl.value) || 29 : 29;
-    document.getElementById('schedInfo').textContent =
-      rosterTeams.length + ' teams loaded. Full round robin = ' + fullRR +
-      ' weeks. Season set to ' + season + ' weeks.';
-  }
+  // Always try to load saved schedule from DB
+  try {
+    var weeks = await api('GET', '/api/league/schedule/all');
+    if (weeks && weeks.length) {
+      savedSchedule = weeks;
+      renderSavedSchedule(weeks);
+      document.getElementById('schedInfo').textContent =
+        weeks.length + ' weeks loaded from saved schedule.';
+      return;
+    }
+  } catch(e) { /* no saved schedule yet */ }
+  // No saved schedule — show info
+  var fullRR = roundRobinWeeks(rosterTeams.length);
+  var seasonEl = document.getElementById('seasonWeeks');
+  var season = seasonEl ? parseInt(seasonEl.value) || 29 : 29;
+  document.getElementById('schedInfo').textContent =
+    rosterTeams.length + ' teams loaded. Full round robin = ' + fullRR + ' weeks. Season set to ' + season + ' weeks.';
+}
+
+function renderSavedSchedule(weeks) {
+  var output = document.getElementById('scheduleOutput');
+  output.innerHTML = '';
+  weeks.forEach(function(w) {
+    var weekNum = w.week;
+    var rows = '';
+    w.matchups.forEach(function(m) {
+      var tA = m.teamA;
+      var tB = m.teamB;
+      var hole = m.hole;
+      if (!hole) return;
+      var isBack = hole >= 10;
+      var chipClass = 'hole-chip' + (isBack ? ' back' : '');
+      var nineDisplay = m.nine === 'back' ? 'Back 9' : 'Front 9';
+      var nameA = tA ? esc(tA.player1||'') + ' / ' + esc(tA.player2||'') : 'BYE';
+      if (!tB) {
+        rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
+      } else {
+        var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
+        rows += '<tr>';
+        rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
+        rows += '<td class="nine-col">' + nineDisplay + '</td>';
+        rows += '<td class="team-a-name">' + nameA + '</td>';
+        rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
+        rows += '<td class="team-b-name">' + nameB + '</td>';
+        rows += '</tr>';
+      }
+    });
+    if (!rows) return;
+    var section = document.createElement('div');
+    section.className = 'schedule-week';
+    section.innerHTML = '<div class="schedule-week-title">Week ' + weekNum + '</div>' +
+      '<div class="section-card"><table class="sched-table">' +
+      '<thead><tr><th>Hole</th><th>Nine</th><th>Team A</th><th></th><th>Team B</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
+    output.appendChild(section);
+  });
+}
+
+async function clearSavedSchedule() {
+  if (!confirm('Delete the saved schedule from the database? This cannot be undone.')) return;
+  try {
+    await api('DELETE', '/api/league/schedule/all');
+    savedSchedule = [];
+    document.getElementById('scheduleOutput').innerHTML = '';
+    document.getElementById('schedInfo').textContent = 'Schedule cleared.';
+    toast('Schedule cleared');
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 function roundRobinWeeks(n) {
