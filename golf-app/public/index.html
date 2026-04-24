@@ -2591,45 +2591,57 @@ function getTeamNine(team, weekNum) {
 function assignHoles(matchups, weekNum) {
   var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
   var byes = matchups.filter(function(m) { return !m.teamB; });
+  var useAlt = leagueSettings && leagueSettings.alternateNines;
+
+  if (!useAlt) {
+    // No alternating — spread across all 18 holes
+    var allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+    var offset = (weekNum - 1) % allHoles.length;
+    var rotated = allHoles.slice(offset).concat(allHoles.slice(0, offset));
+    var assigned = realMatchups.map(function(m, i) {
+      return Object.assign({}, m, { hole: rotated[i % rotated.length] });
+    });
+    assigned.sort(function(a, b) { return a.hole - b.hole; });
+    return assigned.concat(byes.map(function(m) { return Object.assign({}, m, { hole: null }); }));
+  }
+
+  // Alternate nines — determine each team's nine for this week
+  // Then group matchups: both-front, both-back, or split (assign to the team's preferred nine)
+  var frontMatchups = [];
+  var backMatchups  = [];
+
+  realMatchups.forEach(function(m) {
+    var nineA = getTeamNine(m.teamA, weekNum);
+    var nineB = getTeamNine(m.teamB, weekNum);
+    // Both on same nine — easy
+    if (nineA === 'back' && nineB === 'back') {
+      backMatchups.push(Object.assign({}, m, { nine: 'back' }));
+    } else {
+      // Both front, or split — put on front
+      // For split matchups, each team still plays their own nine
+      frontMatchups.push(Object.assign({}, m, { nine: 'front' }));
+    }
+  });
 
   var frontHoles = [1,2,3,4,5,6,7,8,9];
   var backHoles  = [10,11,12,13,14,15,16,17,18];
-  var allHoles   = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  var fOff = (weekNum - 1) % frontHoles.length;
+  var bOff = (weekNum - 1) % backHoles.length;
+  var fRot = frontHoles.slice(fOff).concat(frontHoles.slice(0, fOff));
+  var bRot = backHoles.slice(bOff).concat(backHoles.slice(0, bOff));
 
-  // Assign hole rotation offset by week
-  var frontOffset = (weekNum - 1) % frontHoles.length;
-  var backOffset  = (weekNum - 1) % backHoles.length;
-  var allOffset   = (weekNum - 1) % allHoles.length;
-
-  var frontRotated = frontHoles.slice(frontOffset).concat(frontHoles.slice(0, frontOffset));
-  var backRotated  = backHoles.slice(backOffset).concat(backHoles.slice(0, backOffset));
-  var allRotated   = allHoles.slice(allOffset).concat(allHoles.slice(0, allOffset));
-
-  // Track separate counters per nine pool
-  var frontIdx = 0, backIdx = 0, allIdx = 0;
-
-  var assigned = realMatchups.map(function(m) {
-    var useAlt = leagueSettings && leagueSettings.alternateNines;
-    var nineA = getTeamNine(m.teamA, weekNum);
-    var nineB = getTeamNine(m.teamB, weekNum);
-    // Matchup nine = average/dominant nine of the two teams
-    var nine = (nineA === 'back' && nineB === 'back') ? 'back'
-             : (nineA === 'front' && nineB === 'front') ? 'front'
-             : 'front'; // mixed — put on front
-    var hole;
-    if (!useAlt) {
-      hole = allRotated[allIdx % allRotated.length]; allIdx++;
-    } else if (nine === 'back') {
-      hole = backRotated[backIdx % backRotated.length]; backIdx++;
-    } else {
-      hole = frontRotated[frontIdx % frontRotated.length]; frontIdx++;
-    }
-    return Object.assign({}, m, { hole: hole, nine: nine });
+  // Assign unique holes within each nine pool
+  // If more matchups than holes in that pool, cycle (but warn)
+  var result = [];
+  frontMatchups.forEach(function(m, i) {
+    result.push(Object.assign({}, m, { hole: fRot[i % fRot.length] }));
+  });
+  backMatchups.forEach(function(m, i) {
+    result.push(Object.assign({}, m, { hole: bRot[i % bRot.length] }));
   });
 
-  assigned.sort(function(a, b) { return a.hole - b.hole; });
-  var byesWithHole = byes.map(function(m) { return Object.assign({}, m, { hole: null }); });
-  return assigned.concat(byesWithHole);
+  result.sort(function(a, b) { return a.hole - b.hole; });
+  return result.concat(byes.map(function(m) { return Object.assign({}, m, { hole: null }); }));
 }
 
 function generateSchedule() {
