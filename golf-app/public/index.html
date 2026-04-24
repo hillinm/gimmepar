@@ -987,6 +987,19 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           </div>
         </div>
 
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <!-- Alternate Nines -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔀 Alternate Nines (Schedule)</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">When enabled, teams alternate between Front 9 and Back 9 each week based on week number.</div>
+          <div class="setting-toggle">
+            <button class="setting-btn" id="settingAltNinesOn" onclick="setSettingAltNines(true,this)">Enabled</button>
+            <button class="setting-btn" id="settingAltNinesOff" onclick="setSettingAltNines(false,this)">Disabled</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;">Odd weeks = Front 9, Even weeks = Back 9</div>
+        </div>
+
         <button class="btn-save-course" onclick="saveLeagueSettings()">💾 Save Settings</button>
         <div id="settingsSaveResult" style="margin-top:10px;font-size:13px;"></div>
       </div>
@@ -1057,7 +1070,7 @@ let lastCalcData = [];
 let courseSearchResults = [];
 let flightMode = 'hl';
 let skinsEnabled = true;
-let leagueSettings = { subThreshold: 2, seasonLength: 29, flightMode: 'hl', skinsEnabled: true };
+let leagueSettings = { subThreshold: 2, seasonLength: 29, flightMode: 'hl', skinsEnabled: true, alternateNines: false };
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -2559,9 +2572,20 @@ function buildRoundRobin(teams) {
 // Assign one matchup per hole across all 18 holes, rotating start each week
 // With >18 matchups some holes get 2 groups — unavoidable, minimized by spread
 function assignHoles(matchups, weekNum) {
-  var allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
   var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
   var byes = matchups.filter(function(m) { return !m.teamB; });
+
+  var useAltNines = leagueSettings && leagueSettings.alternateNines;
+  var allHoles;
+  if (useAltNines) {
+    // Odd weeks = Front 9 (holes 1-9), Even weeks = Back 9 (holes 10-18)
+    allHoles = weekNum % 2 !== 0
+      ? [1,2,3,4,5,6,7,8,9]
+      : [10,11,12,13,14,15,16,17,18];
+  } else {
+    allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  }
+
   var offset = (weekNum - 1) % allHoles.length;
   var rotated = allHoles.slice(offset).concat(allHoles.slice(0, offset));
   var assigned = realMatchups.map(function(m, i) {
@@ -2592,9 +2616,11 @@ function generateSchedule() {
   savedSchedule = [];
   var output = document.getElementById('scheduleOutput');
   output.innerHTML = '';
+  var nineNote = (leagueSettings && leagueSettings.alternateNines)
+    ? ' | Odd weeks = F9, Even weeks = B9' : '';
   document.getElementById('schedInfo').textContent =
     teams.length + ' teams | ' + seasonWeeks + '-week season | ' +
-    matchupsPerWeek + ' matchups/week across 18 holes' + extraNote +
+    matchupsPerWeek + ' matchups/week' + extraNote + nineNote +
     ' | Showing weeks ' + startWeek + ' to ' + (startWeek + weeksToGen - 1);
 
   for (var w = 0; w < weeksToGen; w++) {
@@ -2736,6 +2762,12 @@ async function loadLeagueSettings() {
       son.classList.toggle('active', leagueSettings.skinsEnabled !== false);
       soff.classList.toggle('active', leagueSettings.skinsEnabled === false);
     }
+    var anon = document.getElementById('settingAltNinesOn');
+    var anoff = document.getElementById('settingAltNinesOff');
+    if (anon && anoff) {
+      anon.classList.toggle('active', leagueSettings.alternateNines === true);
+      anoff.classList.toggle('active', leagueSettings.alternateNines !== true);
+    }
     // Apply to scoring
     flightMode = leagueSettings.flightMode || 'hl';
     skinsEnabled = leagueSettings.skinsEnabled !== false;
@@ -2762,6 +2794,12 @@ function setSettingSkins(on, btn) {
   if (btn) btn.classList.add('active');
 }
 
+function setSettingAltNines(on, btn) {
+  leagueSettings.alternateNines = on;
+  document.querySelectorAll('#settingAltNinesOn,#settingAltNinesOff').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
 async function saveLeagueSettings() {
   var st = parseInt(document.getElementById('subThresholdInp').value) || 2;
   var sl = parseInt(document.getElementById('seasonLengthInp').value) || 29;
@@ -2769,7 +2807,8 @@ async function saveLeagueSettings() {
     subThreshold: st,
     seasonLength: sl,
     flightMode: leagueSettings.flightMode || 'hl',
-    skinsEnabled: leagueSettings.skinsEnabled !== false
+    skinsEnabled: leagueSettings.skinsEnabled !== false,
+    alternateNines: leagueSettings.alternateNines === true
   };
   try {
     await api('PUT', '/api/league/settings', settings);
