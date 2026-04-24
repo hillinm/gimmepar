@@ -3481,6 +3481,16 @@ async function saveLeagueSettings() {
     leagueSettings = settings;
     flightMode = settings.flightMode;
     skinsEnabled = settings.skinsEnabled;
+    // Re-render roster and schedule tab to reflect format change
+    renderRosterTable();
+    var addBtn = document.getElementById('btnAddTeam');
+    if (addBtn) addBtn.textContent = settings.teamFormat === 'random' ? '+ ADD PLAYER' : '+ ADD TEAM';
+    var rst = document.getElementById('rosterSubtitle');
+    if (rst) rst.textContent = settings.teamFormat === 'random'
+      ? 'Random teams mode — roster is a list of individual players drawn each week'
+      : 'Static partners — same teams every week';
+    var rdBtn = document.getElementById('btnRandomDraw');
+    if (rdBtn) rdBtn.style.display = settings.teamFormat === 'random' ? '' : 'none';
     document.getElementById('settingsSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Settings saved.</span>';
     toast('Settings saved');
   } catch(e) {
