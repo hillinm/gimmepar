@@ -606,7 +606,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <div id="loginForm">
         <div class="form-group">
           <label>Email or League Name</label>
-          <input class="form-input" id="loginName" placeholder="Email or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="username" inputmode="email" oninput="saveLoginName(this.value)">
+          <input class="form-input" id="loginName" placeholder="Email or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="username" inputmode="email">
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -1267,6 +1267,8 @@ async function login() {
   try {
     const res = await api('POST', '/api/auth/login', {name, password: pass});
     if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
+    // Remember login name on successful login
+    try { localStorage.setItem('gp_last_login', name); } catch(e) {}
     await onLogin(res);
   } catch(e) {
     showError(e.message || 'Login failed — check your credentials.');
