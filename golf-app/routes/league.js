@@ -22,7 +22,8 @@ router.put('/course', requireAuth, async (req, res) => {
 // ── TEAMS ──
 router.get('/teams', requireAuth, async (req, res) => {
   try {
-    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1 ORDER BY sort_order, id', [req.session.leagueId]);
+    const leagueId = (req.session.role === 'superadmin' && req.query.leagueId) ? req.query.leagueId : req.session.leagueId;
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1 ORDER BY sort_order, id', [leagueId]);
     res.json(teams);
   } catch(e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
