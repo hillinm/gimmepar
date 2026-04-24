@@ -3142,7 +3142,6 @@ function setSettingAltNines(on, btn) {
 
 async function saveLeagueSettings() {
   var st = parseInt(document.getElementById('subThresholdInp').value) || 2;
-  var sl = parseInt(document.getElementById('seasonLengthInp').value) || 29;
   var settings = {
     subThreshold: st,
     flightMode: leagueSettings.flightMode || 'hl',
