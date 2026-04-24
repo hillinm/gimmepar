@@ -3062,7 +3062,7 @@ function renderFlightStandings(title, cls, teams, isAdmin) {
   var rows = teams.map(function(s, i) {
     var t = s.team;
     var name = esc(t.player1||'') + ' / ' + esc(t.player2||'');
-    var adjNote = s.adj ? ' <span style="font-size:10px;color:var(--gold);font-style:italic;">(adj)</span>' : '';
+    var adjNote = (s.adj && isAdmin) ? ' <span style="font-size:10px;color:var(--gold);font-style:italic;">(adj)</span>' : '';
     var editBtn = isAdmin
       ? '<td class="num"><button class="btn-del" style="font-size:11px;padding:3px 8px;background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold2);" data-tid="'+t.id+'" data-tname="'+esc(name)+'" data-wins="'+s.wins+'" data-losses="'+s.losses+'" data-ties="'+s.ties+'" onclick="editStandingsRow(this)">Edit</button></td>'
       : '';
