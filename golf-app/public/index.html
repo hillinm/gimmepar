@@ -1766,6 +1766,7 @@ async function loadPlayersList() {
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
       html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" onclick="editPlayer(this)">Edit</button>';
       html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
+      html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">✕</button>';
       html += '</td>';
       html += '</tr>';
     });
@@ -1779,6 +1780,15 @@ async function assignTeam(playerId, teamId) {
     await api('PUT', '/api/admin/players/'+playerId+'/team', {teamId: teamId||null});
     toast('Team assigned');
   } catch(e) { toast('Error: '+e.message); }
+}
+
+async function deletePlayer(userId, userName) {
+  if (!confirm('Delete ' + userName + '? This cannot be undone.')) return;
+  try {
+    await api('DELETE', '/api/admin/players/' + userId);
+    toast(userName + ' deleted');
+    loadPlayersList();
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 async function sendResetEmail(userId, userEmail) {
