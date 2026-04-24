@@ -1988,10 +1988,8 @@ async function loadPlayerStandings() {
         s.adj     = adj;
       }
     });
-    var flightA = data.filter(function(s){return s.flight==='A';}).sort(function(a,b){return b.points-a.points;});
-    var flightB = data.filter(function(s){return s.flight==='B';}).sort(function(a,b){return b.points-a.points;});
-    el.innerHTML = renderFlightStandings('A Flight','a',flightA,false) +
-                   renderFlightStandings('B Flight','b',flightB,false);
+    var sorted = data.slice().sort(function(a,b){return b.points-a.points||a.team.handicap-b.team.handicap;});
+    el.innerHTML = renderCombinedStandings('Season Standings', sorted, false);
   } catch(e) {
     el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
   }
@@ -3043,18 +3041,47 @@ async function loadStandings() {
     }
 
     var isAdmin = currentUser && (currentUser.role === 'leagueadmin' || currentUser.role === 'superadmin');
-    var flightA = data.filter(function(s) { return s.flight === 'A'; }).sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
-    var flightB = data.filter(function(s) { return s.flight === 'B'; }).sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
+    var sorted = data.slice().sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
 
-    var html = renderFlightStandings('A Flight', 'a', flightA, isAdmin) +
-               renderFlightStandings('B Flight', 'b', flightB, isAdmin);
+    var html = renderCombinedStandings('Season Standings', sorted, isAdmin);
     if (isAdmin) {
-      html += '<div style="margin-top:16px;font-size:12px;color:var(--muted);font-style:italic;">Click any team row to manually adjust their W/L/T record.</div>';
+      html += '<div style="margin-top:16px;font-size:12px;color:var(--muted);font-style:italic;">Click Edit on any team to manually adjust their record.</div>';
     }
     el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
   }
+}
+
+function renderCombinedStandings(title, teams, isAdmin) {
+  if (!teams.length) return '<div class="empty-state">No standings yet.</div>';
+  var rows = teams.map(function(s, i) {
+    var t = s.team;
+    var name = esc(t.player1||'') + ' / ' + esc(t.player2||'');
+    var adjNote = (s.adj && isAdmin) ? ' <span style="font-size:10px;color:var(--gold);font-style:italic;">(adj)</span>' : '';
+    var editBtn = isAdmin
+      ? '<td class="num"><button class="btn-del" style="font-size:11px;padding:3px 8px;background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold2);" data-tid="'+t.id+'" data-tname="'+esc(name)+'" data-wins="'+s.wins+'" data-losses="'+s.losses+'" data-ties="'+s.ties+'" onclick="editStandingsRow(this)">Edit</button></td>'
+      : '';
+    return '<tr>' +
+      '<td class="rank">' + (i+1) + '</td>' +
+      '<td style="font-weight:700">' + name + adjNote + '</td>' +
+      '<td class="num">' + t.handicap + '</td>' +
+      '<td class="num pts">' + s.points + '</td>' +
+      '<td class="num" style="color:var(--green2)">' + s.wins + '</td>' +
+      '<td class="num" style="color:#ff9999">' + s.losses + '</td>' +
+      '<td class="num" style="color:var(--muted)">' + s.ties + '</td>' +
+      '<td class="num">' + s.played + '</td>' +
+      editBtn +
+      '</tr>';
+  }).join('');
+  var editHeader = isAdmin ? '<th class="num"></th>' : '';
+  return '<div class="standings-flight">' +
+    '<div class="standings-flight-title a">' + title + '</div>' +
+    '<table class="standings-tbl">' +
+    '<thead><tr><th class="rank">#</th><th>Team</th><th class="num">Hdcp</th><th class="num">Pts</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Played</th>' + editHeader + '</tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>' +
+    '<div class="playoff-note">Flights will be determined at the end of the season for the playoff tournament.</div>' +
+    '</div>';
 }
 
 function renderFlightStandings(title, cls, teams, isAdmin) {
