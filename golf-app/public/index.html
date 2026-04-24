@@ -1561,7 +1561,8 @@ async function loadAdminScorecard() {
     if (opponent) { var os={id:opponent.id,nine:opponent.nine||'front',holes:Array(9).fill(null)}; scoreTeams.push(os); area.appendChild(buildReadOnlyCard(opponent,os)); }
     var cb=document.createElement('button'); cb.className='btn-calculate'; cb.style.marginTop='20px'; cb.innerHTML='&#9971; CALCULATE'; cb.onclick=calculate; area.appendChild(cb);
   } catch(e) { area.innerHTML='<div style="color:#ff9999">Error: '+e.message+'</div>'; }
-}  if (tab==='scorecard') initAdminScorecard();
+}
+  if (tab==='scorecard') initAdminScorecard();
 }
 
 function adminCourseSearch(q) {
