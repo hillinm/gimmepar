@@ -3070,112 +3070,102 @@ function exportScheduleCSV() {
 }
 
 async function randomDrawWeek() {
-  if (!rosterTeams.length) { toast('Add players to the roster first'); return; }
   var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
   var resultEl = document.getElementById('weekGenResult');
   var btn = document.getElementById('btnRandomDraw');
   if (btn) { btn.textContent = '...'; btn.disabled = true; }
-  resultEl.innerHTML = '<span style="color:var(--muted)">Drawing teams...</span>';
+  resultEl.innerHTML = '<span style="color:var(--muted)">Drawing teams and matchups...</span>';
 
   try {
-    // Get previous pairings to avoid repeats
-    var prevPairings = new Set();
-    try {
-      var history = await api('GET', '/api/league/draw/history');
-      history.forEach(function(p) { prevPairings.add(p); });
-    } catch(e) {}
-
-    // Build player list — try Players tab first, fall back to roster
+    // ── Step 1: Get all players ──
     var players = [];
     try {
-      var playerAccounts = await api('GET', '/api/admin/players');
-      if (playerAccounts && playerAccounts.length >= 2) {
-        playerAccounts.forEach(function(p) {
-          players.push({
-            name: p.first_name + ' ' + p.last_name,
-            teamId: 'player_' + p.id,
-            nine: 'front',
-            handicap: 0
-          });
+      var accounts = await api('GET', '/api/admin/players');
+      if (accounts && accounts.length >= 2) {
+        accounts.forEach(function(p) {
+          players.push({ name: p.first_name + ' ' + p.last_name, id: 'p' + p.id, handicap: 0, nine: 'front' });
         });
       }
     } catch(e) {}
-    // Fall back to roster if no player accounts
     if (players.length < 2) {
+      if (!rosterTeams.length) { try { await loadRoster(); } catch(e2) {} }
       rosterTeams.forEach(function(t) {
-        if (t.player1) players.push({ name: t.player1, teamId: String(t.id), nine: t.nine, handicap: t.handicap });
+        if (t.player1) players.push({ name: t.player1, id: String(t.id), handicap: t.handicap, nine: t.nine });
       });
     }
-    if (players.length < 2) { toast('Need at least 2 players in roster or Players tab'); return; }
-
-    // Smart shuffle — try to avoid previous pairings
-    var maxAttempts = 100;
-    var bestDraw = null;
-    var bestRepeats = Infinity;
-
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      // Shuffle
-      var shuffled = players.slice();
-      for (var i = shuffled.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
-      }
-      // Count repeats
-      var repeats = 0;
-      for (var k = 0; k < shuffled.length - 1; k += 2) {
-        var idA = shuffled[k].teamId;
-        var idB = shuffled[k+1].teamId;
-        var key = [Math.min(idA, idB), Math.max(idA, idB)].join('-');
-        if (prevPairings.has(key)) repeats++;
-      }
-      if (repeats < bestRepeats) {
-        bestRepeats = repeats;
-        bestDraw = shuffled.slice();
-        if (repeats === 0) break; // perfect draw
-      }
+    if (players.length < 2) {
+      resultEl.innerHTML = '<span style="color:#ff9999">Need at least 2 players.</span>';
+      if (btn) { btn.textContent = '\uD83C\uDFB2 Random Draw'; btn.disabled = false; }
+      return;
     }
 
-    // Build matchups from best draw
+    // ── Step 2: Shuffle players randomly then pair into 2-man teams ──
+    var shuffled = players.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+    }
+    var teams = [];
+    for (var k = 0; k < shuffled.length - 1; k += 2) {
+      teams.push({
+        id: 'team_' + k,
+        player1: shuffled[k].name,
+        player2: shuffled[k+1].name,
+        handicap: 0,
+        nine: 'front'
+      });
+    }
+    if (shuffled.length % 2 !== 0) {
+      // Odd player out — add as solo team
+      var solo = shuffled[shuffled.length - 1];
+      teams.push({ id: 'team_solo', player1: solo.name, player2: '', handicap: 0, nine: 'front' });
+    }
+
+    // ── Step 3: Randomly pair teams as opponents ──
+    var teamShuffled = teams.slice();
+    for (var ti = teamShuffled.length - 1; ti > 0; ti--) {
+      var tj = Math.floor(Math.random() * (ti + 1));
+      var ttmp = teamShuffled[ti]; teamShuffled[ti] = teamShuffled[tj]; teamShuffled[tj] = ttmp;
+    }
     var matchups = [];
-    for (var m = 0; m < bestDraw.length - 1; m += 2) {
-      var pA = bestDraw[m];
-      var pB = bestDraw[m+1];
-      // Create synthetic team objects
-      matchups.push({
-        teamA: { id: pA.teamId, player1: pA.name, player2: '', handicap: pA.handicap, nine: pA.nine },
-        teamB: { id: pB.teamId, player1: pB.name, player2: '', handicap: pB.handicap, nine: pB.nine }
-      });
+    for (var mi = 0; mi < teamShuffled.length - 1; mi += 2) {
+      matchups.push({ teamA: teamShuffled[mi], teamB: teamShuffled[mi + 1] });
     }
-    if (bestDraw.length % 2 !== 0) {
-      var last = bestDraw[bestDraw.length - 1];
-      matchups.push({ teamA: { id: last.teamId, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine }, teamB: null });
+    if (teamShuffled.length % 2 !== 0) {
+      matchups.push({ teamA: teamShuffled[teamShuffled.length - 1], teamB: null });
     }
 
+    // ── Step 4: Assign holes ──
     var withHoles = assignHoles(matchups, weekNum);
 
-    // Save to DB
+    // ── Step 5: Save to DB with names ──
     var slim = [{ week: weekNum, matchups: withHoles.map(function(m) {
-      return { hole: m.hole, nine: m.nine||'front', teamAId: m.teamA ? m.teamA.id : null, teamBId: m.teamB ? m.teamB.id : null };
+      return {
+        hole: m.hole,
+        nine: m.nine || 'front',
+        teamAId: m.teamA ? m.teamA.id : null,
+        teamBId: m.teamB ? m.teamB.id : null,
+        teamAName: m.teamA ? (m.teamA.player1 + (m.teamA.player2 ? ' / ' + m.teamA.player2 : '')) : null,
+        teamBName: m.teamB ? (m.teamB.player1 + (m.teamB.player2 ? ' / ' + m.teamB.player2 : '')) : null
+      };
     })}];
     await api('POST', '/api/league/schedule/save', { weeks: slim });
     await api('PUT', '/api/league/settings', { currentWeek: weekNum });
 
-    // Update display
+    // ── Step 6: Display ──
     var existing = savedSchedule.findIndex(function(w) { return w.week === weekNum; });
     var weekData = { week: weekNum, matchups: withHoles };
     if (existing >= 0) savedSchedule[existing] = weekData;
     else savedSchedule.push(weekData);
-    savedSchedule.sort(function(a,b) { return a.week - b.week; });
+    savedSchedule.sort(function(a, b) { return a.week - b.week; });
     renderSavedSchedule(savedSchedule);
-
     document.getElementById('startWeek').value = weekNum + 1;
-    var repeatMsg = bestRepeats > 0 ? ' (' + bestRepeats + ' repeat pairing' + (bestRepeats>1?'s':'') + ' unavoidable)' : ' (no repeat pairings)';
-    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' drawn — ' + matchups.filter(function(m){return m.teamB;}).length + ' matchups' + repeatMsg + '</span>';
+    resultEl.innerHTML = '<span style="color:var(--green2)">\u2713 Week ' + weekNum + ': ' + players.length + ' players \u2192 ' + teams.length + ' teams \u2192 ' + matchups.filter(function(m) { return m.teamB; }).length + ' matchups.</span>';
 
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
-  if (btn) { btn.textContent = '🎲 Random Draw'; btn.disabled = false; }
+  if (btn) { btn.textContent = '\uD83C\uDFB2 Random Draw'; btn.disabled = false; }
 }
 
 async function generateAndSaveWeek() {
