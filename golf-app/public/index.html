@@ -3085,14 +3085,28 @@ async function randomDrawWeek() {
       history.forEach(function(p) { prevPairings.add(p); });
     } catch(e) {}
 
-    // Build player list from roster
+    // Build player list — try Players tab first, fall back to roster
     var players = [];
-    rosterTeams.forEach(function(t) {
-      // Each roster row = one individual player in random mode
-      if (t.player1) players.push({ name: t.player1, teamId: String(t.id), nine: t.nine, handicap: t.handicap });
-    });
-
-    if (players.length < 2) { toast('Need at least 2 players'); return; }
+    try {
+      var playerAccounts = await api('GET', '/api/admin/players');
+      if (playerAccounts && playerAccounts.length >= 2) {
+        playerAccounts.forEach(function(p) {
+          players.push({
+            name: p.first_name + ' ' + p.last_name,
+            teamId: 'player_' + p.id,
+            nine: 'front',
+            handicap: 0
+          });
+        });
+      }
+    } catch(e) {}
+    // Fall back to roster if no player accounts
+    if (players.length < 2) {
+      rosterTeams.forEach(function(t) {
+        if (t.player1) players.push({ name: t.player1, teamId: String(t.id), nine: t.nine, handicap: t.handicap });
+      });
+    }
+    if (players.length < 2) { toast('Need at least 2 players in roster or Players tab'); return; }
 
     // Smart shuffle — try to avoid previous pairings
     var maxAttempts = 100;
@@ -3979,12 +3993,18 @@ async function drawRandomTeams() {
 // ══ TEAM BUILDER ══
 var builtTeams = [];
 
-function initTeamBuilder() {
+async function initTeamBuilder() {
   var container = document.getElementById('teamBuilderRows');
-  if (!container || container.children.length > 0) return;
-  // Start with a few empty rows
+  if (!container) return;
+  // Load player accounts for dropdowns
+  try {
+    window._cachedPlayers = await api('GET', '/api/admin/players');
+  } catch(e) { window._cachedPlayers = []; }
+  // Start with empty rows matching half the player count
   builtTeams = [];
-  for (var i = 0; i < 3; i++) addTeamBuilderRow();
+  var count = window._cachedPlayers && window._cachedPlayers.length ? Math.ceil(window._cachedPlayers.length / 2) : 3;
+  count = Math.min(count, 20);
+  for (var i = 0; i < count; i++) addTeamBuilderRow();
 }
 
 function addTeamBuilderRow() {
@@ -3997,9 +4017,18 @@ function renderTeamBuilderRows() {
   if (!container) return;
   // Build player options from roster
   var playerOpts = '<option value="">-- select player --</option>';
-  rosterTeams.forEach(function(t) {
-    if (t.player1) playerOpts += '<option value="' + esc(t.player1) + '">' + esc(t.player1) + '</option>';
-    if (t.player2) playerOpts += '<option value="' + esc(t.player2) + '">' + esc(t.player2) + '</option>';
+  // Use player accounts if available, else roster
+  var allPlayerNames = [];
+  if (window._cachedPlayers && window._cachedPlayers.length) {
+    window._cachedPlayers.forEach(function(p) { allPlayerNames.push(p.first_name + ' ' + p.last_name); });
+  } else {
+    rosterTeams.forEach(function(t) {
+      if (t.player1) allPlayerNames.push(t.player1);
+      if (t.player2 && leagueSettings.teamFormat !== 'random') allPlayerNames.push(t.player2);
+    });
+  }
+  allPlayerNames.forEach(function(name) {
+    playerOpts += '<option value="' + esc(name) + '">' + esc(name) + '</option>';
   });
   var html = '';
   builtTeams.forEach(function(team, i) {
