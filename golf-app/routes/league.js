@@ -246,19 +246,34 @@ router.get('/schedule/week/:weekNum', requireAuth, async (req, res) => {
     const weekNum = parseInt(req.params.weekNum);
     const row = await getOne('SELECT * FROM schedule_weeks WHERE league_id=$1 AND week_number=$2', [leagueId, weekNum]);
     if (!row) return res.status(404).json({ error: 'No schedule for week ' + weekNum });
-    res.json({ week: row.week_number, matchups: JSON.parse(row.matchups) });
+    const rawMatchups = JSON.parse(row.matchups);
+    // Hydrate team data from IDs
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1', [leagueId]);
+    const teamMap = {};
+    teams.forEach(t => { teamMap[t.id] = t; });
+    const matchups = rawMatchups.map(m => ({
+      hole: m.hole,
+      nine: m.nine || 'front',
+      teamA: m.teamAId ? teamMap[m.teamAId] || null : null,
+      teamB: m.teamBId ? teamMap[m.teamBId] || null : null
+    }));
+    res.json({ week: row.week_number, matchups });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/schedule/current', requireAuth, async (req, res) => {
   try {
     const leagueId = req.session.leagueId;
-    // Return the highest saved week number as "current"
-    const row = await getOne(
-      'SELECT week_number FROM schedule_weeks WHERE league_id=$1 ORDER BY week_number DESC LIMIT 1',
-      [leagueId]
-    );
-    res.json({ currentWeek: row ? row.week_number : null });
+    // Get currentWeek from league settings
+    const league = await getOne('SELECT settings FROM leagues WHERE id=$1', [leagueId]);
+    const settings = JSON.parse(league?.settings || '{}');
+    const currentWeek = settings.currentWeek || null;
+    // Also check if that week exists in schedule
+    const hasWeek = currentWeek ? await getOne(
+      'SELECT week_number FROM schedule_weeks WHERE league_id=$1 AND week_number=$2',
+      [leagueId, currentWeek]
+    ) : null;
+    res.json({ currentWeek: hasWeek ? currentWeek : null });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

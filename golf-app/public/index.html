@@ -2755,12 +2755,34 @@ function exportScheduleCSV() {
 async function saveScheduleToDB() {
   if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
   try {
-    var res = await api('POST', '/api/league/schedule/save', { weeks: savedSchedule });
-    // Also save current week setting
+    // Slim down the payload — store only team IDs, hole, and nine (not full team objects)
+    var slimWeeks = savedSchedule.map(function(w) {
+      return {
+        week: w.week,
+        matchups: w.matchups.map(function(m) {
+          return {
+            hole: m.hole,
+            nine: m.nine || 'front',
+            teamAId: m.teamA ? m.teamA.id : null,
+            teamBId: m.teamB ? m.teamB.id : null
+          };
+        })
+      };
+    });
+    var btn = document.querySelector('.btn-export-sched[onclick*="saveScheduleToDB"]');
+    if (btn) { btn.textContent = '💾 Saving...'; btn.disabled = true; }
+    var res = await api('POST', '/api/league/schedule/save', { weeks: slimWeeks });
+    if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }
+    // Save current week
     var cwEl = document.getElementById('currentWeekInp');
-    if (cwEl && league) league.currentWeek = parseInt(cwEl.value) || 1;
-    toast('✓ ' + res.saved + ' weeks saved — players can now see their matchups');
-  } catch(e) { toast('Error saving schedule: ' + e.message); }
+    var currentWeek = cwEl ? (parseInt(cwEl.value) || 1) : 1;
+    await api('PUT', '/api/league/settings', { currentWeek: currentWeek });
+    toast('✓ ' + res.saved + ' weeks saved');
+  } catch(e) {
+    var btn = document.querySelector('.btn-export-sched[onclick*="saveScheduleToDB"]');
+    if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }
+    toast('Error: ' + e.message);
+  }
 }
 
 
