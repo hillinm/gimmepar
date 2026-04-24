@@ -805,7 +805,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="teams-toolbar">
           <button class="btn-add" onclick="addTeamRow()">+ Add Team</button>
           <button class="btn-save-roster" onclick="saveRoster()">💾 Save Roster</button>
-          <button class="btn-save-roster" id="btnDrawTeams" style="display:none;background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="drawRandomTeams()">🎲 Draw Teams</button>
+          <button class="btn-save-roster" id="btnDrawTeams" style="background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="drawRandomTeams()">🎲 Draw Teams</button>
         </div>
         <div id="drawResult" style="font-size:13px;margin-top:8px;"></div>
         <div style="overflow-x:auto;">
@@ -3877,19 +3877,29 @@ async function sendLeagueEmail() {
 
 // ══ RANDOM TEAM DRAW ══
 async function drawRandomTeams() {
-  if (!rosterTeams.length) { toast('Add players to the roster first'); return; }
-
   var drawResult = document.getElementById('drawResult');
+  if (!drawResult) drawResult = { innerHTML: '' };
   drawResult.innerHTML = '<span style="color:var(--muted)">Drawing teams...</span>';
 
-  // Collect all individual players from roster
+  // Pull players from Players tab first, fall back to roster
   var players = [];
-  rosterTeams.forEach(function(t) {
-    if (t.player1 && t.player1.trim()) players.push({ name: t.player1.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
-    if (t.player2 && t.player2.trim()) players.push({ name: t.player2.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
-  });
+  try {
+    var accounts = await api('GET', '/api/admin/players');
+    if (accounts && accounts.length >= 2) {
+      accounts.forEach(function(p) {
+        players.push({ name: p.first_name + ' ' + p.last_name, handicap: 0, nine: 'front', origId: 'p' + p.id });
+      });
+    }
+  } catch(e) {}
+  // Fall back to roster if no player accounts
+  if (players.length < 2) {
+    rosterTeams.forEach(function(t) {
+      if (t.player1 && t.player1.trim()) players.push({ name: t.player1.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
+      if (t.player2 && t.player2.trim()) players.push({ name: t.player2.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
+    });
+  }
 
-  if (players.length < 2) { drawResult.innerHTML = '<span style="color:#ff9999">Need at least 2 players.</span>'; return; }
+  if (players.length < 2) { drawResult.innerHTML = '<span style="color:#ff9999">Need at least 2 players in the Players tab.</span>'; return; }
 
   // Load past pairings from saved schedule to avoid repeats
   var pastPairings = {};
