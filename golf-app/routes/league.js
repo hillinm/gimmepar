@@ -699,3 +699,29 @@ router.get('/draw/history', requireAuth, async (req, res) => {
     res.json([...pairings]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── LIVE SCORE POLLING ──
+// Returns the most recent round score for a team (for opponent live updates)
+router.get('/scores/latest/:teamId', requireAuth, async (req, res) => {
+  try {
+    const row = await getOne(
+      `SELECT rs.hole_scores, rs.gross, rs.net, rs.handicap_used, rs.nine, r.played_on
+       FROM round_scores rs
+       JOIN rounds r ON r.id = rs.round_id
+       WHERE r.league_id = $1 AND rs.team_id = $2
+       ORDER BY r.played_on DESC, r.id DESC
+       LIMIT 1`,
+      [req.session.leagueId, req.params.teamId]
+    );
+    if (!row) return res.json({ found: false });
+    res.json({
+      found: true,
+      hole_scores: JSON.parse(row.hole_scores || '[]'),
+      gross: row.gross,
+      net: row.net,
+      handicap_used: row.handicap_used,
+      nine: row.nine,
+      played_on: row.played_on
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

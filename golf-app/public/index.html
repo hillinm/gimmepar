@@ -1492,20 +1492,60 @@ function buildReadOnlyCard(team, st) {
   for (var i = 0; i < holesCount; i++) {
     holeCells += '<div style="text-align:center;">'
       + '<div style="font-size:10px;color:var(--muted);margin-bottom:3px;">H'+(i+1)+'</div>'
-      + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">—</div>'
+      + '<div id="opphole_'+team.id+'_'+i+'" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">—</div>'
       + '</div>';
   }
   card.innerHTML = '<div class="score-team-header">'
     + '<div class="team-num" style="background:rgba(122,138,106,.3)">VS</div>'
-    + '<div class="team-name-display">' + esc(team.player1) + ' / ' + esc(team.player2)
+    + '<div class="team-name-display">' + esc(team.player1||'') + (team.player2 ? ' / ' + esc(team.player2) : '')
     + ' <span style="font-size:10px;color:var(--muted);font-style:italic;">(view only)</span></div>'
+    + '<span id="oppLiveTag_'+team.id+'" style="font-size:10px;color:var(--muted);margin-left:auto;font-style:italic;"></span>'
     + '</div>'
     + '<div class="score-team-body">'
-    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Hdcp: ' + team.handicap + ' &bull; ' + nineLabel + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;" id="oppInfo_'+team.id+'">Hdcp: ' + (team.handicap||0) + ' &bull; ' + nineLabel + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + holeCells + '</div>'
-    + '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:10px;">Opponent scores will appear here when entered by your opponent or league admin.</div>'
+    + '<div id="oppTotal_'+team.id+'" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>'
     + '</div>';
   return card;
+}
+
+var _oppPollTimer = null;
+
+function startOpponentPolling(oppTeamId) {
+  if (_oppPollTimer) clearInterval(_oppPollTimer);
+  fetchOpponentScore(oppTeamId); // immediate fetch
+  _oppPollTimer = setInterval(function() { fetchOpponentScore(oppTeamId); }, 30000);
+}
+
+async function fetchOpponentScore(oppTeamId) {
+  try {
+    var data = await api('GET', '/api/league/scores/latest/' + oppTeamId);
+    if (!data.found) return;
+    var scores = data.hole_scores || [];
+    // Update hole cells
+    scores.forEach(function(score, i) {
+      var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
+      if (!cell) return;
+      if (score !== null && score !== undefined) {
+        cell.textContent = score;
+        cell.style.color = 'var(--cream)';
+        cell.style.borderColor = 'var(--border)';
+      }
+    });
+    // Update total
+    var totalEl = document.getElementById('oppTotal_' + oppTeamId);
+    if (totalEl && data.gross) {
+      totalEl.innerHTML = 'Gross: <strong>' + data.gross + '</strong>' +
+        (data.net !== null ? ' &nbsp;|&nbsp; Net: <strong>' + data.net + '</strong>' : '');
+      totalEl.style.color = 'var(--cream)';
+    }
+    // Update live tag
+    var tag = document.getElementById('oppLiveTag_' + oppTeamId);
+    if (tag) {
+      tag.textContent = '● live';
+      tag.style.color = 'var(--green2)';
+    }
+  } catch(e) { /* silent fail */ }
 }
 
 // ══ SUPER ADMIN ══
