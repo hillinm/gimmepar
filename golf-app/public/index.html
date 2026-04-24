@@ -916,15 +916,13 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div class="section-body">
         <div class="week-selector">
-          <label>Generate</label>
-          <input class="week-inp" type="number" id="weeksToGen" value="1" min="1" max="20">
-          <label>week(s) starting week</label>
-          <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99">
-          <button class="btn-gen" onclick="generateSchedule()">📆 Generate</button>
-          <button class="btn-export-sched" onclick="saveScheduleToDB()">💾 Save</button>
+          <label>Week</label>
+          <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;">
+          <button class="btn-gen" onclick="generateAndSaveWeek()">📆 Generate &amp; Save Week</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
-          <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear</button>
+          <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear All</button>
         </div>
+        <div id="weekGenResult" style="font-size:13px;margin-top:6px;"></div>
         <div class="sched-info" id="schedInfo"></div>
         <div id="scheduleOutput"></div>
       </div>
@@ -2700,10 +2698,10 @@ function assignHoles(matchups, weekNum) {
 function generateSchedule() {
   if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
 
-  var weeksToGenEl  = document.getElementById('weeksToGen');
+  var weeksToGenEl  = null;
   var startWeekEl   = document.getElementById('startWeek');
   var seasonWeeksEl = document.getElementById('seasonWeeks');
-  var weeksToGen  = weeksToGenEl  ? (parseInt(weeksToGenEl.value)  || 29) : 29;
+  var weeksToGen  = 1;
   var startWeek   = startWeekEl   ? (parseInt(startWeekEl.value)   || 1)  : 1;
   var seasonWeeks = seasonWeeksEl ? (parseInt(seasonWeeksEl.value) || 29) : 29;
   var teams = rosterTeams;
@@ -2812,37 +2810,56 @@ function exportScheduleCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-async function saveScheduleToDB() {
-  if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
+async function generateAndSaveWeek() {
+  if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
+  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
+  var resultEl = document.getElementById('weekGenResult');
+  var btn = document.querySelector('.btn-gen');
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  resultEl.innerHTML = '';
   try {
-    // Slim down the payload — store only team IDs, hole, and nine (not full team objects)
-    var slimWeeks = savedSchedule.map(function(w) {
+    // Build the matchup for this specific week
+    var rounds = buildRoundRobin(rosterTeams);
+    var seasonWeeks = (leagueSettings && leagueSettings.seasonLength) || 29;
+    var roundIdx = (weekNum - 1) % rounds.length;
+    var round = rounds[roundIdx];
+    var matchups = round.map(function(pair) {
       return {
-        week: w.week,
-        matchups: w.matchups.map(function(m) {
-          return {
-            hole: m.hole,
-            nine: m.nine || 'front',
-            teamAId: m.teamA ? m.teamA.id : null,
-            teamBId: m.teamB ? m.teamB.id : null
-          };
-        })
+        teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
+        teamB: pair[1] !== null ? rosterTeams[pair[1]] : null
       };
     });
-    var btn = document.querySelector('.btn-export-sched[onclick*="saveScheduleToDB"]');
-    if (btn) { btn.textContent = '💾 Saving...'; btn.disabled = true; }
-    var res = await api('POST', '/api/league/schedule/save', { weeks: slimWeeks });
-    if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }
-    // Save current week
-    var cwEl = document.getElementById('currentWeekInp');
-    var currentWeek = cwEl ? (parseInt(cwEl.value) || 1) : 1;
-    await api('PUT', '/api/league/settings', { currentWeek: currentWeek });
-    toast('✓ ' + res.saved + ' weeks saved');
+    var withHoles = assignHoles(matchups, weekNum);
+    // Slim for DB
+    var slim = [{
+      week: weekNum,
+      matchups: withHoles.map(function(m) {
+        return {
+          hole: m.hole,
+          nine: m.nine || 'front',
+          teamAId: m.teamA ? m.teamA.id : null,
+          teamBId: m.teamB ? m.teamB.id : null
+        };
+      })
+    }];
+    var res = await api('POST', '/api/league/schedule/save', { weeks: slim });
+    // Save as current week in settings
+    await api('PUT', '/api/league/settings', { currentWeek: weekNum });
+    if (leagueSettings) leagueSettings.currentWeek = weekNum;
+    // Update savedSchedule state and re-render
+    var existing = savedSchedule.findIndex(function(w) { return w.week === weekNum; });
+    var weekData = { week: weekNum, matchups: withHoles };
+    if (existing >= 0) savedSchedule[existing] = weekData;
+    else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b) { return a.week - b.week; });
+    renderSavedSchedule(savedSchedule);
+    // Advance week input to next week
+    document.getElementById('startWeek').value = weekNum + 1;
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved. ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups.</span>';
   } catch(e) {
-    var btn = document.querySelector('.btn-export-sched[onclick*="saveScheduleToDB"]');
-    if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }
-    toast('Error: ' + e.message);
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
+  if (btn) { btn.textContent = '📆 Generate & Save Week'; btn.disabled = false; }
 }
 
 

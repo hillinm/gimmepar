@@ -306,20 +306,31 @@ router.get('/schedule/all', requireAuth, async (req, res) => {
     );
     const teams = await getAll('SELECT * FROM teams WHERE league_id=$1', [leagueId]);
     const teamMap = {};
-    teams.forEach(t => { teamMap[t.id] = t; });
+    // Use string keys to handle JSON integer/string mismatch
+    teams.forEach(t => { teamMap[String(t.id)] = t; });
     const weeks = rows.map(row => {
       const raw = JSON.parse(row.matchups);
       return {
         week: row.week_number,
-        matchups: raw.map(m => ({
-          hole: m.hole,
-          nine: m.nine || 'front',
-          teamA: m.teamAId ? teamMap[m.teamAId] || null : null,
-          teamB: m.teamBId ? teamMap[m.teamBId] || null : null
-        }))
+        matchups: raw.map(m => {
+          // Support both slim format (teamAId) and legacy format (teamA.id)
+          const aId = m.teamAId || (m.teamA && m.teamA.id) || null;
+          const bId = m.teamBId || (m.teamB && m.teamB.id) || null;
+          return {
+            hole: m.hole,
+            nine: m.nine || 'front',
+            teamA: aId ? (teamMap[String(aId)] || null) : null,
+            teamB: bId ? (teamMap[String(bId)] || null) : null
+          };
+        })
       };
     });
-    res.json(weeks);
+    // Filter out fully null matchups (bye rows stored as null IDs)
+    const cleanedWeeks = weeks.map(w => ({
+      ...w,
+      matchups: w.matchups.filter(m => m.teamA || m.teamB)
+    }));
+    res.json(cleanedWeeks);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
