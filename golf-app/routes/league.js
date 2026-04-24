@@ -673,3 +673,26 @@ router.post('/email', requireAuth, async (req, res) => {
     res.json({ success: true, sent, errors: errors.length ? errors : undefined });
   } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
+
+// ── RANDOM DRAW HISTORY ──
+// Track which players have been paired together to avoid repeat pairings
+router.get('/draw/history', requireAuth, async (req, res) => {
+  try {
+    const rows = await getAll(
+      'SELECT matchups FROM schedule_weeks WHERE league_id=$1 ORDER BY week_number',
+      [req.session.leagueId]
+    );
+    // Build a set of previous pairings: "idA-idB" (sorted)
+    const pairings = new Set();
+    rows.forEach(row => {
+      const matchups = JSON.parse(row.matchups);
+      matchups.forEach(m => {
+        if (m.teamAId && m.teamBId) {
+          const key = [Math.min(m.teamAId, m.teamBId), Math.max(m.teamAId, m.teamBId)].join('-');
+          pairings.add(key);
+        }
+      });
+    });
+    res.json([...pairings]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

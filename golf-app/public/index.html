@@ -805,7 +805,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="teams-toolbar">
           <button class="btn-add" onclick="addTeamRow()">+ Add Team</button>
           <button class="btn-save-roster" onclick="saveRoster()">💾 Save Roster</button>
+          <button class="btn-save-roster" id="btnDrawTeams" style="display:none;background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="drawRandomTeams()">🎲 Draw Teams</button>
         </div>
+        <div id="drawResult" style="font-size:13px;margin-top:8px;"></div>
         <div style="overflow-x:auto;">
           <table class="team-table">
             <thead><tr><th>#</th><th>Format</th><th>Player 1</th><th>Player 2</th><th class="p34-header">Player 3</th><th class="p34-header">Player 4</th><th>Hdcp</th><th>Nine</th><th></th></tr></thead>
@@ -988,6 +990,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <label>Week</label>
           <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;">
           <button class="btn-gen" onclick="generateAndSaveWeek()">📆 Generate &amp; Save Week</button>
+          <button class="btn-gen" id="btnRandomDraw" style="background:var(--gold);color:var(--bg);display:none;" onclick="randomDrawWeek()">🎲 Random Draw</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
           <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear All</button>
         </div>
@@ -2805,6 +2808,10 @@ function showPage(name) {
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
 async function initSchedule() {
+  // Show random draw button for random team leagues
+  var rdBtn = document.getElementById('btnRandomDraw');
+  var genBtn = document.querySelector('.btn-gen[onclick*="generateAndSaveWeek"]');
+  if (rdBtn) rdBtn.style.display = (leagueSettings && leagueSettings.teamFormat === 'random') ? '' : 'none';
   var out = document.getElementById('scheduleOutput');
   // Always try to load saved schedule from DB
   try {
@@ -3002,6 +3009,101 @@ function exportScheduleCSV() {
   const a = document.createElement('a');
   a.href = url; a.download = 'gimmepar_schedule.csv';
   a.click(); URL.revokeObjectURL(url);
+}
+
+async function randomDrawWeek() {
+  if (!rosterTeams.length) { toast('Add players to the roster first'); return; }
+  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
+  var resultEl = document.getElementById('weekGenResult');
+  var btn = document.getElementById('btnRandomDraw');
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  resultEl.innerHTML = '<span style="color:var(--muted)">Drawing teams...</span>';
+
+  try {
+    // Get previous pairings to avoid repeats
+    var prevPairings = new Set();
+    try {
+      var history = await api('GET', '/api/league/draw/history');
+      history.forEach(function(p) { prevPairings.add(p); });
+    } catch(e) {}
+
+    // Build player list from roster
+    var players = [];
+    rosterTeams.forEach(function(t) {
+      if (t.player1) players.push({ name: t.player1, teamId: t.id + '_p1', nine: t.nine, handicap: t.handicap });
+      if (t.player2) players.push({ name: t.player2, teamId: t.id + '_p2', nine: t.nine, handicap: t.handicap });
+    });
+
+    if (players.length < 2) { toast('Need at least 2 players'); return; }
+
+    // Smart shuffle — try to avoid previous pairings
+    var maxAttempts = 100;
+    var bestDraw = null;
+    var bestRepeats = Infinity;
+
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      // Shuffle
+      var shuffled = players.slice();
+      for (var i = shuffled.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+      }
+      // Count repeats
+      var repeats = 0;
+      for (var k = 0; k < shuffled.length - 1; k += 2) {
+        var idA = shuffled[k].teamId;
+        var idB = shuffled[k+1].teamId;
+        var key = [Math.min(idA, idB), Math.max(idA, idB)].join('-');
+        if (prevPairings.has(key)) repeats++;
+      }
+      if (repeats < bestRepeats) {
+        bestRepeats = repeats;
+        bestDraw = shuffled.slice();
+        if (repeats === 0) break; // perfect draw
+      }
+    }
+
+    // Build matchups from best draw
+    var matchups = [];
+    for (var m = 0; m < bestDraw.length - 1; m += 2) {
+      var pA = bestDraw[m];
+      var pB = bestDraw[m+1];
+      // Create synthetic team objects
+      matchups.push({
+        teamA: { id: pA.teamId, player1: pA.name, player2: '', handicap: pA.handicap, nine: pA.nine },
+        teamB: { id: pB.teamId, player1: pB.name, player2: '', handicap: pB.handicap, nine: pB.nine }
+      });
+    }
+    if (bestDraw.length % 2 !== 0) {
+      var last = bestDraw[bestDraw.length - 1];
+      matchups.push({ teamA: { id: last.teamId, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine }, teamB: null });
+    }
+
+    var withHoles = assignHoles(matchups, weekNum);
+
+    // Save to DB
+    var slim = [{ week: weekNum, matchups: withHoles.map(function(m) {
+      return { hole: m.hole, nine: m.nine||'front', teamAId: m.teamA ? m.teamA.id : null, teamBId: m.teamB ? m.teamB.id : null };
+    })}];
+    await api('POST', '/api/league/schedule/save', { weeks: slim });
+    await api('PUT', '/api/league/settings', { currentWeek: weekNum });
+
+    // Update display
+    var existing = savedSchedule.findIndex(function(w) { return w.week === weekNum; });
+    var weekData = { week: weekNum, matchups: withHoles };
+    if (existing >= 0) savedSchedule[existing] = weekData;
+    else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b) { return a.week - b.week; });
+    renderSavedSchedule(savedSchedule);
+
+    document.getElementById('startWeek').value = weekNum + 1;
+    var repeatMsg = bestRepeats > 0 ? ' (' + bestRepeats + ' repeat pairing' + (bestRepeats>1?'s':'') + ' unavoidable)' : ' (no repeat pairings)';
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' drawn — ' + matchups.filter(function(m){return m.teamB;}).length + ' matchups' + repeatMsg + '</span>';
+
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+  if (btn) { btn.textContent = '🎲 Random Draw'; btn.disabled = false; }
 }
 
 async function generateAndSaveWeek() {
@@ -3204,13 +3306,15 @@ async function loadLeagueSettings() {
     // Populate league name field
     var lni = document.getElementById('leagueNameInp');
     if (lni && league) lni.value = league.leagueName || '';
-    // Update roster subtitle
+    // Update roster subtitle and draw button visibility
     var rst = document.getElementById('rosterSubtitle');
     if (rst) {
       rst.textContent = leagueSettings.teamFormat === 'random'
-        ? 'Random teams mode — roster is a list of individual players drawn each week'
+        ? 'Random teams mode — click Draw Teams to randomly pair players for the week'
         : 'Static partners — same teams every week';
     }
+    var drawBtn = document.getElementById('btnDrawTeams');
+    if (drawBtn) drawBtn.style.display = leagueSettings.teamFormat === 'random' ? '' : 'none';
   } catch(e) { console.warn('Could not load settings', e); }
 }
 
@@ -3676,6 +3780,124 @@ async function sendLeagueEmail() {
   } catch(e) {
     result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
+}
+
+// ══ RANDOM TEAM DRAW ══
+async function drawRandomTeams() {
+  if (!rosterTeams.length) { toast('Add players to the roster first'); return; }
+
+  var drawResult = document.getElementById('drawResult');
+  drawResult.innerHTML = '<span style="color:var(--muted)">Drawing teams...</span>';
+
+  // Collect all individual players from roster
+  var players = [];
+  rosterTeams.forEach(function(t) {
+    if (t.player1 && t.player1.trim()) players.push({ name: t.player1.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
+    if (t.player2 && t.player2.trim()) players.push({ name: t.player2.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
+  });
+
+  if (players.length < 2) { drawResult.innerHTML = '<span style="color:#ff9999">Need at least 2 players.</span>'; return; }
+
+  // Load past pairings from saved schedule to avoid repeats
+  var pastPairings = {};
+  try {
+    var savedWeeks = await api('GET', '/api/league/schedule/all');
+    savedWeeks.forEach(function(w) {
+      w.matchups.forEach(function(m) {
+        if (!m.teamA || !m.teamB) return;
+        var a = (m.teamA.player1||'').trim();
+        var b = (m.teamB.player1||'').trim();
+        if (!a || !b) return;
+        if (!pastPairings[a]) pastPairings[a] = {};
+        if (!pastPairings[b]) pastPairings[b] = {};
+        pastPairings[a][b] = (pastPairings[a][b]||0) + 1;
+        pastPairings[b][a] = (pastPairings[b][a]||0) + 1;
+      });
+    });
+  } catch(e) {}
+
+  // Shuffle players
+  var pool = players.slice();
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+
+  // Pair players, trying to avoid recent partners
+  // Use a weighted approach: prefer pairs with fewer past meetings
+  var paired = [];
+  var used = new Array(pool.length).fill(false);
+  var maxAttempts = 50;
+
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    paired = [];
+    used = new Array(pool.length).fill(false);
+    // Re-shuffle for each attempt
+    for (var i2 = pool.length - 1; i2 > 0; i2--) {
+      var j2 = Math.floor(Math.random() * (i2 + 1));
+      var tmp2 = pool[i2]; pool[i2] = pool[j2]; pool[j2] = tmp2;
+    }
+    var valid = true;
+    for (var i3 = 0; i3 < pool.length; i3++) {
+      if (used[i3]) continue;
+      var found = false;
+      for (var j3 = i3 + 1; j3 < pool.length; j3++) {
+        if (used[j3]) continue;
+        var a2 = pool[i3].name;
+        var b2 = pool[j3].name;
+        var timesPlayed = (pastPairings[a2] && pastPairings[a2][b2]) || 0;
+        // Accept if never played together, or if no other option
+        if (timesPlayed === 0 || attempt > 30) {
+          paired.push([pool[i3], pool[j3]]);
+          used[i3] = true;
+          used[j3] = true;
+          found = true;
+          break;
+        }
+      }
+      if (!found && !used[i3]) {
+        // Bye
+        paired.push([pool[i3], null]);
+        used[i3] = true;
+      }
+    }
+    // Check if all paired without repeats (or give up after 50 attempts)
+    var hasRepeat = paired.some(function(p) {
+      if (!p[0] || !p[1]) return false;
+      return (pastPairings[p[0].name] && pastPairings[p[0].name][p[1].name]) > 0;
+    });
+    if (!hasRepeat || attempt === maxAttempts - 1) break;
+  }
+
+  // Apply pairs to roster — update player1/player2 for each team slot
+  var teamIdx = 0;
+  var updatedTeams = [];
+  var warnings = [];
+
+  for (var pi = 0; pi < paired.length; pi++) {
+    var pA = paired[pi][0];
+    var pB = paired[pi][1];
+    var timesStr = '';
+    if (pA && pB) {
+      var t2 = (pastPairings[pA.name] && pastPairings[pA.name][pB.name]) || 0;
+      if (t2 > 0) warnings.push(pA.name + ' & ' + pB.name + ' played together ' + t2 + 'x before');
+    }
+    // Use existing roster team slot or create reference
+    if (teamIdx < rosterTeams.length) {
+      rosterTeams[teamIdx].player1 = pA ? pA.name : '';
+      rosterTeams[teamIdx].player2 = pB ? pB.name : '';
+      rosterTeams[teamIdx].nine = pA ? pA.nine : 'front';
+      updatedTeams.push(rosterTeams[teamIdx]);
+      teamIdx++;
+    }
+  }
+
+  // Re-render
+  renderRosterTable();
+  buildScoringCards();
+
+  var warn = warnings.length ? '<div style="color:var(--gold);font-size:12px;margin-top:6px;">⚠ Repeat pairings (unavoidable): ' + warnings.join(', ') + '</div>' : '';
+  drawResult.innerHTML = '<span style="color:var(--green2)">✓ ' + paired.filter(function(p){return p[1];}).length + ' teams drawn' + (paired.some(function(p){return !p[1];}) ? ' (1 bye)' : '') + '. Click 💾 Save Roster to keep these pairings.</span>' + warn;
 }
 
 // ══ UTILS ══
