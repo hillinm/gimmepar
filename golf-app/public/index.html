@@ -699,7 +699,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <button class="nav-tab active" onclick="showAdminTab('leagues')" id="satab-leagues">Leagues</button>
         <button class="nav-tab" onclick="showAdminTab('users')" id="satab-users">Users</button>
         <button class="nav-tab" onclick="showAdminTab('courses')" id="satab-courses">Courses</button>
-        <button class="nav-tab" onclick="showAdminTab('scorecard')" id="satab-scorecard">My Scorecard</button>
       </nav>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
@@ -722,34 +721,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         </div>
         <div class="section-body" id="adminUsersList"><div class="empty-state">Loading...</div></div>
       </div>
-    </div>
-
-    <!-- Scorecard tab -->
-    <div id="saTabScorecard" class="wrap" style="padding-top:32px;display:none;">
-      <div class="section-card" style="margin-bottom:20px;">
-        <div class="section-header">
-          <span style="font-size:24px;">⛳</span>
-          <div><div class="section-title">My Player Setup</div><div class="section-sub">Link your admin account to a league and team</div></div>
-        </div>
-        <div class="section-body">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
-            <div>
-              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LEAGUE</div>
-              <select class="week-inp" id="adminLeagueSelect" onchange="loadAdminTeams()" style="width:220px;padding:8px 10px;font-family:inherit;">
-                <option value="">Select a league...</option>
-              </select>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">MY TEAM</div>
-              <select class="week-inp" id="adminTeamSelect" style="width:220px;padding:8px 10px;font-family:inherit;">
-                <option value="">Select your team...</option>
-              </select>
-            </div>
-            <button class="btn-gen" style="font-size:14px;padding:9px 18px;" onclick="loadAdminScorecard()">Load Scorecard</button>
-          </div>
-        </div>
-      </div>
-      <div id="adminScorecardArea"></div>
     </div>
 
     <!-- Courses tab -->
@@ -1499,70 +1470,14 @@ function buildReadOnlyCard(team, st) {
 
 // ══ SUPER ADMIN ══
 function showAdminTab(tab) {
-  ['leagues','users','courses','scorecard'].forEach(function(t) {
+  ['leagues','users','courses'].forEach(function(t) {
     var panel = document.getElementById('saTab'+t.charAt(0).toUpperCase()+t.slice(1));
     var btn   = document.getElementById('satab-'+t);
     if (panel) panel.style.display = t===tab ? '' : 'none';
     if (btn)   btn.classList.toggle('active', t===tab);
   });
   if (tab==='courses') adminCourseSearch('');
-async function initAdminScorecard() {
-  var leagueEl = document.getElementById('adminLeagueSelect');
-  if (!leagueEl) return;
-  leagueEl.innerHTML = '<option value="">Loading leagues...</option>';
-  try {
-    var leagues = await api('GET', '/api/admin/leagues');
-    if (!leagues || !leagues.length) { leagueEl.innerHTML = '<option value="">No leagues found</option>'; return; }
-    leagueEl.innerHTML = '<option value="">Select a league...</option>';
-    leagues.forEach(function(l) { leagueEl.innerHTML += '<option value="'+l.id+'">'+esc(l.name)+'</option>'; });
-  } catch(e) { leagueEl.innerHTML = '<option value="">Error: '+e.message+'</option>'; }
-}
-async function loadAdminTeams() {
-  var leagueId = document.getElementById('adminLeagueSelect').value;
-  var teamEl = document.getElementById('adminTeamSelect');
-  teamEl.innerHTML = '<option value="">Select your team...</option>';
-  if (!leagueId) return;
-  try {
-    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
-    teams.forEach(function(t) { teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>'; });
-  } catch(e) { console.warn(e); }
-}
-async function loadAdminScorecard() {
-  var leagueId = document.getElementById('adminLeagueSelect').value;
-  var teamId = document.getElementById('adminTeamSelect').value;
-  var area = document.getElementById('adminScorecardArea');
-  if (!leagueId || !teamId) { area.innerHTML = '<div class="empty-state">Select a league and team first.</div>'; return; }
-  area.innerHTML = '<div class="empty-state">Loading...</div>';
-  try {
-    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
-    var leagueInfo = await api('GET', '/api/admin/league/'+leagueId);
-    var myTeam = teams.find(function(t){return t.id==teamId;});
-    if (!myTeam) { area.innerHTML = '<div class="empty-state">Team not found.</div>'; return; }
-    rosterTeams = teams;
-    var st = {id:myTeam.id, nine:myTeam.nine||'front', holes:Array(9).fill(null)};
-    scoreTeams = [st];
-    if (leagueInfo && leagueInfo.course) {
-      leagueInfo.course.front9par.forEach(function(p,i){var el=document.getElementById('pf_'+i);if(el)el.value=p;});
-      leagueInfo.course.back9par.forEach(function(p,i){var el=document.getElementById('pb_'+i);if(el)el.value=p;});
-      updateParTotals();
-    }
-    var opponent = null, matchupHole = null;
-    try {
-      var curr = await api('GET', '/api/league/schedule/current?leagueId='+leagueId);
-      if (curr && curr.currentWeek) {
-        var wd = await api('GET', '/api/league/schedule/week/'+curr.currentWeek+'?leagueId='+leagueId);
-        var mm = wd.matchups.find(function(m){return (m.teamA&&m.teamA.id==teamId)||(m.teamB&&m.teamB.id==teamId);});
-        if (mm) { var op=(mm.teamA&&mm.teamA.id==teamId)?mm.teamB:mm.teamA; if(op)opponent=teams.find(function(t){return t.id===op.id;})||op; matchupHole=mm.hole; }
-      }
-    } catch(e) {}
-    area.innerHTML = '';
-    if (matchupHole) { var wi=document.createElement('div'); wi.style.cssText='font-size:13px;color:var(--gold);margin-bottom:12px;font-weight:700;'; wi.textContent='STARTING HOLE '+matchupHole; area.appendChild(wi); }
-    area.appendChild(buildScoreCard(myTeam, st, 0));
-    if (opponent) { var os={id:opponent.id,nine:opponent.nine||'front',holes:Array(9).fill(null)}; scoreTeams.push(os); area.appendChild(buildReadOnlyCard(opponent,os)); }
-    var cb=document.createElement('button'); cb.className='btn-calculate'; cb.style.marginTop='20px'; cb.innerHTML='&#9971; CALCULATE'; cb.onclick=calculate; area.appendChild(cb);
-  } catch(e) { area.innerHTML='<div style="color:#ff9999">Error: '+e.message+'</div>'; }
-}
-  if (tab==='scorecard') initAdminScorecard();
+
 }
 
 function adminCourseSearch(q) {
