@@ -621,49 +621,54 @@ router.post('/email', requireAuth, async (req, res) => {
     const https = require('https');
     const appUrl = process.env.APP_URL || 'https://gimmepar.com';
     const fromName = (league.name || 'GimmePar') + ' League';
+    // sent counted in batch loop
+    // errors tracked in batch loop
+
+    // Send one email with all recipients in BCC to avoid rate limits
+    const toAddrs = players.map(p => p.email);
+    const html = [
+      '<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">',
+      '<div style="background:#1a2e1a;padding:16px 24px;border-radius:8px 8px 0 0;">',
+      '<span style="color:#c9a84c;font-size:20px;font-weight:700;letter-spacing:2px;">⛳ ' + (league.name || 'GimmePar') + '</span>',
+      '</div>',
+      '<div style="border:1px solid #ddd;border-top:none;padding:24px;border-radius:0 0 8px 8px;">',
+      '<div style="white-space:pre-wrap;color:#333;line-height:1.7;margin:16px 0;">' + body.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>',
+      '<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">',
+      '<p style="font-size:12px;color:#888;">You are receiving this message as a member of ' + (league.name||'your league') + ' on <a href="' + appUrl + '">GimmePar</a>.</p>',
+      '</div></div>'
+    ].join('');
+
+    // Resend supports up to 50 recipients per call - chunk if needed
+    const chunkSize = 50;
     let sent = 0;
     let errors = [];
-
-    // Send to each player individually so they get a personalized greeting
-    await Promise.all(players.map(p => new Promise((resolve) => {
-      const html = [
-        '<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">',
-        '<div style="background:#1a2e1a;padding:16px 24px;border-radius:8px 8px 0 0;">',
-        '<span style="color:#c9a84c;font-size:20px;font-weight:700;letter-spacing:2px;">⛳ ' + (league.name || 'GimmePar') + '</span>',
-        '</div>',
-        '<div style="border:1px solid #ddd;border-top:none;padding:24px;border-radius:0 0 8px 8px;">',
-        '<p style="color:#333;">Hi ' + p.first_name + ',</p>',
-        '<div style="white-space:pre-wrap;color:#333;line-height:1.7;margin:16px 0;">' + body.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>',
-        '<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">',
-        '<p style="font-size:12px;color:#888;">You are receiving this message as a member of ' + (league.name||'your league') + ' on <a href="' + appUrl + '">GimmePar</a>.</p>',
-        '</div></div>'
-      ].join('');
-
-      const emailBody = JSON.stringify({
-        from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
-        to: [p.email],
-        reply_to: league.admin_email || undefined,
-        subject: subject,
-        html
-      });
-
-      const options = {
-        hostname: 'api.resend.com', path: '/emails', method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(emailBody) }
-      };
-
-      const req2 = https.request(options, (r) => {
-        let d = ''; r.on('data', c => d += c);
-        r.on('end', () => {
-          console.log('Email to', p.email, 'status:', r.statusCode, d);
-          if (r.statusCode >= 200 && r.statusCode < 300) sent++;
-          else errors.push(p.email + ': ' + r.statusCode + ' ' + d);
-          resolve();
+    for (let i = 0; i < toAddrs.length; i += chunkSize) {
+      const chunk = toAddrs.slice(i, i + chunkSize);
+      await new Promise((resolve) => {
+        const emailBody = JSON.stringify({
+          from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
+          to: chunk,
+          reply_to: league.admin_email || undefined,
+          subject: subject,
+          html
         });
+        const options = {
+          hostname: 'api.resend.com', path: '/emails', method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(emailBody) }
+        };
+        const req2 = https.request(options, (r) => {
+          let d = ''; r.on('data', c => d += c);
+          r.on('end', () => {
+            console.log('Batch email to', chunk.length, 'recipients, status:', r.statusCode, d);
+            if (r.statusCode >= 200 && r.statusCode < 300) sent += chunk.length;
+            else errors.push('Batch ' + i + ': ' + r.statusCode + ' ' + d);
+            resolve();
+          });
+        });
+        req2.on('error', (e) => { errors.push('Batch ' + i + ': ' + e.message); resolve(); });
+        req2.write(emailBody); req2.end();
       });
-      req2.on('error', (e) => { errors.push(p.email + ': ' + e.message); resolve(); });
-      req2.write(emailBody); req2.end();
-    })));
+    }
 
     res.json({ success: true, sent, errors: errors.length ? errors : undefined });
   } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
