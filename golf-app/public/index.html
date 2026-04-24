@@ -754,6 +754,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="nav-tab" onclick="showTab('schedule')" id="tab-schedule">Schedule</button>
       <button class="nav-tab" onclick="showTab('settings')" id="tab-settings">Settings</button>
       <button class="nav-tab" onclick="showTab('standings')" id="tab-standings">Standings</button>
+      <button class="nav-tab" onclick="showTab('playoffs')" id="tab-playoffs">Playoffs</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
     <button class="btn-logout" onclick="logout()">Sign Out</button>
@@ -1080,6 +1081,25 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
+        <!-- Playoff Settings -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🏆 Playoff Settings</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">End-of-season playoff tournament configuration.</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="font-size:13px;color:var(--cream);">Number of brackets:</label>
+            <input class="week-inp" type="number" id="playoffBrackets" value="2" min="2" max="4" style="width:65px;">
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:13px;color:var(--cream);display:block;margin-bottom:6px;">Format:</label>
+            <div class="setting-toggle">
+              <button class="setting-btn" id="settingPlayoffSingle" onclick="setSettingPlayoff('single',this)">Single Elimination</button>
+              <button class="setting-btn" id="settingPlayoffDouble" onclick="setSettingPlayoff('double',this)">Double Elimination</button>
+            </div>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
         <!-- Skins default -->
         <div style="margin-bottom:28px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🎰 Skins</div>
@@ -1121,6 +1141,23 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div class="section-body" id="standingsContent">
         <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYOFFS TAB -->
+  <div id="tabPlayoffs" class="wrap" style="padding-top:32px;display:none;">
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">🥊</span>
+        <div>
+          <div class="section-title">Playoff Brackets</div>
+          <div class="section-sub" id="playoffSubtitle">End-of-season tournament</div>
+        </div>
+        <button class="btn-gen" style="margin-left:auto;font-size:14px;padding:8px 18px;" onclick="generatePlayoffs()">⚡ Generate Brackets</button>
+      </div>
+      <div class="section-body" id="playoffContent">
+        <div class="empty-state">Click Generate Brackets to create the playoff draw from current standings.</div>
       </div>
     </div>
   </div>
@@ -1170,6 +1207,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <span class="bnav-icon">⚙️</span>
         <span class="bnav-label">Settings</span>
       </button>
+      <button class="bnav-btn" id="bnav-playoffs" onclick="showTab('playoffs')">
+        <span class="bnav-icon">🥊</span>
+        <span class="bnav-label">Playoffs</span>
+      </button>
       <button class="bnav-btn" id="bnav-standings" onclick="showTab('standings')">
         <span class="bnav-icon">🏆</span>
         <span class="bnav-label">Standings</span>
@@ -1193,7 +1234,7 @@ let lastCalcData = [];
 let courseSearchResults = [];
 let flightMode = 'hl';
 let skinsEnabled = true;
-let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2 };
+let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2, playoffBrackets: 2, playoffFormat: 'single' };
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -2662,7 +2703,7 @@ async function viewRound(id) {
 
 // ══ NAV ══
 function showTab(tab) {
-  ['scoring','roster','course','players','schedule','settings','standings','history'].forEach(t => {
+  ['scoring','roster','course','players','schedule','settings','standings','playoffs','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
@@ -2670,6 +2711,7 @@ function showTab(tab) {
   if (tab==='history') loadHistory();
   if (tab==='schedule') initSchedule();
   if (tab==='standings') loadStandings();
+  if (tab==='playoffs') loadPlayoffs();
   if (tab==='players') loadPlayersList();
   if (tab==='roster') loadCalculatedHandicaps();
   if (tab==='settings') loadLeagueSettings();
@@ -3080,6 +3122,14 @@ async function loadLeagueSettings() {
     if (pctEl) pctEl.value = leagueSettings.hdcpPct || 80;
     var mcEl = document.getElementById('hdcpMaxChange');
     if (mcEl) mcEl.value = leagueSettings.hdcpMaxChange !== undefined ? leagueSettings.hdcpMaxChange : 2;
+    var pbEl = document.getElementById('playoffBrackets');
+    if (pbEl) pbEl.value = leagueSettings.playoffBrackets || 2;
+    var ps = document.getElementById('settingPlayoffSingle');
+    var pd = document.getElementById('settingPlayoffDouble');
+    if (ps && pd) {
+      ps.classList.toggle('active', leagueSettings.playoffFormat !== 'double');
+      pd.classList.toggle('active', leagueSettings.playoffFormat === 'double');
+    }
     // Apply to scoring
     flightMode = leagueSettings.flightMode || 'hl';
     skinsEnabled = leagueSettings.skinsEnabled !== false;
@@ -3113,6 +3163,12 @@ function setSettingFlight(mode, btn) {
 function setSettingSkins(on, btn) {
   leagueSettings.skinsEnabled = on;
   document.querySelectorAll('#settingSkinsOn,#settingSkinsOff').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSettingPlayoff(format, btn) {
+  leagueSettings.playoffFormat = format;
+  document.querySelectorAll('#settingPlayoffSingle,#settingPlayoffDouble').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
 }
 
@@ -3161,7 +3217,9 @@ async function saveLeagueSettings() {
     hdcpSystem: leagueSettings.hdcpSystem || 'live',
     hdcpEstWeeks: parseInt((document.getElementById('hdcpEstWeeks')||{}).value) || 5,
     hdcpPct: parseInt((document.getElementById('hdcpPct')||{}).value) || 80,
-    hdcpMaxChange: parseFloat((document.getElementById('hdcpMaxChange')||{}).value) || 0
+    hdcpMaxChange: parseFloat((document.getElementById('hdcpMaxChange')||{}).value) || 0,
+    playoffBrackets: parseInt((document.getElementById('playoffBrackets')||{}).value) || 2,
+    playoffFormat: leagueSettings.playoffFormat || 'single'
   };
   try {
     await api('PUT', '/api/league/settings', settings);
@@ -3381,6 +3439,159 @@ async function applyCalcHandicap(teamId, hdcp) {
     toast('Handicap updated to ' + hdcp);
     loadCalculatedHandicaps();
   } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ══ PLAYOFFS ══
+var playoffBrackets = []; // stored bracket data
+
+async function loadPlayoffs() {
+  var el = document.getElementById('playoffContent');
+  if (!el) return;
+  if (playoffBrackets.length) { renderAllBrackets(); return; }
+  el.innerHTML = '<div class="empty-state">Click Generate Brackets to create the playoff draw.</div>';
+}
+
+async function generatePlayoffs() {
+  var el = document.getElementById('playoffContent');
+  el.innerHTML = '<div class="empty-state">Loading standings...</div>';
+  try {
+    // Get standings
+    var data = await api('GET', '/api/league/standings');
+    var adjs = {};
+    try { adjs = await api('GET', '/api/league/standings/adjustments'); } catch(e) {}
+    data.forEach(function(s) {
+      var adj = adjs[s.team.id];
+      if (adj) {
+        s.wins   += parseFloat(adj.wins_adj)   || 0;
+        s.losses += parseFloat(adj.losses_adj) || 0;
+        s.ties   += parseFloat(adj.ties_adj)   || 0;
+        s.points  = s.wins + (s.ties * 0.5);
+      }
+    });
+
+    // Sort by points descending
+    data.sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
+
+    var numBrackets = leagueSettings.playoffBrackets || 2;
+    var format = leagueSettings.playoffFormat || 'single';
+    var perBracket = Math.ceil(data.length / numBrackets);
+
+    // Split into brackets
+    playoffBrackets = [];
+    var bracketNames = ['Championship Bracket', 'Consolation Bracket', 'Third Bracket', 'Fourth Bracket'];
+    for (var b = 0; b < numBrackets; b++) {
+      var teams = data.slice(b * perBracket, (b+1) * perBracket);
+      playoffBrackets.push({
+        name: bracketNames[b] || ('Bracket ' + (b+1)),
+        teams: teams,
+        format: format,
+        matches: buildBracket(teams, format)
+      });
+    }
+
+    // Update subtitle
+    var sub = document.getElementById('playoffSubtitle');
+    if (sub) sub.textContent = numBrackets + ' brackets • ' + format + ' elimination • ' + data.length + ' teams';
+
+    renderAllBrackets();
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999">Error: ' + e.message + '</div>';
+  }
+}
+
+function buildBracket(teams, format) {
+  // Seed teams — next power of 2
+  var n = teams.length;
+  var size = 1;
+  while (size < n) size *= 2;
+  var byes = size - n;
+
+  // Build first round matchups — top seed vs bottom seed
+  var seeded = teams.slice();
+  var rounds = [];
+  var firstRound = [];
+  for (var i = 0; i < size / 2; i++) {
+    var teamA = seeded[i] || null;
+    var teamB = seeded[size - 1 - i] || null;
+    // If teamB is beyond teams.length it's a bye
+    if (i + (size - 1 - i) >= n || !teamB) {
+      firstRound.push({ teamA: teamA, teamB: null, winner: teamA, bye: true });
+    } else {
+      firstRound.push({ teamA: teamA, teamB: teamB, winner: null, bye: false });
+    }
+  }
+  rounds.push(firstRound);
+
+  // Build subsequent rounds (empty placeholders)
+  var prev = firstRound;
+  while (prev.length > 1) {
+    var next = [];
+    for (var j = 0; j < prev.length; j += 2) {
+      next.push({ teamA: null, teamB: null, winner: null, bye: false, placeholder: true });
+    }
+    rounds.push(next);
+    prev = next;
+  }
+
+  return rounds;
+}
+
+function renderAllBrackets() {
+  var el = document.getElementById('playoffContent');
+  if (!el) return;
+  var html = '';
+  playoffBrackets.forEach(function(bracket, bi) {
+    html += renderBracket(bracket, bi);
+  });
+  html += '<div style="margin-top:20px;font-size:12px;color:var(--muted);font-style:italic;">Brackets are seeded by season points. Byes are awarded to top seeds.</div>';
+  el.innerHTML = html;
+}
+
+function renderBracket(bracket, bi) {
+  var teams = bracket.teams;
+  var rounds = bracket.matches;
+  var roundLabels = ['First Round', 'Quarterfinals', 'Semifinals', 'Finals', 'Champion'];
+
+  var html = '<div style="margin-bottom:32px;">';
+  html += '<div style="font-size:20px;letter-spacing:2px;color:var(--gold);margin-bottom:16px;font-weight:700;">' + esc(bracket.name) + '</div>';
+
+  // Seedings list
+  html += '<div style="margin-bottom:16px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">SEEDS</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  teams.forEach(function(s, i) {
+    var name = esc(s.team.player1||'') + (s.team.player2 ? ' / ' + esc(s.team.player2) : '');
+    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;">' +
+      '<span style="color:var(--gold);font-weight:700;margin-right:6px;">#' + (i+1) + '</span>' +
+      name + ' <span style="color:var(--muted);">(' + s.points + 'pts)</span></div>';
+  });
+  html += '</div></div>';
+
+  // Bracket rounds
+  html += '<div style="overflow-x:auto;"><div style="display:flex;gap:24px;min-width:max-content;padding-bottom:10px;">';
+  rounds.forEach(function(round, ri) {
+    var label = roundLabels[Math.min(ri, roundLabels.length-1)];
+    if (ri === rounds.length - 1) label = 'Final';
+    if (ri === rounds.length - 2 && rounds.length > 2) label = 'Semifinals';
+    html += '<div style="min-width:200px;">';
+    html += '<div style="font-size:11px;color:var(--gold2);letter-spacing:1px;font-weight:700;margin-bottom:10px;">' + label + '</div>';
+    round.forEach(function(match, mi) {
+      var nameA = match.teamA ? esc(match.teamA.team ? match.teamA.team.player1 : (match.teamA.player1||'')) : 'TBD';
+      var nameB = match.teamB ? esc(match.teamB.team ? match.teamB.team.player1 : (match.teamB.player1||'')) : (match.bye ? 'BYE' : 'TBD');
+      var nameA2 = match.teamA && (match.teamA.team ? match.teamA.team.player2 : (match.teamA.player2||''));
+      var nameB2 = match.teamB && (match.teamB.team ? match.teamB.team.player2 : (match.teamB.player2||''));
+      if (nameA2) nameA += ' / ' + esc(nameA2);
+      if (nameB2) nameB += ' / ' + esc(nameB2);
+      var byeStyle = match.bye ? 'opacity:.5;' : '';
+      html += '<div style="' + byeStyle + 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;">';
+      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;">' + nameA + '</div>';
+      html += '<div style="padding:8px 12px;font-size:13px;color:' + (match.bye?'var(--muted)':'inherit') + ';">' + nameB + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+  return html;
 }
 
 // ══ UTILS ══
