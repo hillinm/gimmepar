@@ -992,12 +992,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <!-- Alternate Nines -->
         <div style="margin-bottom:28px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔀 Alternate Nines (Schedule)</div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">When enabled, teams alternate between Front 9 and Back 9 each week based on week number.</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">When enabled, each team alternates between Front 9 and Back 9 every week. Teams stagger so roughly half play F9 and half play B9 each week.</div>
           <div class="setting-toggle">
             <button class="setting-btn" id="settingAltNinesOn" onclick="setSettingAltNines(true,this)">Enabled</button>
             <button class="setting-btn" id="settingAltNinesOff" onclick="setSettingAltNines(false,this)">Disabled</button>
           </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;">Odd weeks = Front 9, Even weeks = Back 9</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;">Teams alternate each week — if a team plays F9 one week, they play B9 the next.</div>
         </div>
 
         <button class="btn-save-course" onclick="saveLeagueSettings()">💾 Save Settings</button>
@@ -2571,26 +2571,62 @@ function buildRoundRobin(teams) {
 
 // Assign one matchup per hole across all 18 holes, rotating start each week
 // With >18 matchups some holes get 2 groups — unavoidable, minimized by spread
+// Get which nine a team plays in a given week based on alternating schedule
+// Each team alternates F9/B9 every week based on their index in the roster
+// Even index teams: F9 on odd weeks, B9 on even weeks
+// Odd index teams:  B9 on odd weeks, F9 on even weeks
+function getTeamNine(team, weekNum) {
+  var useAlt = leagueSettings && leagueSettings.alternateNines;
+  if (!useAlt) return team.nine || 'front'; // use roster default if not alternating
+  // Find team index in roster for stagger
+  var idx = rosterTeams.findIndex(function(t) { return t.id === team.id; });
+  if (idx < 0) idx = 0;
+  // Stagger: even-indexed teams start on F9 week 1, odd-indexed start on B9 week 1
+  var startFront = (idx % 2 === 0);
+  var frontOnOdd = startFront;
+  var isFront = frontOnOdd ? (weekNum % 2 !== 0) : (weekNum % 2 === 0);
+  return isFront ? 'front' : 'back';
+}
+
 function assignHoles(matchups, weekNum) {
   var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
   var byes = matchups.filter(function(m) { return !m.teamB; });
 
-  var useAltNines = leagueSettings && leagueSettings.alternateNines;
-  var allHoles;
-  if (useAltNines) {
-    // Odd weeks = Front 9 (holes 1-9), Even weeks = Back 9 (holes 10-18)
-    allHoles = weekNum % 2 !== 0
-      ? [1,2,3,4,5,6,7,8,9]
-      : [10,11,12,13,14,15,16,17,18];
-  } else {
-    allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
-  }
+  var frontHoles = [1,2,3,4,5,6,7,8,9];
+  var backHoles  = [10,11,12,13,14,15,16,17,18];
+  var allHoles   = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
 
-  var offset = (weekNum - 1) % allHoles.length;
-  var rotated = allHoles.slice(offset).concat(allHoles.slice(0, offset));
-  var assigned = realMatchups.map(function(m, i) {
-    return Object.assign({}, m, { hole: rotated[i % allHoles.length] });
+  // Assign hole rotation offset by week
+  var frontOffset = (weekNum - 1) % frontHoles.length;
+  var backOffset  = (weekNum - 1) % backHoles.length;
+  var allOffset   = (weekNum - 1) % allHoles.length;
+
+  var frontRotated = frontHoles.slice(frontOffset).concat(frontHoles.slice(0, frontOffset));
+  var backRotated  = backHoles.slice(backOffset).concat(backHoles.slice(0, backOffset));
+  var allRotated   = allHoles.slice(allOffset).concat(allHoles.slice(0, allOffset));
+
+  // Track separate counters per nine pool
+  var frontIdx = 0, backIdx = 0, allIdx = 0;
+
+  var assigned = realMatchups.map(function(m) {
+    var useAlt = leagueSettings && leagueSettings.alternateNines;
+    var nineA = getTeamNine(m.teamA, weekNum);
+    var nineB = getTeamNine(m.teamB, weekNum);
+    // Matchup nine = average/dominant nine of the two teams
+    var nine = (nineA === 'back' && nineB === 'back') ? 'back'
+             : (nineA === 'front' && nineB === 'front') ? 'front'
+             : 'front'; // mixed — put on front
+    var hole;
+    if (!useAlt) {
+      hole = allRotated[allIdx % allRotated.length]; allIdx++;
+    } else if (nine === 'back') {
+      hole = backRotated[backIdx % backRotated.length]; backIdx++;
+    } else {
+      hole = frontRotated[frontIdx % frontRotated.length]; frontIdx++;
+    }
+    return Object.assign({}, m, { hole: hole, nine: nine });
   });
+
   assigned.sort(function(a, b) { return a.hole - b.hole; });
   var byesWithHole = byes.map(function(m) { return Object.assign({}, m, { hole: null }); });
   return assigned.concat(byesWithHole);
@@ -2617,7 +2653,7 @@ function generateSchedule() {
   var output = document.getElementById('scheduleOutput');
   output.innerHTML = '';
   var nineNote = (leagueSettings && leagueSettings.alternateNines)
-    ? ' | Odd weeks = F9, Even weeks = B9' : '';
+    ? ' | Teams alternate F9/B9 each week' : '';
   document.getElementById('schedInfo').textContent =
     teams.length + ' teams | ' + seasonWeeks + '-week season | ' +
     matchupsPerWeek + ' matchups/week' + extraNote + nineNote +
@@ -2660,7 +2696,15 @@ function generateSchedule() {
         var nameB = esc((tB && tB.player1) || '') + ' / ' + esc((tB && tB.player2) || '');
         rows += '<tr>';
         rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
-        rows += '<td class="nine-col">' + nineLabel + '</td>';
+        // Show individual team nines if alternating
+        var useAlt = leagueSettings && leagueSettings.alternateNines;
+        var nineDisplay = nineLabel;
+        if (useAlt && tA && tB) {
+          var nA = getTeamNine(tA, weekNum);
+          var nB = getTeamNine(tB, weekNum);
+          nineDisplay = (nA==='back'?'B9':'F9') + ' / ' + (nB==='back'?'B9':'F9');
+        }
+        rows += '<td class="nine-col">' + nineDisplay + '</td>';
         rows += '<td class="team-a-name">' + nameA + '</td>';
         rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
         rows += '<td class="team-b-name">' + nameB + '</td>';
