@@ -443,3 +443,47 @@ router.get('/standings', requireAuth, async (req, res) => {
     res.json(Object.values(standings).sort((a, b) => b.points - a.points));
   } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
+
+// ── STANDINGS ADJUSTMENTS ──
+router.get('/standings/adjustments', requireAuth, async (req, res) => {
+  try {
+    const rows = await getAll('SELECT * FROM standings_adjustments WHERE league_id=$1', [req.session.leagueId]);
+    const map = {};
+    rows.forEach(r => { map[r.team_id] = r; });
+    res.json(map);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/standings/adjustments/:teamId', requireAuth, async (req, res) => {
+  try {
+    const { wins_adj, losses_adj, ties_adj, note } = req.body || {};
+    await query(
+      `INSERT INTO standings_adjustments (league_id, team_id, wins_adj, losses_adj, ties_adj, note)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (league_id, team_id) DO UPDATE SET wins_adj=$3, losses_adj=$4, ties_adj=$5, note=$6`,
+      [req.session.leagueId, req.params.teamId, wins_adj||0, losses_adj||0, ties_adj||0, note||'']
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── LEAGUE INFO (name + password) ──
+router.put('/info', requireAuth, async (req, res) => {
+  try {
+    const { name, password } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'Name required' });
+    const trimmed = String(name).trim();
+    // Check name not taken by another league
+    const existing = await getOne('SELECT id FROM leagues WHERE name=$1 AND id!=$2', [trimmed, req.session.leagueId]);
+    if (existing) return res.status(409).json({ error: 'League name already taken' });
+    if (password) {
+      const bcrypt = require('bcryptjs');
+      const hash = bcrypt.hashSync(String(password), 10);
+      await query('UPDATE leagues SET name=$1, password_hash=$2 WHERE id=$3', [trimmed, hash, req.session.leagueId]);
+    } else {
+      await query('UPDATE leagues SET name=$1 WHERE id=$2', [trimmed, req.session.leagueId]);
+    }
+    req.session.leagueName = trimmed;
+    req.session.save(() => res.json({ success: true }));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

@@ -670,10 +670,20 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <span>GIMME<span style="color:var(--white)">PAR</span></span>
       </div>
       <div class="header-league" id="playerLeagueName"></div>
+      <nav class="nav-tabs" style="margin-left:auto;">
+        <button class="nav-tab active" id="ptab-score" onclick="showPlayerTab('score')">Scorecard</button>
+        <button class="nav-tab" id="ptab-standings" onclick="showPlayerTab('standings')">Standings</button>
+      </nav>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
-    <div class="wrap" style="padding-top:32px;">
+    <div id="playerTabScore" class="wrap" style="padding-top:32px;">
       <div id="playerScoreCard"></div>
+    </div>
+    <div id="playerTabStandings" class="wrap" style="padding-top:32px;display:none;">
+      <div class="section-card">
+        <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">Season Standings</div></div></div>
+        <div class="section-body" id="playerStandingsContent"><div class="empty-state">Loading...</div></div>
+      </div>
     </div>
   </div>
 
@@ -958,6 +968,34 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         </div>
       </div>
       <div class="section-body">
+
+        <!-- League Name & Password -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🏌️ League Info</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <div style="flex:1;min-width:180px;">
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LEAGUE NAME</div>
+              <input class="search-input" id="leagueNameInp" placeholder="League name" style="width:100%;box-sizing:border-box;">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+            <div style="flex:1;min-width:180px;">
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">NEW PASSWORD</div>
+              <div style="position:relative;">
+                <input class="search-input" type="password" id="leaguePassInp" placeholder="Leave blank to keep current" style="width:100%;box-sizing:border-box;padding-right:44px;">
+                <button type="button" onclick="togglePassVis('leaguePassInp',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;">👁</button>
+              </div>
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">CONFIRM PASSWORD</div>
+              <input class="search-input" type="password" id="leaguePassConfInp" placeholder="Confirm new password" style="width:100%;box-sizing:border-box;">
+            </div>
+          </div>
+          <button class="btn-save-course" style="padding:8px 20px;font-size:15px;" onclick="saveLeagueInfo()">💾 Save League Info</button>
+          <div id="leagueInfoResult" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
         <!-- Sub Rule -->
         <div style="margin-bottom:28px;">
@@ -1924,6 +1962,41 @@ async function loadGlobalCourse(id) {
   } catch(e) { toast('Error: '+e.message); }
 }
 
+function showPlayerTab(tab) {
+  document.getElementById('playerTabScore').style.display = tab==='score' ? '' : 'none';
+  document.getElementById('playerTabStandings').style.display = tab==='standings' ? '' : 'none';
+  document.getElementById('ptab-score').classList.toggle('active', tab==='score');
+  document.getElementById('ptab-standings').classList.toggle('active', tab==='standings');
+  if (tab==='standings') loadPlayerStandings();
+}
+
+async function loadPlayerStandings() {
+  var el = document.getElementById('playerStandingsContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var data = await api('GET', '/api/league/standings');
+    var adjs = {};
+    try { adjs = await api('GET', '/api/league/standings/adjustments'); } catch(e) {}
+    data.forEach(function(s) {
+      var adj = adjs[s.team.id];
+      if (adj) {
+        s.wins   += parseFloat(adj.wins_adj)   || 0;
+        s.losses += parseFloat(adj.losses_adj) || 0;
+        s.ties   += parseFloat(adj.ties_adj)   || 0;
+        s.points  = s.wins + (s.ties * 0.5);
+        s.adj     = adj;
+      }
+    });
+    var flightA = data.filter(function(s){return s.flight==='A';}).sort(function(a,b){return b.points-a.points;});
+    var flightB = data.filter(function(s){return s.flight==='B';}).sort(function(a,b){return b.points-a.points;});
+    el.innerHTML = renderFlightStandings('A Flight','a',flightA,false) +
+                   renderFlightStandings('B Flight','b',flightB,false);
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
+
 async function deleteGlobalCourse(id, name) {
   if (!confirm('Delete "' + name + '" from the global library?')) return;
   try {
@@ -2828,6 +2901,33 @@ function setSkinsMode(on, btn) {
 }
 
 // ══ LEAGUE SETTINGS ══
+async function saveLeagueInfo() {
+  var nameEl = document.getElementById('leagueNameInp');
+  var passEl = document.getElementById('leaguePassInp');
+  var confEl = document.getElementById('leaguePassConfInp');
+  var resultEl = document.getElementById('leagueInfoResult');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var pass = passEl ? passEl.value : '';
+  var conf = confEl ? confEl.value : '';
+  if (!name) { resultEl.innerHTML = '<span style="color:#ff9999">League name cannot be empty.</span>'; return; }
+  if (pass && pass.length < 4) { resultEl.innerHTML = '<span style="color:#ff9999">Password must be at least 4 characters.</span>'; return; }
+  if (pass && pass !== conf) { resultEl.innerHTML = '<span style="color:#ff9999">Passwords do not match.</span>'; return; }
+  try {
+    var body = { name: name };
+    if (pass) body.password = pass;
+    await api('PUT', '/api/league/info', body);
+    if (league) league.leagueName = name;
+    var hl = document.getElementById('headerLeague');
+    if (hl) hl.textContent = name + ' League';
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ League info updated.</span>';
+    if (passEl) passEl.value = '';
+    if (confEl) confEl.value = '';
+    toast('League info saved');
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
 async function loadLeagueSettings() {
   try {
     var s = await api('GET', '/api/league/settings');
@@ -2861,6 +2961,9 @@ async function loadLeagueSettings() {
     // Apply to scoring
     flightMode = leagueSettings.flightMode || 'hl';
     skinsEnabled = leagueSettings.skinsEnabled !== false;
+    // Populate league name field
+    var lni = document.getElementById('leagueNameInp');
+    if (lni && league) lni.value = league.leagueName || '';
   } catch(e) { console.warn('Could not load settings', e); }
 }
 
@@ -2919,45 +3022,120 @@ async function loadStandings() {
   el.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
     var data = await api('GET', '/api/league/standings');
+    var adjs = {};
+    try { adjs = await api('GET', '/api/league/standings/adjustments'); } catch(e) {}
+
+    // Apply adjustments
+    data.forEach(function(s) {
+      var adj = adjs[s.team.id];
+      if (adj) {
+        s.wins   += parseFloat(adj.wins_adj)   || 0;
+        s.losses += parseFloat(adj.losses_adj) || 0;
+        s.ties   += parseFloat(adj.ties_adj)   || 0;
+        s.points  = s.wins + (s.ties * 0.5);
+        s.adj     = adj;
+      }
+    });
+
     if (!data.length) {
       el.innerHTML = '<div class="empty-state">No standings yet. Save rounds to history to build standings.</div>';
       return;
     }
 
+    var isAdmin = currentUser && (currentUser.role === 'leagueadmin' || currentUser.role === 'superadmin');
     var flightA = data.filter(function(s) { return s.flight === 'A'; }).sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
     var flightB = data.filter(function(s) { return s.flight === 'B'; }).sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
 
-    el.innerHTML = renderFlightStandings('A Flight', 'a', flightA) +
-                   renderFlightStandings('B Flight', 'b', flightB);
+    var html = renderFlightStandings('A Flight', 'a', flightA, isAdmin) +
+               renderFlightStandings('B Flight', 'b', flightB, isAdmin);
+    if (isAdmin) {
+      html += '<div style="margin-top:16px;font-size:12px;color:var(--muted);font-style:italic;">Click any team row to manually adjust their W/L/T record.</div>';
+    }
+    el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
   }
 }
 
-function renderFlightStandings(title, cls, teams) {
+function renderFlightStandings(title, cls, teams, isAdmin) {
   if (!teams.length) return '';
   var rows = teams.map(function(s, i) {
     var t = s.team;
     var name = esc(t.player1||'') + ' / ' + esc(t.player2||'');
-    var pct = s.played > 0 ? Math.round((s.points / s.played) * 100) : 0;
+    var adjNote = s.adj ? ' <span style="font-size:10px;color:var(--gold);font-style:italic;">(adj)</span>' : '';
+    var editBtn = isAdmin
+      ? '<td class="num"><button class="btn-del" style="font-size:11px;padding:3px 8px;background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold2);" data-tid="'+t.id+'" data-tname="'+esc(name)+'" data-wins="'+s.wins+'" data-losses="'+s.losses+'" data-ties="'+s.ties+'" onclick="editStandingsRow(this)">Edit</button></td>'
+      : '';
     return '<tr>' +
       '<td class="rank">' + (i+1) + '</td>' +
-      '<td style="font-weight:700">' + name + '</td>' +
+      '<td style="font-weight:700">' + name + adjNote + '</td>' +
       '<td class="num">' + t.handicap + '</td>' +
       '<td class="num pts">' + s.points + '</td>' +
       '<td class="num" style="color:var(--green2)">' + s.wins + '</td>' +
       '<td class="num" style="color:#ff9999">' + s.losses + '</td>' +
       '<td class="num" style="color:var(--muted)">' + s.ties + '</td>' +
       '<td class="num">' + s.played + '</td>' +
+      editBtn +
       '</tr>';
   }).join('');
+  var editHeader = isAdmin ? '<th class="num"></th>' : '';
   return '<div class="standings-flight">' +
     '<div class="standings-flight-title ' + cls + '">' + title + '</div>' +
     '<table class="standings-tbl">' +
-    '<thead><tr><th class="rank">#</th><th>Team</th><th class="num">Hdcp</th><th class="num">Pts</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Played</th></tr></thead>' +
+    '<thead><tr><th class="rank">#</th><th>Team</th><th class="num">Hdcp</th><th class="num">Pts</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Played</th>' + editHeader + '</tr></thead>' +
     '<tbody>' + rows + '</tbody></table>' +
     '<div class="playoff-note">Top teams from each flight advance to the playoff tournament.</div>' +
     '</div>';
+}
+
+async function editStandingsRow(btn) {
+  var tid   = btn.dataset.tid;
+  var tname = btn.dataset.tname;
+  var wins   = parseFloat(btn.dataset.wins)   || 0;
+  var losses = parseFloat(btn.dataset.losses) || 0;
+  var ties   = parseFloat(btn.dataset.ties)   || 0;
+
+  // Show inline edit form in a toast-style modal
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;max-width:360px;width:90%;margin:20px;">' +
+    '<div style="font-size:20px;letter-spacing:2px;color:var(--gold);margin-bottom:4px;font-weight:700;">Edit Record</div>' +
+    '<div style="font-size:13px;color:var(--muted);margin-bottom:18px;">' + tname + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WINS</div><input id="adjW" type="number" step="0.5" value="'+wins+'" class="team-input" style="width:100%;text-align:center;"></div>' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LOSSES</div><input id="adjL" type="number" step="0.5" value="'+losses+'" class="team-input" style="width:100%;text-align:center;"></div>' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TIES</div><input id="adjT" type="number" step="0.5" value="'+ties+'" class="team-input" style="width:100%;text-align:center;"></div>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic;">These values replace the calculated record for this team.</div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button class="btn-save-roster" style="flex:1;" id="adjSaveBtn">Save</button>' +
+    '<button class="btn-export-sched" style="flex:1;" id="adjCancelBtn">Cancel</button>' +
+    '</div>' +
+    '<div id="adjErr" style="color:#ff9999;font-size:12px;margin-top:8px;"></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  document.getElementById('adjCancelBtn').onclick = function() { overlay.remove(); };
+  document.getElementById('adjSaveBtn').onclick = async function() {
+    var w = parseFloat(document.getElementById('adjW').value) || 0;
+    var l = parseFloat(document.getElementById('adjL').value) || 0;
+    var t2 = parseFloat(document.getElementById('adjT').value) || 0;
+    try {
+      // Store as adjustments (difference from calculated)
+      await api('PUT', '/api/league/standings/adjustments/' + tid, {
+        wins_adj: w - wins,
+        losses_adj: l - losses,
+        ties_adj: t2 - ties,
+        note: 'Manual adjustment'
+      });
+      overlay.remove();
+      loadStandings();
+      toast('Record updated');
+    } catch(e) {
+      document.getElementById('adjErr').textContent = 'Error: ' + e.message;
+    }
+  };
 }
 
 // ══ UTILS ══

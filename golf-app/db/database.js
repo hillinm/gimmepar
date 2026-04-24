@@ -113,6 +113,18 @@ async function init() {
         UNIQUE(league_id, week_number)
       );
     `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS standings_adjustments (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        wins_adj NUMERIC(5,1) DEFAULT 0,
+        losses_adj NUMERIC(5,1) DEFAULT 0,
+        ties_adj NUMERIC(5,1) DEFAULT 0,
+        note TEXT DEFAULT '',
+        UNIQUE(league_id, team_id)
+      );
+    `);
     console.log('✓ Database tables ready');
   } finally {
     client.release();
