@@ -640,7 +640,7 @@ router.post('/email', requireAuth, async (req, res) => {
       ].join('');
 
       const emailBody = JSON.stringify({
-        from: 'GimmePar <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
         to: [p.email],
         reply_to: league.admin_email || undefined,
         subject: subject,
@@ -655,8 +655,9 @@ router.post('/email', requireAuth, async (req, res) => {
       const req2 = https.request(options, (r) => {
         let d = ''; r.on('data', c => d += c);
         r.on('end', () => {
+          console.log('Email to', p.email, 'status:', r.statusCode, d);
           if (r.statusCode >= 200 && r.statusCode < 300) sent++;
-          else errors.push(p.email + ': ' + r.statusCode);
+          else errors.push(p.email + ': ' + r.statusCode + ' ' + d);
           resolve();
         });
       });

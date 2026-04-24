@@ -201,6 +201,7 @@ router.put('/players/:id/info', requireRole('superadmin','leagueadmin'), async (
 // ── Send password reset email ──
 router.post('/users/:id/send-reset', requireRole('superadmin','leagueadmin'), async (req, res) => {
   try {
+    console.log('send-reset called for user:', req.params.id, '| RESEND_FROM:', process.env.RESEND_FROM || 'not set', '| RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'set' : 'NOT SET');
     const bcrypt = require('bcryptjs');
     const https  = require('https');
     const user = await getOne('SELECT * FROM users WHERE id=$1', [req.params.id]);
@@ -219,7 +220,7 @@ router.post('/users/:id/send-reset', requireRole('superadmin','leagueadmin'), as
     if (!apiKey) return res.json({ success: true, note: 'Email not sent - RESEND_API_KEY not set. Temp password: ' + temp });
 
     const body = JSON.stringify({
-      from: 'GimmePar <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
       to: [user.email],
       subject: 'GimmePar - Your Password Has Been Reset',
       html: [
@@ -243,7 +244,7 @@ router.post('/users/:id/send-reset', requireRole('superadmin','leagueadmin'), as
     };
     const emailReq = https.request(options, (r) => {
       let d = ''; r.on('data', c => d += c);
-      r.on('end', () => console.log('Reset email sent to', user.email, 'status:', r.statusCode));
+      r.on('end', () => console.log('Reset email to', user.email, 'status:', r.statusCode, d));
     });
     emailReq.on('error', e => console.warn('Reset email failed:', e.message));
     emailReq.write(body); emailReq.end();
