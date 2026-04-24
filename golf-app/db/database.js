@@ -125,6 +125,33 @@ async function init() {
         UNIQUE(league_id, team_id)
       );
     `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_leagues (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+        role TEXT NOT NULL DEFAULT 'player',
+        UNIQUE(user_id, league_id)
+      );
+    `);
+    // Migrate existing users into user_leagues
+    await client.query(`
+      INSERT INTO user_leagues (user_id, league_id, team_id, role)
+      SELECT id, league_id, team_id, role FROM users
+      WHERE league_id IS NOT NULL
+      ON CONFLICT (user_id, league_id) DO NOTHING
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_leagues (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+        role TEXT NOT NULL DEFAULT 'player',
+        UNIQUE(user_id, league_id)
+      );
+    `);
     console.log('✓ Database tables ready');
   } finally {
     client.release();

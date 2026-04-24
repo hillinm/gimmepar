@@ -725,3 +725,34 @@ router.get('/scores/latest/:teamId', requireAuth, async (req, res) => {
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── LOG SUBSTITUTE ──
+router.post('/rounds/:roundId/sub', requireAuth, async (req, res) => {
+  try {
+    const { team_id, sub_name, replaced_name } = req.body || {};
+    if (!team_id || !sub_name) return res.status(400).json({ error: 'Team and sub name required' });
+
+    // Verify round belongs to this league
+    const round = await getOne('SELECT id FROM rounds WHERE id=$1 AND league_id=$2', [req.params.roundId, req.session.leagueId]);
+    if (!round) return res.status(404).json({ error: 'Round not found' });
+
+    // Check if a score row already exists for this team in this round
+    const existing = await getOne('SELECT id, sub_name FROM round_scores WHERE round_id=$1 AND team_id=$2', [req.params.roundId, team_id]);
+
+    if (existing) {
+      // Update existing row to mark as sub
+      await query(
+        'UPDATE round_scores SET is_sub=TRUE, sub_name=$1 WHERE round_id=$2 AND team_id=$3',
+        [sub_name + (replaced_name ? ' (for ' + replaced_name + ')' : ''), req.params.roundId, team_id]
+      );
+    } else {
+      // Insert a new score row with sub flag and zero scores
+      await query(
+        `INSERT INTO round_scores (round_id, team_id, nine, handicap_used, hole_scores, gross, net, is_sub, sub_name)
+         VALUES ($1,$2,'front',0,'[]',0,0,TRUE,$3)`,
+        [req.params.roundId, team_id, sub_name + (replaced_name ? ' (for ' + replaced_name + ')' : '')]
+      );
+    }
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

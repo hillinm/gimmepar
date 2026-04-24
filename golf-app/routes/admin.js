@@ -252,3 +252,53 @@ router.post('/users/:id/send-reset', requireRole('superadmin','leagueadmin'), as
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── ADD USER TO LEAGUE ──
+router.post('/users/:id/add-league', requireRole('superadmin','leagueadmin'), async (req, res) => {
+  try {
+    const { league_id, role } = req.body || {};
+    if (!league_id) return res.status(400).json({ error: 'league_id required' });
+    await query(
+      `INSERT INTO user_leagues (user_id, league_id, role)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (user_id, league_id) DO UPDATE SET role=$3`,
+      [req.params.id, league_id, role || 'player']
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MULTI-LEAGUE: Link existing user to this league ──
+router.post('/players/link', requireRole('superadmin','leagueadmin'), async (req, res) => {
+  try {
+    const { email, team_id } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    const user = await getOne('SELECT id, first_name, last_name FROM users WHERE email=$1', [email.toLowerCase().trim()]);
+    if (!user) return res.status(404).json({ error: 'No user found with that email. They must be registered in another league first.' });
+    const leagueId = req.session.leagueId;
+    // Insert into user_leagues
+    await query(
+      `INSERT INTO user_leagues (user_id, league_id, team_id, role)
+       VALUES ($1,$2,$3,'player')
+       ON CONFLICT (user_id, league_id) DO UPDATE SET team_id=$3`,
+      [user.id, leagueId, team_id || null]
+    );
+    res.json({ success: true, name: user.first_name + ' ' + user.last_name });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MULTI-LEAGUE: Search users by email to link ──
+router.get('/users/search', requireRole('superadmin','leagueadmin'), async (req, res) => {
+  try {
+    const q = (req.query.q || '').toLowerCase().trim();
+    if (!q || q.length < 3) return res.json([]);
+    const users = await getAll(
+      `SELECT id, first_name, last_name, email FROM users
+       WHERE (LOWER(email) LIKE $1 OR LOWER(first_name||' '||last_name) LIKE $1)
+       AND role != 'superadmin'
+       LIMIT 10`,
+      ['%' + q + '%']
+    );
+    res.json(users);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

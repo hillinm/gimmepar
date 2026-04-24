@@ -1044,6 +1044,28 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
     </div>
 
+    <!-- Link Existing Player to League -->
+    <div class="section-card" style="margin-top:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">🔗</span>
+        <div>
+          <div class="section-title">Link Player to This League</div>
+          <div class="section-sub">Add a player who already has an account in another league</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Search by name or email — the player must already be registered in another league.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:2;min-width:200px;">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SEARCH PLAYER</div>
+            <input class="search-input" id="linkPlayerSearch" placeholder="Name or email..." oninput="searchPlayersToLink(this.value)" style="width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+        <div id="linkPlayerResults" style="margin-top:10px;"></div>
+        <div id="linkPlayerResult" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </div>
+
     <!-- Calculated Handicaps -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
@@ -1289,7 +1311,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
   <!-- HISTORY TAB -->
   <div id="tabHistory" class="wrap" style="padding-top:32px;display:none;">
-    <div class="section-card">
+    <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
         <span style="font-size:24px;">📅</span>
         <div>
@@ -1299,6 +1321,45 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div id="historyList" class="section-body">
         <div class="empty-state">No rounds recorded yet.</div>
+      </div>
+    </div>
+
+    <!-- Log Substitute -->
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">🔄</span>
+        <div>
+          <div class="section-title">Log Substitute</div>
+          <div class="section-sub">Record a sub who played for a team in a past week</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TEAM</div>
+            <select class="week-inp" id="subTeamSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
+              <option value="">Select team...</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WEEK / ROUND</div>
+            <select class="week-inp" id="subRoundSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
+              <option value="">Select round...</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SUBSTITUTE NAME</div>
+            <input class="search-input" id="subName" placeholder="e.g. John Smith" style="width:100%;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WHICH PLAYER THEY REPLACED</div>
+            <input class="search-input" id="subReplacedName" placeholder="e.g. TJ Atwood" style="width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+        <button class="btn-save-roster" onclick="logSubstitute()">💾 Save Sub Record</button>
+        <div id="subLogResult" style="margin-top:10px;font-size:13px;"></div>
       </div>
     </div>
   </div>
@@ -1414,7 +1475,8 @@ async function onLogin(data) {
     await loadRoster();
     if (league.course) loadCourseData(league.course);
     buildScoringCards();
-    showTab('scoring');
+    await loadLeagueSettings();
+    showTab('settings');
   } catch(e) {
     console.error('onLogin error:', e);
     showError('Login error: ' + e.message);
@@ -1431,10 +1493,16 @@ async function login() {
   if (btn) { btn.textContent = '...'; btn.disabled = true; }
   showError('');
   try {
-    const res = await api('POST', '/api/auth/login', {name, password: pass});
+    var rememberMe = document.getElementById('rememberMe');
+    const res = await api('POST', '/api/auth/login', {name, password: pass, rememberMe: rememberMe && rememberMe.checked});
     if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
     // Remember login name on successful login
     try { localStorage.setItem('gp_last_login', name); } catch(e) {}
+    // Multi-league: show league picker
+    if (res.multiLeague) {
+      showLeaguePicker(res, pass, rememberMe && rememberMe.checked);
+      return;
+    }
     await onLogin(res);
   } catch(e) {
     showError(e.message || 'Login failed — check your credentials.');
@@ -1902,6 +1970,7 @@ async function loadPlayersList() {
       html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
       html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" onclick="editPlayer(this)">Edit</button>';
+      html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;border-color:var(--gold);color:var(--gold2);" data-pid="'+p.id+'" data-pname="'+esc(p.first_name+' '+p.last_name)+'" onclick="addPlayerToLeague(this)">+ League</button>';
       html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
       html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">✕</button>';
       html += '</td>';
@@ -1925,6 +1994,22 @@ async function deletePlayer(userId, userName) {
     await api('DELETE', '/api/admin/players/' + userId);
     toast(userName + ' deleted');
     loadPlayersList();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function addPlayerToLeague(btn) {
+  var pid = btn.dataset.pid;
+  var pname = btn.dataset.pname;
+  // Ask for league name
+  var leagueName = prompt('Add ' + pname + ' to which league? Enter the exact league name:');
+  if (!leagueName) return;
+  try {
+    // Find league by name
+    var leagues = await api('GET', '/api/admin/leagues');
+    var league = leagues.find(function(l) { return l.name.toLowerCase() === leagueName.toLowerCase().trim(); });
+    if (!league) { toast('League "' + leagueName + '" not found. Check the name and try again.'); return; }
+    await api('POST', '/api/admin/users/' + pid + '/add-league', { league_id: league.id, role: 'player' });
+    toast(pname + ' added to ' + league.name);
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -1988,11 +2073,94 @@ function showRegister() {
   document.getElementById('registerForm').style.display = '';
   document.getElementById('loginError').style.display = 'none';
 }
+// Stored for use in pickLeague
+var _pickerCreds = {};
+
+function showLeaguePicker(leagues, loginName, loginPass, rememberMe) {
+  _pickerCreds = { name: loginName, pass: loginPass, rememberMe: rememberMe };
+  var overlay = document.createElement('div');
+  overlay.id = 'leaguePickerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
+
+  var inner = document.createElement('div');
+  inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:400px;width:90%;margin:20px;';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px;letter-spacing:2px;';
+  title.textContent = 'SELECT LEAGUE';
+  inner.appendChild(title);
+
+  var sub = document.createElement('div');
+  sub.style.cssText = 'font-size:13px;color:var(--muted);margin-bottom:20px;';
+  sub.textContent = 'You are a member of multiple leagues. Which one would you like to enter?';
+  inner.appendChild(sub);
+
+  leagues.forEach(function(l) {
+    var btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--cream);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;text-align:left;';
+    btn.innerHTML = '<span style="color:var(--gold);margin-right:8px;">🏌️</span>' + esc(l.name) + '<span style="font-size:12px;color:var(--muted);font-weight:400;margin-left:8px;">(' + l.role + ')</span>';
+    btn.onclick = function() { pickLeague(l.id); };
+    btn.onmouseover = function() { btn.style.borderColor = 'var(--gold)'; };
+    btn.onmouseout  = function() { btn.style.borderColor = 'var(--border)'; };
+    inner.appendChild(btn);
+  });
+
+  overlay.appendChild(inner);
+  document.body.appendChild(overlay);
+}
+
+async function pickLeague(leagueId) {
+  var overlay = document.getElementById('leaguePickerOverlay');
+  if (overlay) overlay.remove();
+  try {
+    var res = await api('POST', '/api/auth/login', {
+      name: _pickerCreds.name,
+      password: _pickerCreds.pass,
+      leagueId: leagueId,
+      rememberMe: _pickerCreds.rememberMe
+    });
+    await onLogin(res);
+  } catch(e) { showError(e.message); }
+}
+
 function togglePassVis(inputId, btn) {
   var inp = document.getElementById(inputId);
   if (!inp) return;
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
   else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function showLeaguePicker(res, pass, rememberMe) {
+  var overlay = document.createElement('div');
+  overlay.id = 'leaguePickerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
+  var leagueOpts = res.leagues.map(function(l) {
+    return '<button class="btn-save-roster" style="width:100%;margin-bottom:10px;font-size:16px;padding:14px;" onclick="selectLeague(' + l.id + ')">'
+      + esc(l.name) + ' <span style="font-size:12px;opacity:.7;">(' + l.role + ')</span></button>';
+  }).join('');
+  overlay.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:400px;width:90%;margin:20px;">'
+    + '<div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px;">Select League</div>'
+    + '<div style="font-size:14px;color:var(--muted);margin-bottom:20px;">Hi ' + esc(res.firstName) + ' — you are in multiple leagues. Which one do you want to open?</div>'
+    + leagueOpts + '</div>';
+  document.body.appendChild(overlay);
+
+  window._multiLeaguePass = pass;
+  window._multiLeagueRemember = rememberMe;
+  window._multiLeagueName = document.getElementById('loginName').value;
+}
+
+async function selectLeague(leagueId) {
+  var overlay = document.getElementById('leaguePickerOverlay');
+  if (overlay) overlay.remove();
+  try {
+    var res = await api('POST', '/api/auth/login', {
+      name: window._multiLeagueName,
+      password: window._multiLeaguePass,
+      rememberMe: window._multiLeagueRemember,
+      leagueId: leagueId
+    });
+    await onLogin(res);
+  } catch(e) { showError('Login error: ' + e.message); }
 }
 
 function showError(msg) {
@@ -2958,7 +3126,7 @@ function showTab(tab) {
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
-  if (tab==='history') loadHistory();
+  if (tab==='history') { loadHistory(); initSubLog(); }
   if (tab==='schedule') initSchedule();
   if (tab==='standings') loadStandings();
   if (tab==='playoffs') loadPlayoffs();
@@ -4224,6 +4392,96 @@ async function saveBuiltTeams() {
     renderTeamBuilderRows();
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+// ══ SUBSTITUTE LOGGING ══
+async function initSubLog() {
+  // Populate team dropdown
+  var teamEl = document.getElementById('subTeamSelect');
+  if (!teamEl) return;
+  teamEl.innerHTML = '<option value="">Select team...</option>';
+  rosterTeams.forEach(function(t) {
+    teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>';
+  });
+  // Populate round dropdown from history
+  var roundEl = document.getElementById('subRoundSelect');
+  roundEl.innerHTML = '<option value="">Select round...</option>';
+  try {
+    var rounds = await api('GET', '/api/league/rounds');
+    rounds.forEach(function(r, i) {
+      var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
+      roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
+    });
+  } catch(e) {}
+}
+
+async function logSubstitute() {
+  var teamId   = document.getElementById('subTeamSelect').value;
+  var roundId  = document.getElementById('subRoundSelect').value;
+  var subName  = document.getElementById('subName').value.trim();
+  var replaced = document.getElementById('subReplacedName').value.trim();
+  var result   = document.getElementById('subLogResult');
+
+  if (!teamId)   { result.innerHTML = '<span style="color:#ff9999">Select a team.</span>'; return; }
+  if (!roundId)  { result.innerHTML = '<span style="color:#ff9999">Select a round.</span>'; return; }
+  if (!subName)  { result.innerHTML = '<span style="color:#ff9999">Enter the substitute name.</span>'; return; }
+
+  try {
+    await api('POST', '/api/league/rounds/'+roundId+'/sub', {
+      team_id: teamId,
+      sub_name: subName,
+      replaced_name: replaced
+    });
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
+    document.getElementById('subName').value = '';
+    document.getElementById('subReplacedName').value = '';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+// ══ LINK PLAYER ══
+var _linkSearchTimer = null;
+function searchPlayersToLink(q) {
+  clearTimeout(_linkSearchTimer);
+  var el = document.getElementById('linkPlayerResults');
+  if (!q || q.length < 3) { el.innerHTML = ''; return; }
+  _linkSearchTimer = setTimeout(async function() {
+    try {
+      var users = await api('GET', '/api/admin/users/search?q=' + encodeURIComponent(q));
+      if (!users.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;">No users found.</div>'; return; }
+      var container = document.getElementById('linkPlayerResults');
+      container.innerHTML = '';
+      users.forEach(function(u) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;';
+        var info = document.createElement('div');
+        info.innerHTML = '<div style="font-weight:700;font-size:13px;">' + esc(u.first_name+' '+u.last_name) + '</div><div style="font-size:11px;color:var(--muted);">' + esc(u.email) + '</div>';
+        var btn = document.createElement('button');
+        btn.className = 'btn-sc-load';
+        btn.style.cssText = 'font-size:12px;padding:5px 12px;';
+        btn.textContent = '+ Add to League';
+        btn.onclick = function() { linkPlayerToLeague(u.email, u.first_name + ' ' + u.last_name); };
+        row.appendChild(info);
+        row.appendChild(btn);
+        container.appendChild(row);
+      });
+      el = container;
+    } catch(e) { document.getElementById('linkPlayerResults').innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>'; }
+  }, 400);
+}
+
+async function linkPlayerToLeague(email, name) {
+  var result = document.getElementById('linkPlayerResult');
+  try {
+    var res = await api('POST', '/api/admin/players/link', { email: email });
+    result.innerHTML = '<span style="color:var(--green2)">✓ ' + esc(res.name) + ' linked to this league. They can now log in with their existing credentials and select this league.</span>';
+    document.getElementById('linkPlayerSearch').value = '';
+    document.getElementById('linkPlayerResults').innerHTML = '';
+    loadPlayersList();
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
 }
 

@@ -81,29 +81,77 @@ router.post('/login', async (req, res) => {
     if (type === 'user' || type === undefined) {
       const user = await getOne('SELECT * FROM users WHERE email=$1', [String(name).trim().toLowerCase()]);
       if (user && bcrypt.compareSync(String(password), user.password_hash)) {
-        let leagueName = null;
-        if (user.league_id) {
-          const league = await getOne('SELECT name FROM leagues WHERE id=$1', [user.league_id]);
-          leagueName = league?.name;
+        // Superadmin — no league selection needed
+        if (user.role === 'superadmin') {
+          req.session.userId = user.id;
+          req.session.role = 'superadmin';
+          return req.session.save(err => {
+            if (err) return sendError(res, 500, 'Session error');
+            res.json({ success: true, role: 'superadmin', userId: user.id, firstName: user.first_name, lastName: user.last_name });
+          });
         }
+
+        // Get all leagues this user belongs to (from user_leagues junction + legacy league_id)
+        const userLeagues = await getAll(
+          `SELECT ul.league_id, ul.team_id, ul.role, l.name as league_name
+           FROM user_leagues ul
+           JOIN leagues l ON l.id = ul.league_id
+           WHERE ul.user_id = $1
+           ORDER BY l.name`,
+          [user.id]
+        );
+
+        // Also check legacy league_id on users table
+        if (user.league_id && !userLeagues.find(ul => ul.league_id === user.league_id)) {
+          const league = await getOne('SELECT id, name FROM leagues WHERE id=$1', [user.league_id]);
+          if (league) userLeagues.push({ league_id: league.id, team_id: user.team_id, role: user.role, league_name: league.name });
+        }
+
+        // If user belongs to multiple leagues, return list for them to choose
+        if (userLeagues.length > 1 && !req.body.leagueId) {
+          return res.json({
+            success: true,
+            multiLeague: true,
+            userId: user.id,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            leagues: userLeagues.map(ul => ({ id: ul.league_id, name: ul.league_name, role: ul.role }))
+          });
+        }
+
+        // Single league or specific league chosen
+        const chosenLeague = req.body.leagueId
+          ? userLeagues.find(ul => ul.league_id == req.body.leagueId) || userLeagues[0]
+          : userLeagues[0] || { league_id: user.league_id, team_id: user.team_id, role: user.role };
+
+        if (!chosenLeague) return sendError(res, 401, 'User not assigned to any league');
+
+        const leagueRow = await getOne('SELECT name FROM leagues WHERE id=$1', [chosenLeague.league_id]);
+        const leagueName = leagueRow?.name;
+        const teamId = chosenLeague.team_id || user.team_id;
+        const role = chosenLeague.role || user.role;
         let teamInfo = null;
-        if (user.team_id) {
-          teamInfo = await getOne('SELECT * FROM teams WHERE id=$1', [user.team_id]);
-        }
-        req.session.userId = user.id;
-        req.session.leagueId = user.league_id;
+        if (teamId) teamInfo = await getOne('SELECT * FROM teams WHERE id=$1', [teamId]);
+
+        req.session.userId   = user.id;
+        req.session.leagueId = chosenLeague.league_id;
         req.session.leagueName = leagueName;
-        req.session.role = user.role;
-        req.session.teamId = user.team_id;
+        req.session.role     = role;
+        req.session.teamId   = teamId;
+        if (req.body.rememberMe) {
+          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+        } else {
+          req.session.cookie.maxAge = null;
+        }
         return req.session.save(err => {
           if (err) return sendError(res, 500, 'Session error');
           res.json({
             success: true,
-            role: user.role,
+            role,
             leagueName,
-            leagueId: user.league_id,
+            leagueId: chosenLeague.league_id,
             userId: user.id,
-            teamId: user.team_id,
+            teamId,
             firstName: user.first_name,
             lastName: user.last_name,
             mustChangePassword: user.must_change_password,
