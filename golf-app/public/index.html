@@ -1967,7 +1967,7 @@ async function loadPlayersList() {
     var teams = rosterTeams;
     var el = document.getElementById('playersList');
     if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
-    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
+    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
     players.forEach(function(p) {
       var teamOpts = '<option value="">— unassigned —</option>';
       teams.forEach(function(t) {
@@ -1976,9 +1976,8 @@ async function loadPlayersList() {
       });
       html += '<tr>';
       html += '<td style="font-weight:700">'+esc(p.first_name+' '+p.last_name)+'</td>';
-      html += '<td style="color:var(--muted);font-size:12px">'
-        + (p.username ? '<span style="color:var(--gold2);font-weight:700;">'+esc(p.username)+'</span> &bull; ' : '')
-        + esc(p.email)+'</td>';
+      html += '<td style="color:var(--gold2);font-weight:700;font-size:13px;">'+(p.username ? esc(p.username) : '—')+'</td>';
+      html += '<td style="color:var(--muted);font-size:12px;">'+esc(p.email)+'</td>';
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
       html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
@@ -1987,7 +1986,6 @@ async function loadPlayersList() {
       html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
       html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">✕</button>';
       html += '</td>';
-      html += '</tr>';
     });
     html += '</tbody></table>';
     el.innerHTML = html;
