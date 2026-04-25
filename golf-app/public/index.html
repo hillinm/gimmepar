@@ -686,12 +686,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <div class="login-card">
       <div style="width:100px;height:100px;margin:0 auto 16px;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
       <div class="login-title">GIMMEPAR</div>
-      <div class="login-sub" id="loginSub">Sign in with your email or league name</div>
+      <div class="login-sub" id="loginSub">Sign in with your username, email, or league name</div>
       <div class="form-error" id="loginError"></div>
       <div id="loginForm">
         <div class="form-group">
           <label>Email or League Name</label>
-          <input class="form-input" id="loginName" placeholder="Email or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="email" inputmode="email">
+          <input class="form-input" id="loginName" placeholder="Username, email, or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="email" inputmode="email">
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -1635,6 +1635,13 @@ async function loadPlayerView(data) {
     container.appendChild(noOpp);
   }
 
+  // Calculate button
+  var calcBtn = document.createElement('button');
+  calcBtn.className = 'btn-calculate';
+  calcBtn.style.marginTop = '20px';
+  calcBtn.innerHTML = '&#9971; CALCULATE RESULTS';
+  calcBtn.onclick = calculate;
+  container.appendChild(calcBtn);
 }
 
 function buildReadOnlyCard(team, st) {
@@ -1968,7 +1975,9 @@ async function loadPlayersList() {
       });
       html += '<tr>';
       html += '<td style="font-weight:700">'+esc(p.first_name+' '+p.last_name)+'</td>';
-      html += '<td style="color:var(--muted);font-size:12px">'+esc(p.email)+'</td>';
+      html += '<td style="color:var(--muted);font-size:12px">'
+        + (p.username ? '<span style="color:var(--gold2);font-weight:700;">'+esc(p.username)+'</span> &bull; ' : '')
+        + esc(p.email)+'</td>';
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
       html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';

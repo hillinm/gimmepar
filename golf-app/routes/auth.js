@@ -79,7 +79,11 @@ router.post('/login', async (req, res) => {
 
     // Try user login first (players, leagueadmins, superadmin)
     if (type === 'user' || type === undefined) {
-      const user = await getOne('SELECT * FROM users WHERE email=$1', [String(name).trim().toLowerCase()]);
+      const nameClean = String(name).trim().toLowerCase();
+      const user = await getOne(
+        'SELECT * FROM users WHERE email=$1 OR username=$1',
+        [nameClean]
+      );
       if (user && bcrypt.compareSync(String(password), user.password_hash)) {
         // Superadmin — no league selection needed
         if (user.role === 'superadmin') {

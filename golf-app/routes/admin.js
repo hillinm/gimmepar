@@ -59,6 +59,21 @@ router.post('/users/:id/reset-password', requireRole('superadmin','leagueadmin')
 });
 
 // ── LEAGUE ADMIN: upload players from CSV data ──
+function makeUsername(first, last) {
+  return (first.charAt(0) + last).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+async function uniqueUsername(base) {
+  // If username taken, append a number
+  let username = base;
+  let n = 2;
+  while (true) {
+    const existing = await getOne('SELECT id FROM users WHERE username=$1', [username]);
+    if (!existing) return username;
+    username = base + n++;
+  }
+}
+
 router.post('/players/upload', requireRole('superadmin','leagueadmin'), async (req, res) => {
   try {
     const { players, leagueId } = req.body || {};

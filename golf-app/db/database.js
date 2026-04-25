@@ -65,7 +65,13 @@ async function init() {
 
     // Safe migrations
     await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS nine TEXT NOT NULL DEFAULT 'front'");
+    await client.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT");
     await client.query("ALTER TABLE round_scores ADD COLUMN IF NOT EXISTS is_sub BOOLEAN DEFAULT FALSE");
+    // Auto-generate usernames for existing users that don't have one
+    await client.query(\`
+      UPDATE users SET username = LOWER(SUBSTRING(first_name,1,1) || last_name)
+      WHERE username IS NULL AND first_name != '' AND last_name != ''
+    \`);
     await client.query("ALTER TABLE round_scores ADD COLUMN IF NOT EXISTS sub_name TEXT DEFAULT ''");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS admin_email TEXT DEFAULT ''");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS settings TEXT DEFAULT '{}'");
