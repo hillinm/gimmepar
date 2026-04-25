@@ -118,9 +118,17 @@ router.get('/players', requireRole('superadmin','leagueadmin'), async (req, res)
       ? (req.query.leagueId || null)
       : req.session.leagueId;
     const users = await getAll(
-      'SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.must_change_password, u.team_id, t.player1, t.player2 FROM users u LEFT JOIN teams t ON t.id=u.team_id WHERE u.league_id=$1 ORDER BY u.last_name',
+      'SELECT u.id, u.first_name, u.last_name, u.email, u.username, u.role, u.must_change_password, u.team_id, t.player1, t.player2 FROM users u LEFT JOIN teams t ON t.id=u.team_id WHERE u.league_id=$1 ORDER BY u.last_name',
       [leagueId]
     );
+    // Generate and save usernames for any users missing them
+    for (const u of users) {
+      if (!u.username && u.first_name) {
+        const uname = await uniqueUsername(makeUsername(u.first_name, u.last_name || ''));
+        await query('UPDATE users SET username=$1 WHERE id=$2', [uname, u.id]);
+        u.username = uname;
+      }
+    }
     res.json(users);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
