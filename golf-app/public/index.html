@@ -2269,8 +2269,8 @@ function renderRosterTable() {
             <button class="format-btn ${is4?'active-4':''}"  onclick="setRosterFormat(${t.id},'4man',this)">4</button>
           </div>
         </td>
-        <td><input class="team-input" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player 1"></td>
-        <td><input class="team-input" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
+        <td><input class="team-input" list="playerNameList" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player 1"></td>
+        <td><input class="team-input" list="playerNameList" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
         <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player3||'')}" onchange="updateRosterField(${t.id},'player3',this.value)" placeholder="Player 3"></td>
         <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player4||'')}" onchange="updateRosterField(${t.id},'player4',this.value)" placeholder="Player 4"></td>
         <td><input class="team-input hdcp-input-sm" type="text" inputmode="text" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" placeholder="0"></td>
@@ -2286,6 +2286,25 @@ function renderRosterTable() {
     tbody.appendChild(tr);
   });
   if (!isRandom) syncP34Headers();
+  // Build datalist of player names from Players tab
+  buildPlayerNameList();
+}
+
+async function buildPlayerNameList() {
+  var existing = document.getElementById('playerNameList');
+  if (existing) existing.remove();
+  var dl = document.createElement('datalist');
+  dl.id = 'playerNameList';
+  // Pull from player accounts
+  try {
+    var accounts = await api('GET', '/api/admin/players');
+    accounts.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.first_name + ' ' + p.last_name;
+      dl.appendChild(opt);
+    });
+  } catch(e) {}
+  document.body.appendChild(dl);
 }
 
 function syncP34Headers() {
