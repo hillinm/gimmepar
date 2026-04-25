@@ -2215,6 +2215,7 @@ function showError(msg) {
 
 // ══ ROSTER ══
 async function loadRoster() {
+  patchUpdateRosterField();
   try {
     rosterTeams = await api('GET', '/api/league/teams');
     renderRosterTable();
@@ -2295,16 +2296,38 @@ async function buildPlayerNameList() {
   if (existing) existing.remove();
   var dl = document.createElement('datalist');
   dl.id = 'playerNameList';
-  // Pull from player accounts
   try {
     var accounts = await api('GET', '/api/admin/players');
-    accounts.forEach(function(p) {
+    var allNames = accounts.map(function(p) { return p.first_name + ' ' + p.last_name; });
+
+    // Collect names already assigned to roster teams
+    var usedNames = new Set();
+    rosterTeams.forEach(function(t) {
+      if (t.player1 && t.player1.trim()) usedNames.add(t.player1.trim());
+      if (t.player2 && t.player2.trim()) usedNames.add(t.player2.trim());
+      if (t.player3 && t.player3.trim()) usedNames.add(t.player3.trim());
+      if (t.player4 && t.player4.trim()) usedNames.add(t.player4.trim());
+    });
+
+    // Only show unassigned players in dropdown
+    allNames.filter(function(n) { return !usedNames.has(n); }).forEach(function(name) {
       var opt = document.createElement('option');
-      opt.value = p.first_name + ' ' + p.last_name;
+      opt.value = name;
       dl.appendChild(opt);
     });
   } catch(e) {}
   document.body.appendChild(dl);
+}
+
+// Refresh datalist after any roster field changes
+var _origUpdateRosterField = null;
+function patchUpdateRosterField() {
+  if (_origUpdateRosterField) return;
+  _origUpdateRosterField = updateRosterField;
+  updateRosterField = async function(id, field, value) {
+    await _origUpdateRosterField(id, field, value);
+    buildPlayerNameList();
+  };
 }
 
 function syncP34Headers() {
