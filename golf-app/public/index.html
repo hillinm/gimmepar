@@ -776,6 +776,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">Season Standings</div></div></div>
         <div class="section-body" id="playerStandingsContent"><div class="empty-state">Loading...</div></div>
       </div>
+    <div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:24px;">
+  Need help? <a href="mailto:mark.hillin@gmail.com" style="color:var(--gold);text-decoration:none;">Contact Support</a>
+</div>
     </div>
   </div>
 
@@ -1632,13 +1635,6 @@ async function loadPlayerView(data) {
     container.appendChild(noOpp);
   }
 
-  // Calculate button
-  var calcBtn = document.createElement('button');
-  calcBtn.className = 'btn-calculate';
-  calcBtn.style.marginTop = '20px';
-  calcBtn.innerHTML = '&#9971; CALCULATE RESULTS';
-  calcBtn.onclick = calculate;
-  container.appendChild(calcBtn);
 }
 
 function buildReadOnlyCard(team, st) {
@@ -2887,9 +2883,44 @@ async function switchNine(teamId, nine) {
     else                      btns[2]?.classList.add('active-b');
   }
 
-  // Rebuild the entire holes grid (handles 9 vs 18)
+  // Save current scores before rebuilding grid
   const gridWrap = document.getElementById('sgrid_'+teamId);
+  const savedScores = [];
+  if (gridWrap) {
+    gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
+      savedScores[i] = inp.value;
+    });
+  }
+
+  // Rebuild the entire holes grid (handles 9 vs 18)
   if (gridWrap) gridWrap.innerHTML = buildHolesGrid(teamId, nine);
+
+  // Restore saved scores into new inputs
+  if (gridWrap && savedScores.length) {
+    gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
+      if (savedScores[i] !== undefined && savedScores[i] !== '') {
+        inp.value = savedScores[i];
+        // Re-apply colour coding
+        var par = parseInt(inp.dataset.par) || 4;
+        var val = parseInt(savedScores[i]);
+        inp.classList.remove('eagle','birdie','bogey','double');
+        if (!isNaN(val)) {
+          if (val <= par - 2) inp.classList.add('eagle');
+          else if (val === par - 1) inp.classList.add('birdie');
+          else if (val === par + 1) inp.classList.add('bogey');
+          else if (val >= par + 2) inp.classList.add('double');
+        }
+      }
+    });
+    // Also restore to scoreTeams state
+    if (st) {
+      var newHoles = [];
+      gridWrap.querySelectorAll('.hole-inp').forEach(function(inp) {
+        newHoles.push(inp.value !== '' ? parseInt(inp.value) : null);
+      });
+      st.holes = newHoles;
+    }
+  }
 
   // Update number badge
   const numBadge = document.getElementById('snum_'+teamId);
