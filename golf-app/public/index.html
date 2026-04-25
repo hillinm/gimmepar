@@ -591,91 +591,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 /* ── SAFE AREA bottom padding ── */
 .btn-calculate { margin-bottom: 20px; }
 
-
-/* ── HIGH CONTRAST PLAYER SCORECARD ── */
-#playerPage {
-  --bg: #ffffff;
-  --surface: #f4f4f4;
-  --surface2: #e8e8e8;
-  --border: rgba(0,0,0,0.2);
-  --cream: #111111;
-  --muted: #444444;
-  --gold: #8a6000;
-  --gold2: #a07800;
-  --green: #1a6e12;
-  --green2: #1a8a10;
-  background: #ffffff;
-  color: #111;
-}
-#playerPage .app-header {
-  background: #1a2e1a;
-  color: #fff;
-}
-#playerPage .app-header .nav-tab {
-  color: #ddd;
-}
-#playerPage .app-header .nav-tab.active {
-  color: #fff;
-  border-bottom-color: #c9a84c;
-}
-#playerPage .section-card {
-  background: #f4f4f4;
-  border: 1px solid #ccc;
-  color: #111;
-}
-#playerPage .score-team-card {
-  background: #fff;
-  border: 2px solid #333;
-  color: #111;
-}
-#playerPage .score-team-header {
-  background: #1a2e1a;
-  color: #fff;
-}
-#playerPage .team-name-display {
-  color: #fff;
-}
-#playerPage .team-num {
-  background: #1a2e1a;
-  color: #c9a84c;
-  border-color: #c9a84c;
-}
-#playerPage .hole-inp {
-  background: #fff;
-  border: 2px solid #555;
-  color: #111;
-  font-size: 20px;
-  font-weight: 700;
-}
-#playerPage .hole-inp:focus {
-  border-color: #1a6e12;
-  background: #f0fff0;
-}
-#playerPage .hole-inp.eagle { background:#fff3b0;border-color:#a07800;color:#7a4f00; }
-#playerPage .hole-inp.birdie { background:#d4f7d4;border-color:#1a6e12;color:#1a4e10; }
-#playerPage .hole-inp.bogey { background:#ffe0e0;border-color:#c00;color:#900; }
-#playerPage .hole-inp.double { background:#ffb0b0;border-color:#900;color:#600; }
-#playerPage .score-team-body { color: #111; }
-#playerPage .hole-label { color: #444; }
-#playerPage .par-row { color: #333; background:#f0f0f0; }
-#playerPage .running-total { color: #111; font-weight:700; }
-#playerPage .hdcp-row label { color: #333; }
-#playerPage .hdcp-row input { background:#fff;border:2px solid #555;color:#111; }
-#playerPage .sub-btn { border-color:#555;color:#333;background:#eee; }
-#playerPage .sub-btn.active { background:#1a2e1a;color:#c9a84c;border-color:#c9a84c; }
-#playerPage .btn-calculate { background:#1a2e1a;color:#fff;border-color:#1a2e1a;font-size:18px;padding:14px 28px; }
-#playerPage .section-title { color: #111; }
-#playerPage .section-sub { color: #444; }
-#playerPage .empty-state { color: #444; }
-#playerPage [style*="color:var(--muted)"] { color: #444 !important; }
-#playerPage [style*="color:var(--cream)"] { color: #111 !important; }
-#playerPage .btn-logout { background:#c0392b;color:#fff;border-color:#c0392b; }
-#playerPage .standings-tbl { color: #111; }
-#playerPage .standings-tbl th { color: #333; border-bottom-color:#ccc; }
-#playerPage .standings-tbl td { border-bottom-color:#eee; }
-#playerPage .standings-flight-title { color: #1a2e1a; }
-#playerPage .pts { color: #111; }
-
 </style>
 </head>
 <body>
@@ -683,16 +598,15 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 <!-- ══ LOGIN PAGE ══ -->
 <div id="loginPage" class="page active">
   <div class="login-wrap">
-    <div style="background:rgba(192,57,43,.2);border:1px solid rgba(192,57,43,.4);color:#ff9999;font-size:11px;letter-spacing:3px;text-align:center;padding:8px 16px;border-radius:6px;margin-bottom:16px;">🚧 IN DEVELOPMENT — Features may change</div>
     <div class="login-card">
       <div style="width:100px;height:100px;margin:0 auto 16px;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
       <div class="login-title">GIMMEPAR</div>
-      <div class="login-sub" id="loginSub">Sign in with your username, email, or league name</div>
+      <div class="login-sub" id="loginSub">Sign in with your email or league name</div>
       <div class="form-error" id="loginError"></div>
       <div id="loginForm">
         <div class="form-group">
           <label>Email or League Name</label>
-          <input class="form-input" id="loginName" placeholder="Username, email, or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="email" inputmode="email">
+          <input class="form-input" id="loginName" placeholder="Email or league name" onkeydown="if(event.key==='Enter')login()" autocomplete="email" inputmode="email">
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -701,14 +615,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <input type="checkbox" id="rememberMe" style="width:18px;height:18px;cursor:pointer;accent-color:var(--gold);">
-          <label for="rememberMe" style="font-size:13px;color:var(--muted);cursor:pointer;">Remember me for 30 days</label>
-        </div>
         <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
-        <div style="text-align:center;margin-top:10px;">
-          <a href="#" onclick="showForgotPassword();return false;" style="font-size:13px;color:var(--muted);text-decoration:none;border-bottom:1px solid rgba(122,138,106,.4);">Forgot password?</a>
-        </div>
         <div class="login-toggle">Don't have a league? <a onclick="showRegister()">Create one</a></div>
       </div>
       <div id="registerForm" style="display:none">
@@ -756,7 +663,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   </div>
 
   <!-- PLAYER VIEW -->
-  <div id="playerPage" class="page" style="background:#fff;color:#111;">
+  <div id="playerPage" class="page">
     <div class="app-header">
       <div class="app-logo" style="display:flex;align-items:center;gap:10px;">
         <div style="width:36px;height:36px;flex-shrink:0;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
@@ -777,9 +684,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">Season Standings</div></div></div>
         <div class="section-body" id="playerStandingsContent"><div class="empty-state">Loading...</div></div>
       </div>
-    <div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:24px;">
-  Need help? <a href="mailto:mark.hillin@gmail.com" style="color:var(--gold);text-decoration:none;">Contact Support</a>
-</div>
     </div>
   </div>
 
@@ -795,6 +699,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <button class="nav-tab active" onclick="showAdminTab('leagues')" id="satab-leagues">Leagues</button>
         <button class="nav-tab" onclick="showAdminTab('users')" id="satab-users">Users</button>
         <button class="nav-tab" onclick="showAdminTab('courses')" id="satab-courses">Courses</button>
+        <button class="nav-tab" onclick="showAdminTab('scorecard')" id="satab-scorecard">My Scorecard</button>
       </nav>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
@@ -817,6 +722,34 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         </div>
         <div class="section-body" id="adminUsersList"><div class="empty-state">Loading...</div></div>
       </div>
+    </div>
+
+    <!-- Scorecard tab -->
+    <div id="saTabScorecard" class="wrap" style="padding-top:32px;display:none;">
+      <div class="section-card" style="margin-bottom:20px;">
+        <div class="section-header">
+          <span style="font-size:24px;">⛳</span>
+          <div><div class="section-title">My Player Setup</div><div class="section-sub">Link your admin account to a league and team</div></div>
+        </div>
+        <div class="section-body">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+            <div>
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LEAGUE</div>
+              <select class="week-inp" id="adminLeagueSelect" onchange="loadAdminTeams()" style="width:220px;padding:8px 10px;font-family:inherit;">
+                <option value="">Select a league...</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">MY TEAM</div>
+              <select class="week-inp" id="adminTeamSelect" style="width:220px;padding:8px 10px;font-family:inherit;">
+                <option value="">Select your team...</option>
+              </select>
+            </div>
+            <button class="btn-gen" style="font-size:14px;padding:9px 18px;" onclick="loadAdminScorecard()">Load Scorecard</button>
+          </div>
+        </div>
+      </div>
+      <div id="adminScorecardArea"></div>
     </div>
 
     <!-- Courses tab -->
@@ -901,9 +834,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="teams-toolbar">
           <button class="btn-add" onclick="addTeamRow()">+ Add Team</button>
           <button class="btn-save-roster" onclick="saveRoster()">💾 Save Roster</button>
-          <button class="btn-save-roster" id="btnDrawTeams" style="background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="drawRandomTeams()">🎲 Draw Teams</button>
         </div>
-        <div id="drawResult" style="font-size:13px;margin-top:8px;"></div>
         <div style="overflow-x:auto;">
           <table class="team-table">
             <thead><tr><th>#</th><th>Format</th><th>Player 1</th><th>Player 2</th><th class="p34-header">Player 3</th><th class="p34-header">Player 4</th><th>Hdcp</th><th>Nine</th><th></th></tr></thead>
@@ -1030,53 +961,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
     </div>
 
-    <!-- Email League -->
-    <div class="section-card" style="margin-top:20px;">
-      <div class="section-header">
-        <span style="font-size:24px;">📧</span>
-        <div>
-          <div class="section-title">Email League</div>
-          <div class="section-sub">Send a message to all players in your league</div>
-        </div>
-      </div>
-      <div class="section-body">
-        <div style="margin-bottom:12px;">
-          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SUBJECT</div>
-          <input class="search-input" id="leagueEmailSubject" placeholder="e.g. Week 3 Schedule" style="width:100%;box-sizing:border-box;">
-        </div>
-        <div style="margin-bottom:12px;">
-          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">MESSAGE</div>
-          <textarea id="leagueEmailBody" placeholder="Type your message here..." style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:10px 14px;font-family:'Libre Baskerville',serif;font-size:13px;outline:none;resize:vertical;min-height:120px;line-height:1.6;"></textarea>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <button class="btn-save-roster" onclick="sendLeagueEmail()">📧 Send to All Players</button>
-          <span id="leagueEmailResult" style="font-size:13px;"></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Link Existing Player to League -->
-    <div class="section-card" style="margin-top:20px;">
-      <div class="section-header">
-        <span style="font-size:24px;">🔗</span>
-        <div>
-          <div class="section-title">Link Player to This League</div>
-          <div class="section-sub">Add a player who already has an account in another league</div>
-        </div>
-      </div>
-      <div class="section-body">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Search by name or email — the player must already be registered in another league.</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
-          <div style="flex:2;min-width:200px;">
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SEARCH PLAYER</div>
-            <input class="search-input" id="linkPlayerSearch" placeholder="Name or email..." oninput="searchPlayersToLink(this.value)" style="width:100%;box-sizing:border-box;">
-          </div>
-        </div>
-        <div id="linkPlayerResults" style="margin-top:10px;"></div>
-        <div id="linkPlayerResult" style="margin-top:8px;font-size:13px;"></div>
-      </div>
-    </div>
-
     <!-- Calculated Handicaps -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
@@ -1108,7 +992,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <label>Week</label>
           <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;">
           <button class="btn-gen" onclick="generateAndSaveWeek()">📆 Generate &amp; Save Week</button>
-          <button class="btn-gen" id="btnRandomDraw" style="background:var(--gold);color:var(--bg);display:none;" onclick="randomDrawWeek()">🎲 Random Draw</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
           <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear All</button>
         </div>
@@ -1257,18 +1140,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
-        <!-- Handicap -->
-        <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">⛳ Handicap</div>
-          <div class="setting-toggle">
-            <button class="setting-btn" id="settingHdcpOn" onclick="setSettingNoHdcp(false,this)">Use Handicap</button>
-            <button class="setting-btn" id="settingHdcpOff" onclick="setSettingNoHdcp(true,this)">No Handicap (Gross Only)</button>
-          </div>
-          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:6px;">When disabled, net score = gross score and handicap fields are hidden.</div>
-        </div>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
-
         <!-- Alternate Nines -->
         <div style="margin-bottom:28px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔀 Alternate Nines (Schedule)</div>
@@ -1322,7 +1193,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
   <!-- HISTORY TAB -->
   <div id="tabHistory" class="wrap" style="padding-top:32px;display:none;">
-    <div class="section-card" style="margin-bottom:20px;">
+    <div class="section-card">
       <div class="section-header">
         <span style="font-size:24px;">📅</span>
         <div>
@@ -1332,45 +1203,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div id="historyList" class="section-body">
         <div class="empty-state">No rounds recorded yet.</div>
-      </div>
-    </div>
-
-    <!-- Log Substitute -->
-    <div class="section-card">
-      <div class="section-header">
-        <span style="font-size:24px;">🔄</span>
-        <div>
-          <div class="section-title">Log Substitute</div>
-          <div class="section-sub">Record a sub who played for a team in a past week</div>
-        </div>
-      </div>
-      <div class="section-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TEAM</div>
-            <select class="week-inp" id="subTeamSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
-              <option value="">Select team...</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WEEK / ROUND</div>
-            <select class="week-inp" id="subRoundSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
-              <option value="">Select round...</option>
-            </select>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SUBSTITUTE NAME</div>
-            <input class="search-input" id="subName" placeholder="e.g. John Smith" style="width:100%;box-sizing:border-box;">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WHICH PLAYER THEY REPLACED</div>
-            <input class="search-input" id="subReplacedName" placeholder="e.g. TJ Atwood" style="width:100%;box-sizing:border-box;">
-          </div>
-        </div>
-        <button class="btn-save-roster" onclick="logSubstitute()">💾 Save Sub Record</button>
-        <div id="subLogResult" style="margin-top:10px;font-size:13px;"></div>
       </div>
     </div>
   </div>
@@ -1431,7 +1263,7 @@ let lastCalcData = [];
 let courseSearchResults = [];
 let flightMode = 'hl';
 let skinsEnabled = true;
-let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, noHandicap: false, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2, playoffBrackets: 2, playoffFormat: 'single' };
+let leagueSettings = { subThreshold: 2, flightMode: 'hl', skinsEnabled: true, alternateNines: false, teamFormat: 'static', hdcpSystem: 'live', hdcpEstWeeks: 5, hdcpPct: 80, hdcpMaxChange: 2, playoffBrackets: 2, playoffFormat: 'single' };
 let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
@@ -1486,8 +1318,7 @@ async function onLogin(data) {
     await loadRoster();
     if (league.course) loadCourseData(league.course);
     buildScoringCards();
-    await loadLeagueSettings();
-    showTab('settings');
+    showTab('scoring');
   } catch(e) {
     console.error('onLogin error:', e);
     showError('Login error: ' + e.message);
@@ -1504,16 +1335,10 @@ async function login() {
   if (btn) { btn.textContent = '...'; btn.disabled = true; }
   showError('');
   try {
-    var rememberMe = document.getElementById('rememberMe');
-    const res = await api('POST', '/api/auth/login', {name, password: pass, rememberMe: rememberMe && rememberMe.checked});
+    const res = await api('POST', '/api/auth/login', {name, password: pass});
     if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
     // Remember login name on successful login
     try { localStorage.setItem('gp_last_login', name); } catch(e) {}
-    // Multi-league: show league picker
-    if (res.multiLeague) {
-      showLeaguePicker(res, pass, rememberMe && rememberMe.checked);
-      return;
-    }
     await onLogin(res);
   } catch(e) {
     showError(e.message || 'Login failed — check your credentials.');
@@ -1656,72 +1481,140 @@ function buildReadOnlyCard(team, st) {
   for (var i = 0; i < holesCount; i++) {
     holeCells += '<div style="text-align:center;">'
       + '<div style="font-size:10px;color:var(--muted);margin-bottom:3px;">H'+(i+1)+'</div>'
-      + '<div id="opphole_'+team.id+'_'+i+'" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">—</div>'
+      + '<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">—</div>'
       + '</div>';
   }
   card.innerHTML = '<div class="score-team-header">'
     + '<div class="team-num" style="background:rgba(122,138,106,.3)">VS</div>'
-    + '<div class="team-name-display">' + esc(team.player1||'') + (team.player2 ? ' / ' + esc(team.player2) : '')
+    + '<div class="team-name-display">' + esc(team.player1) + ' / ' + esc(team.player2)
     + ' <span style="font-size:10px;color:var(--muted);font-style:italic;">(view only)</span></div>'
-    + '<span id="oppLiveTag_'+team.id+'" style="font-size:10px;color:var(--muted);margin-left:auto;font-style:italic;"></span>'
     + '</div>'
     + '<div class="score-team-body">'
-    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;" id="oppInfo_'+team.id+'">Hdcp: ' + (team.handicap||0) + ' &bull; ' + nineLabel + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Hdcp: ' + team.handicap + ' &bull; ' + nineLabel + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + holeCells + '</div>'
-    + '<div id="oppTotal_'+team.id+'" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>'
+    + '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:10px;">Opponent scores will appear here when entered by your opponent or league admin.</div>'
     + '</div>';
   return card;
 }
 
-var _oppPollTimer = null;
-
-function startOpponentPolling(oppTeamId) {
-  if (_oppPollTimer) clearInterval(_oppPollTimer);
-  fetchOpponentScore(oppTeamId); // immediate fetch
-  _oppPollTimer = setInterval(function() { fetchOpponentScore(oppTeamId); }, 30000);
-}
-
-async function fetchOpponentScore(oppTeamId) {
-  try {
-    var data = await api('GET', '/api/league/scores/latest/' + oppTeamId);
-    if (!data.found) return;
-    var scores = data.hole_scores || [];
-    // Update hole cells
-    scores.forEach(function(score, i) {
-      var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
-      if (!cell) return;
-      if (score !== null && score !== undefined) {
-        cell.textContent = score;
-        cell.style.color = 'var(--cream)';
-        cell.style.borderColor = 'var(--border)';
-      }
-    });
-    // Update total
-    var totalEl = document.getElementById('oppTotal_' + oppTeamId);
-    if (totalEl && data.gross) {
-      totalEl.innerHTML = 'Gross: <strong>' + data.gross + '</strong>' +
-        (data.net !== null ? ' &nbsp;|&nbsp; Net: <strong>' + data.net + '</strong>' : '');
-      totalEl.style.color = 'var(--cream)';
-    }
-    // Update live tag
-    var tag = document.getElementById('oppLiveTag_' + oppTeamId);
-    if (tag) {
-      tag.textContent = '● live';
-      tag.style.color = 'var(--green2)';
-    }
-  } catch(e) { /* silent fail */ }
-}
-
 // ══ SUPER ADMIN ══
 function showAdminTab(tab) {
-  ['leagues','users','courses'].forEach(function(t) {
+  ['leagues','users','courses','scorecard'].forEach(function(t) {
     var panel = document.getElementById('saTab'+t.charAt(0).toUpperCase()+t.slice(1));
     var btn   = document.getElementById('satab-'+t);
     if (panel) panel.style.display = t===tab ? '' : 'none';
     if (btn)   btn.classList.toggle('active', t===tab);
   });
   if (tab==='courses') adminCourseSearch('');
-
+async function initAdminScorecard() {
+  var leagueEl = document.getElementById('adminLeagueSelect');
+  if (!leagueEl) return;
+  leagueEl.innerHTML = '<option value="">Loading leagues...</option>';
+  try {
+    var leagues = await api('GET', '/api/admin/leagues');
+    if (!leagues || !leagues.length) { leagueEl.innerHTML = '<option value="">No leagues found</option>'; return; }
+    leagueEl.innerHTML = '<option value="">Select a league...</option>';
+    leagues.forEach(function(l) { leagueEl.innerHTML += '<option value="'+l.id+'">'+esc(l.name)+'</option>'; });
+  } catch(e) { leagueEl.innerHTML = '<option value="">Error: '+e.message+'</option>'; }
+}
+async function loadAdminTeams() {
+  var leagueId = document.getElementById('adminLeagueSelect').value;
+  var teamEl = document.getElementById('adminTeamSelect');
+  teamEl.innerHTML = '<option value="">Select your team...</option>';
+  if (!leagueId) return;
+  try {
+    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
+    teams.forEach(function(t) { teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>'; });
+  } catch(e) { console.warn(e); }
+}
+async function loadAdminScorecard() {
+  var leagueId = document.getElementById('adminLeagueSelect').value;
+  var teamId = document.getElementById('adminTeamSelect').value;
+  var area = document.getElementById('adminScorecardArea');
+  if (!leagueId || !teamId) { area.innerHTML = '<div class="empty-state">Select a league and team first.</div>'; return; }
+  area.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
+    var leagueInfo = await api('GET', '/api/admin/league/'+leagueId);
+    var myTeam = teams.find(function(t){return t.id==teamId;});
+    if (!myTeam) { area.innerHTML = '<div class="empty-state">Team not found.</div>'; return; }
+    rosterTeams = teams;
+    var st = {id:myTeam.id, nine:myTeam.nine||'front', holes:Array(9).fill(null)};
+    scoreTeams = [st];
+    if (leagueInfo && leagueInfo.course) {
+      leagueInfo.course.front9par.forEach(function(p,i){var el=document.getElementById('pf_'+i);if(el)el.value=p;});
+      leagueInfo.course.back9par.forEach(function(p,i){var el=document.getElementById('pb_'+i);if(el)el.value=p;});
+      updateParTotals();
+    }
+    var opponent=null, matchupHole=null;
+    try {
+      var curr=await api('GET','/api/league/schedule/current?leagueId='+leagueId);
+      if(curr&&curr.currentWeek){var wd=await api('GET','/api/league/schedule/week/'+curr.currentWeek+'?leagueId='+leagueId);var mm=wd.matchups.find(function(m){return(m.teamA&&m.teamA.id==teamId)||(m.teamB&&m.teamB.id==teamId);});if(mm){var op=(mm.teamA&&mm.teamA.id==teamId)?mm.teamB:mm.teamA;if(op)opponent=teams.find(function(t){return t.id===op.id;})||op;matchupHole=mm.hole;}}
+    } catch(e){}
+    area.innerHTML='';
+    if(matchupHole){var wi=document.createElement('div');wi.style.cssText='font-size:13px;color:var(--gold);margin-bottom:12px;font-weight:700;';wi.textContent='STARTING HOLE '+matchupHole;area.appendChild(wi);}
+    area.appendChild(buildScoreCard(myTeam,st,0));
+    if(opponent){var os={id:opponent.id,nine:opponent.nine||'front',holes:Array(9).fill(null)};scoreTeams.push(os);area.appendChild(buildReadOnlyCard(opponent,os));}
+    var cb=document.createElement('button');cb.className='btn-calculate';cb.style.marginTop='20px';cb.innerHTML='&#9971; CALCULATE';cb.onclick=calculate;area.appendChild(cb);
+  } catch(e){area.innerHTML='<div style="color:#ff9999">Error: '+e.message+'</div>';}
+}
+async function initAdminScorecard() {
+  var leagueEl = document.getElementById('adminLeagueSelect');
+  if (!leagueEl) return;
+  leagueEl.innerHTML = '<option value="">Loading leagues...</option>';
+  try {
+    var leagues = await api('GET', '/api/admin/leagues');
+    if (!leagues || !leagues.length) { leagueEl.innerHTML = '<option value="">No leagues found</option>'; return; }
+    leagueEl.innerHTML = '<option value="">Select a league...</option>';
+    leagues.forEach(function(l) { leagueEl.innerHTML += '<option value="'+l.id+'">'+esc(l.name)+'</option>'; });
+  } catch(e) { leagueEl.innerHTML = '<option value="">Error: '+e.message+'</option>'; }
+}
+async function loadAdminTeams() {
+  var leagueId = document.getElementById('adminLeagueSelect').value;
+  var teamEl = document.getElementById('adminTeamSelect');
+  teamEl.innerHTML = '<option value="">Select your team...</option>';
+  if (!leagueId) return;
+  try {
+    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
+    teams.forEach(function(t) { teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>'; });
+  } catch(e) { console.warn(e); }
+}
+async function loadAdminScorecard() {
+  var leagueId = document.getElementById('adminLeagueSelect').value;
+  var teamId = document.getElementById('adminTeamSelect').value;
+  var area = document.getElementById('adminScorecardArea');
+  if (!leagueId || !teamId) { area.innerHTML = '<div class="empty-state">Select a league and team first.</div>'; return; }
+  area.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
+    var leagueInfo = await api('GET', '/api/admin/league/'+leagueId);
+    var myTeam = teams.find(function(t){return t.id==teamId;});
+    if (!myTeam) { area.innerHTML = '<div class="empty-state">Team not found.</div>'; return; }
+    rosterTeams = teams;
+    var st = {id:myTeam.id, nine:myTeam.nine||'front', holes:Array(9).fill(null)};
+    scoreTeams = [st];
+    if (leagueInfo && leagueInfo.course) {
+      leagueInfo.course.front9par.forEach(function(p,i){var el=document.getElementById('pf_'+i);if(el)el.value=p;});
+      leagueInfo.course.back9par.forEach(function(p,i){var el=document.getElementById('pb_'+i);if(el)el.value=p;});
+      updateParTotals();
+    }
+    var opponent = null, matchupHole = null;
+    try {
+      var curr = await api('GET', '/api/league/schedule/current?leagueId='+leagueId);
+      if (curr && curr.currentWeek) {
+        var wd = await api('GET', '/api/league/schedule/week/'+curr.currentWeek+'?leagueId='+leagueId);
+        var mm = wd.matchups.find(function(m){return (m.teamA&&m.teamA.id==teamId)||(m.teamB&&m.teamB.id==teamId);});
+        if (mm) { var op=(mm.teamA&&mm.teamA.id==teamId)?mm.teamB:mm.teamA; if(op)opponent=teams.find(function(t){return t.id===op.id;})||op; matchupHole=mm.hole; }
+      }
+    } catch(e) {}
+    area.innerHTML = '';
+    if (matchupHole) { var wi=document.createElement('div'); wi.style.cssText='font-size:13px;color:var(--gold);margin-bottom:12px;font-weight:700;'; wi.textContent='STARTING HOLE '+matchupHole; area.appendChild(wi); }
+    area.appendChild(buildScoreCard(myTeam, st, 0));
+    if (opponent) { var os={id:opponent.id,nine:opponent.nine||'front',holes:Array(9).fill(null)}; scoreTeams.push(os); area.appendChild(buildReadOnlyCard(opponent,os)); }
+    var cb=document.createElement('button'); cb.className='btn-calculate'; cb.style.marginTop='20px'; cb.innerHTML='&#9971; CALCULATE'; cb.onclick=calculate; area.appendChild(cb);
+  } catch(e) { area.innerHTML='<div style="color:#ff9999">Error: '+e.message+'</div>'; }
+}
+  if (tab==='scorecard') initAdminScorecard();
 }
 
 function adminCourseSearch(q) {
@@ -1976,14 +1869,12 @@ async function loadPlayersList() {
       });
       html += '<tr>';
       html += '<td style="font-weight:700">'+esc(p.first_name+' '+p.last_name)+'</td>';
-      html += '<td style="color:var(--muted);font-size:12px">'
-        + (p.username ? '<span style="color:var(--gold2);font-weight:700;">'+esc(p.username)+'</span> &bull; ' : '')
-        + esc(p.email)+'</td>';
+      html += '<td style="color:var(--gold2);font-weight:700;font-size:13px;white-space:nowrap;">'+(p.username ? esc(p.username) : '<span style="color:var(--muted);font-style:italic;">—</span>')+'</td>';
+      html += '<td style="color:var(--muted);font-size:12px;white-space:nowrap;">'+esc(p.email)+'</td>';
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
       html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
       html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" onclick="editPlayer(this)">Edit</button>';
-      html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;border-color:var(--gold);color:var(--gold2);" data-pid="'+p.id+'" data-pname="'+esc(p.first_name+' '+p.last_name)+'" onclick="addPlayerToLeague(this)">+ League</button>';
       html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
       html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">✕</button>';
       html += '</td>';
@@ -2010,22 +1901,6 @@ async function deletePlayer(userId, userName) {
   } catch(e) { toast('Error: ' + e.message); }
 }
 
-async function addPlayerToLeague(btn) {
-  var pid = btn.dataset.pid;
-  var pname = btn.dataset.pname;
-  // Ask for league name
-  var leagueName = prompt('Add ' + pname + ' to which league? Enter the exact league name:');
-  if (!leagueName) return;
-  try {
-    // Find league by name
-    var leagues = await api('GET', '/api/admin/leagues');
-    var league = leagues.find(function(l) { return l.name.toLowerCase() === leagueName.toLowerCase().trim(); });
-    if (!league) { toast('League "' + leagueName + '" not found. Check the name and try again.'); return; }
-    await api('POST', '/api/admin/users/' + pid + '/add-league', { league_id: league.id, role: 'player' });
-    toast(pname + ' added to ' + league.name);
-  } catch(e) { toast('Error: ' + e.message); }
-}
-
 async function sendResetEmail(userId, userEmail) {
   if (!confirm('Send a password reset email to ' + userEmail + '?')) return;
   try {
@@ -2039,7 +1914,6 @@ function editPlayer(btn) {
   var pfirst = btn.dataset.pfirst;
   var plast  = btn.dataset.plast;
   var pemail = btn.dataset.pemail;
-
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML =
@@ -2057,7 +1931,6 @@ function editPlayer(btn) {
     '<div id="epErr" style="color:#ff9999;font-size:12px;margin-top:8px;"></div>' +
     '</div>';
   document.body.appendChild(overlay);
-
   document.getElementById('epCancelBtn').onclick = function() { overlay.remove(); };
   document.getElementById('epSaveBtn').onclick = async function() {
     var first = document.getElementById('epFirst').value.trim();
@@ -2070,9 +1943,7 @@ function editPlayer(btn) {
       overlay.remove();
       toast('Player updated');
       loadPlayersList();
-    } catch(e) {
-      document.getElementById('epErr').textContent = 'Error: ' + e.message;
-    }
+    } catch(e) { document.getElementById('epErr').textContent = 'Error: ' + e.message; }
   };
 }
 
@@ -2086,131 +1957,11 @@ function showRegister() {
   document.getElementById('registerForm').style.display = '';
   document.getElementById('loginError').style.display = 'none';
 }
-// Stored for use in pickLeague
-var _pickerCreds = {};
-
-function showLeaguePicker(leagues, loginName, loginPass, rememberMe) {
-  _pickerCreds = { name: loginName, pass: loginPass, rememberMe: rememberMe };
-  var overlay = document.createElement('div');
-  overlay.id = 'leaguePickerOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
-
-  var inner = document.createElement('div');
-  inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:400px;width:90%;margin:20px;';
-
-  var title = document.createElement('div');
-  title.style.cssText = 'font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px;letter-spacing:2px;';
-  title.textContent = 'SELECT LEAGUE';
-  inner.appendChild(title);
-
-  var sub = document.createElement('div');
-  sub.style.cssText = 'font-size:13px;color:var(--muted);margin-bottom:20px;';
-  sub.textContent = 'You are a member of multiple leagues. Which one would you like to enter?';
-  inner.appendChild(sub);
-
-  leagues.forEach(function(l) {
-    var btn = document.createElement('button');
-    btn.style.cssText = 'display:block;width:100%;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--cream);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;text-align:left;';
-    btn.innerHTML = '<span style="color:var(--gold);margin-right:8px;">🏌️</span>' + esc(l.name) + '<span style="font-size:12px;color:var(--muted);font-weight:400;margin-left:8px;">(' + l.role + ')</span>';
-    btn.onclick = function() { pickLeague(l.id); };
-    btn.onmouseover = function() { btn.style.borderColor = 'var(--gold)'; };
-    btn.onmouseout  = function() { btn.style.borderColor = 'var(--border)'; };
-    inner.appendChild(btn);
-  });
-
-  overlay.appendChild(inner);
-  document.body.appendChild(overlay);
-}
-
-async function pickLeague(leagueId) {
-  var overlay = document.getElementById('leaguePickerOverlay');
-  if (overlay) overlay.remove();
-  try {
-    var res = await api('POST', '/api/auth/login', {
-      name: _pickerCreds.name,
-      password: _pickerCreds.pass,
-      leagueId: leagueId,
-      rememberMe: _pickerCreds.rememberMe
-    });
-    await onLogin(res);
-  } catch(e) { showError(e.message); }
-}
-
-function showForgotPassword() {
-  var overlay = document.createElement('div');
-  overlay.id = 'forgotPwOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
-
-  var inner = document.createElement('div');
-  inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:380px;width:90%;margin:20px;';
-  inner.innerHTML =
-    '<div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:6px;">Forgot Password?</div>' +
-    '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Enter your email and we will send you a reset link.</div>' +
-    '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">EMAIL</div>' +
-    '<input id="forgotEmail" class="form-input" type="email" placeholder="your@email.com" style="margin-bottom:14px;" autocomplete="email">' +
-    '<button class="btn-login" id="forgotBtn" onclick="sendForgotEmail()" style="margin-bottom:10px;">Send Reset Email</button>' +
-    '<div id="forgotResult" style="font-size:13px;text-align:center;"></div>' +
-    '<div style="text-align:center;margin-top:12px;"><button onclick="document.getElementById(\'forgotPwOverlay\').remove()" style="background:none;border:none;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;">Cancel</button></div>';
-
-  overlay.appendChild(inner);
-  document.body.appendChild(overlay);
-  setTimeout(function() { var el = document.getElementById('forgotEmail'); if(el) el.focus(); }, 100);
-}
-
-async function sendForgotEmail() {
-  var email = document.getElementById('forgotEmail').value.trim().toLowerCase();
-  var result = document.getElementById('forgotResult');
-  var btn = document.getElementById('forgotBtn');
-  if (!email || !email.includes('@')) { result.innerHTML = '<span style="color:#ff9999">Please enter a valid email.</span>'; return; }
-  btn.textContent = 'Sending...'; btn.disabled = true;
-  try {
-    await api('POST', '/api/auth/forgot-password', { email });
-    result.innerHTML = '<span style="color:var(--green2)">✓ If that email is registered, a reset link has been sent.</span>';
-    btn.style.display = 'none';
-  } catch(e) {
-    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
-    btn.textContent = 'Send Reset Email'; btn.disabled = false;
-  }
-}
-
 function togglePassVis(inputId, btn) {
   var inp = document.getElementById(inputId);
   if (!inp) return;
   if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
   else { inp.type = 'password'; btn.textContent = '👁'; }
-}
-
-function showLeaguePicker(res, pass, rememberMe) {
-  var overlay = document.createElement('div');
-  overlay.id = 'leaguePickerOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
-  var leagueOpts = res.leagues.map(function(l) {
-    return '<button class="btn-save-roster" style="width:100%;margin-bottom:10px;font-size:16px;padding:14px;" onclick="selectLeague(' + l.id + ')">'
-      + esc(l.name) + ' <span style="font-size:12px;opacity:.7;">(' + l.role + ')</span></button>';
-  }).join('');
-  overlay.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:400px;width:90%;margin:20px;">'
-    + '<div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px;">Select League</div>'
-    + '<div style="font-size:14px;color:var(--muted);margin-bottom:20px;">Hi ' + esc(res.firstName) + ' — you are in multiple leagues. Which one do you want to open?</div>'
-    + leagueOpts + '</div>';
-  document.body.appendChild(overlay);
-
-  window._multiLeaguePass = pass;
-  window._multiLeagueRemember = rememberMe;
-  window._multiLeagueName = document.getElementById('loginName').value;
-}
-
-async function selectLeague(leagueId) {
-  var overlay = document.getElementById('leaguePickerOverlay');
-  if (overlay) overlay.remove();
-  try {
-    var res = await api('POST', '/api/auth/login', {
-      name: window._multiLeagueName,
-      password: window._multiLeaguePass,
-      rememberMe: window._multiLeagueRemember,
-      leagueId: leagueId
-    });
-    await onLogin(res);
-  } catch(e) { showError('Login error: ' + e.message); }
 }
 
 function showError(msg) {
@@ -2221,7 +1972,6 @@ function showError(msg) {
 
 // ══ ROSTER ══
 async function loadRoster() {
-  patchUpdateRosterField();
   try {
     rosterTeams = await api('GET', '/api/league/teams');
     renderRosterTable();
@@ -2236,104 +1986,35 @@ function renderRosterTable() {
   tbody.innerHTML = '';
   if (!rosterTeams.length) { empty.style.display = ''; return; }
   empty.style.display = 'none';
-  const isRandom = leagueSettings && leagueSettings.teamFormat === 'random';
-
-  // Update table headers for random mode
-  const thead = tbody.closest('table').querySelector('thead tr');
-  if (thead) {
-    if (isRandom) {
-      thead.innerHTML = '<th>#</th><th>Player Name</th><th>Hdcp</th><th>Nine</th><th></th>';
-    } else {
-      thead.innerHTML = '<th>#</th><th>Format</th><th>Player 1</th><th>Player 2</th><th class="p34-header">Player 3</th><th class="p34-header">Player 4</th><th>Hdcp</th><th>Nine</th><th></th>';
-    }
-  }
-
   rosterTeams.forEach((t, i) => {
     const nine = t.nine || 'front';
     const tr = document.createElement('tr');
-    if (isRandom) {
-      // Simplified single-player row
-      tr.innerHTML = `
-        <td style="color:var(--muted);font-size:13px">${i+1}</td>
-        <td><input class="team-input" style="width:200px;" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player name"></td>
-        <td><input class="team-input hdcp-input-sm" type="text" inputmode="text" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" placeholder="0"></td>
-        <td>
-          <div class="nine-toggle">
-            <button class="nine-toggle-btn ${nine==='front'?'active-f':''}"  onclick="setRosterNine(${t.id},'front',this)">F9</button>
-            <button class="nine-toggle-btn ${nine==='all18'?'active-18':''}" onclick="setRosterNine(${t.id},'all18',this)">ALL</button>
-            <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"   onclick="setRosterNine(${t.id},'back',this)">B9</button>
-          </div>
-        </td>
-        <td><button class="btn-del" onclick="deleteTeam(${t.id})">✕</button></td>`;
-    } else {
-      const fmt = t.format || '2man';
-      const is4 = fmt === '4man';
-      tr.innerHTML = `
-        <td style="color:var(--muted);font-size:13px">${i+1}</td>
-        <td>
-          <div class="format-toggle">
-            <button class="format-btn ${!is4?'active-2':''}" onclick="setRosterFormat(${t.id},'2man',this)">2</button>
-            <button class="format-btn ${is4?'active-4':''}"  onclick="setRosterFormat(${t.id},'4man',this)">4</button>
-          </div>
-        </td>
-        <td><input class="team-input" list="playerNameList" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player 1"></td>
-        <td><input class="team-input" list="playerNameList" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
-        <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player3||'')}" onchange="updateRosterField(${t.id},'player3',this.value)" placeholder="Player 3"></td>
-        <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player4||'')}" onchange="updateRosterField(${t.id},'player4',this.value)" placeholder="Player 4"></td>
-        <td><input class="team-input hdcp-input-sm" type="text" inputmode="text" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" placeholder="0"></td>
-        <td>
-          <div class="nine-toggle">
-            <button class="nine-toggle-btn ${nine==='front'?'active-f':''}"  onclick="setRosterNine(${t.id},'front',this)">F9</button>
-            <button class="nine-toggle-btn ${nine==='all18'?'active-18':''}" onclick="setRosterNine(${t.id},'all18',this)">ALL</button>
-            <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"   onclick="setRosterNine(${t.id},'back',this)">B9</button>
-          </div>
-        </td>
-        <td><button class="btn-del" onclick="deleteTeam(${t.id})">✕</button></td>`;
-    }
+    const fmt = t.format || '2man';
+    const is4 = fmt === '4man';
+    tr.innerHTML = `
+      <td style="color:var(--muted);font-size:13px">${i+1}</td>
+      <td>
+        <div class="format-toggle">
+          <button class="format-btn ${!is4?'active-2':''}" onclick="setRosterFormat(${t.id},'2man',this)">2</button>
+          <button class="format-btn ${is4?'active-4':''}"  onclick="setRosterFormat(${t.id},'4man',this)">4</button>
+        </div>
+      </td>
+      <td><input class="team-input" value="${esc(t.player1)}" onchange="updateRosterField(${t.id},'player1',this.value)" placeholder="Player 1"></td>
+      <td><input class="team-input" value="${esc(t.player2)}" onchange="updateRosterField(${t.id},'player2',this.value)" placeholder="Player 2"></td>
+      <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player3||'')}" onchange="updateRosterField(${t.id},'player3',this.value)" placeholder="Player 3"></td>
+      <td class="player-extra ${is4?'visible':''}"><input class="team-input" value="${esc(t.player4||'')}" onchange="updateRosterField(${t.id},'player4',this.value)" placeholder="Player 4"></td>
+      <td><input class="team-input hdcp-input-sm" type="text" inputmode="text" value="${t.handicap}" onchange="updateRosterField(${t.id},'handicap',this.value)" placeholder="0"></td>
+      <td>
+        <div class="nine-toggle">
+          <button class="nine-toggle-btn ${nine==='front'?'active-f':''}"  onclick="setRosterNine(${t.id},'front',this)">F9</button>
+          <button class="nine-toggle-btn ${nine==='all18'?'active-18':''}" onclick="setRosterNine(${t.id},'all18',this)">ALL</button>
+          <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"   onclick="setRosterNine(${t.id},'back',this)">B9</button>
+        </div>
+      </td>
+      <td><button class="btn-del" onclick="deleteTeam(${t.id})">✕</button></td>`;
     tbody.appendChild(tr);
   });
-  if (!isRandom) syncP34Headers();
-  // Build datalist of player names from Players tab
-  buildPlayerNameList();
-}
-
-async function buildPlayerNameList() {
-  var existing = document.getElementById('playerNameList');
-  if (existing) existing.remove();
-  var dl = document.createElement('datalist');
-  dl.id = 'playerNameList';
-  try {
-    var accounts = await api('GET', '/api/admin/players');
-    var allNames = accounts.map(function(p) { return p.first_name + ' ' + p.last_name; });
-
-    // Collect names already assigned to roster teams
-    var usedNames = new Set();
-    rosterTeams.forEach(function(t) {
-      if (t.player1 && t.player1.trim()) usedNames.add(t.player1.trim());
-      if (t.player2 && t.player2.trim()) usedNames.add(t.player2.trim());
-      if (t.player3 && t.player3.trim()) usedNames.add(t.player3.trim());
-      if (t.player4 && t.player4.trim()) usedNames.add(t.player4.trim());
-    });
-
-    // Only show unassigned players in dropdown
-    allNames.filter(function(n) { return !usedNames.has(n); }).forEach(function(name) {
-      var opt = document.createElement('option');
-      opt.value = name;
-      dl.appendChild(opt);
-    });
-  } catch(e) {}
-  document.body.appendChild(dl);
-}
-
-// Refresh datalist after any roster field changes
-var _origUpdateRosterField = null;
-function patchUpdateRosterField() {
-  if (_origUpdateRosterField) return;
-  _origUpdateRosterField = updateRosterField;
-  updateRosterField = async function(id, field, value) {
-    await _origUpdateRosterField(id, field, value);
-    buildPlayerNameList();
-  };
+  syncP34Headers();
 }
 
 function syncP34Headers() {
@@ -2655,10 +2336,6 @@ async function buildScoringCards() {
     }
   });
   updateScoreCount();
-  // Hide hdcp rows if no handicap mode
-  if (leagueSettings && leagueSettings.noHandicap) {
-    document.querySelectorAll('[id^="hdcpRow_"]').forEach(function(el) { el.style.display = 'none'; });
-  }
 }
 
 function setFilter(filter, btn) {
@@ -2765,7 +2442,7 @@ function buildScoreCard(team, st, idx) {
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
-      <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;" id="hdcpRow_${team.id}">
+      <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <label>Hdcp</label>
           <input class="hdcp-inp" type="text" inputmode="text" value="${team.handicap}" placeholder="0"
@@ -2893,44 +2570,9 @@ async function switchNine(teamId, nine) {
     else                      btns[2]?.classList.add('active-b');
   }
 
-  // Save current scores before rebuilding grid
-  const gridWrap = document.getElementById('sgrid_'+teamId);
-  const savedScores = [];
-  if (gridWrap) {
-    gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
-      savedScores[i] = inp.value;
-    });
-  }
-
   // Rebuild the entire holes grid (handles 9 vs 18)
+  const gridWrap = document.getElementById('sgrid_'+teamId);
   if (gridWrap) gridWrap.innerHTML = buildHolesGrid(teamId, nine);
-
-  // Restore saved scores into new inputs
-  if (gridWrap && savedScores.length) {
-    gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
-      if (savedScores[i] !== undefined && savedScores[i] !== '') {
-        inp.value = savedScores[i];
-        // Re-apply colour coding
-        var par = parseInt(inp.dataset.par) || 4;
-        var val = parseInt(savedScores[i]);
-        inp.classList.remove('eagle','birdie','bogey','double');
-        if (!isNaN(val)) {
-          if (val <= par - 2) inp.classList.add('eagle');
-          else if (val === par - 1) inp.classList.add('birdie');
-          else if (val === par + 1) inp.classList.add('bogey');
-          else if (val >= par + 2) inp.classList.add('double');
-        }
-      }
-    });
-    // Also restore to scoreTeams state
-    if (st) {
-      var newHoles = [];
-      gridWrap.querySelectorAll('.hole-inp').forEach(function(inp) {
-        newHoles.push(inp.value !== '' ? parseInt(inp.value) : null);
-      });
-      st.holes = newHoles;
-    }
-  }
 
   // Update number badge
   const numBadge = document.getElementById('snum_'+teamId);
@@ -3000,7 +2642,7 @@ function calculate() {
     const { par, count } = getHoleConfig(nine);
     const parTotal = par.reduce((a,b)=>a+b,0);
     const hdcpEl = document.getElementById('shdcp_'+t.id);
-    const hdcp = (leagueSettings && leagueSettings.noHandicap) ? 0 : (parseInt(hdcpEl?.value)||0);
+    const hdcp = parseInt(hdcpEl?.value)||0;
     const subBtn = document.getElementById('ssub_'+t.id);
     const isSub = subBtn ? subBtn.classList.contains('active') : false;
     const subNameEl = document.getElementById('ssubname_'+t.id);
@@ -3253,7 +2895,7 @@ function showTab(tab) {
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
-  if (tab==='history') { loadHistory(); initSubLog(); }
+  if (tab==='history') loadHistory();
   if (tab==='schedule') initSchedule();
   if (tab==='standings') loadStandings();
   if (tab==='playoffs') loadPlayoffs();
@@ -3282,13 +2924,6 @@ function showPage(name) {
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
 async function initSchedule() {
-  var isRandom = leagueSettings && leagueSettings.teamFormat === 'random';
-  var rdBtn = document.getElementById('btnRandomDraw');
-  if (rdBtn) rdBtn.style.display = isRandom ? '' : 'none';
-  // Show team builder for random leagues
-  var tbSection = document.getElementById('teamBuilderSection');
-  if (tbSection) tbSection.style.display = isRandom ? '' : 'none';
-  if (isRandom) initTeamBuilder();
   var out = document.getElementById('scheduleOutput');
   // Always try to load saved schedule from DB
   try {
@@ -3318,26 +2953,22 @@ function renderSavedSchedule(weeks) {
     w.matchups.forEach(function(m) {
       var tA = m.teamA;
       var tB = m.teamB;
-      var hole = m.hole ? parseInt(m.hole) : null;
+      var hole = m.hole;
       if (!hole) return;
-      // Use teamAName/teamBName as fallback when team objects aren't found
-      if (!m.teamA && m.teamAName) m.teamA = { player1: m.teamAName, player2: '' };
-      if (!m.teamB && m.teamBName) m.teamB = { player1: m.teamBName, player2: '' };
       var isBack = hole >= 10;
       var chipClass = 'hole-chip' + (isBack ? ' back' : '');
       var nineDisplay = m.nine === 'back' ? 'Back 9' : 'Front 9';
-      // Support both full team objects and name strings from saved schedule
-      var nameA = tA ? (esc(tA.player1||'') + (tA.player2 ? ' / ' + esc(tA.player2) : '')) : (m.teamAName || 'BYE');
-      var nameB = tB ? (esc(tB.player1||'') + (tB.player2 ? ' / ' + esc(tB.player2) : '')) : (m.teamBName || null);
-      if (!tB && !m.teamBName) {
+      var nameA = tA ? esc(tA.player1||'') + ' / ' + esc(tA.player2||'') : 'BYE';
+      if (!tB) {
         rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
       } else {
+        var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
         rows += '<tr>';
         rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
         rows += '<td class="nine-col">' + nineDisplay + '</td>';
         rows += '<td class="team-a-name">' + nameA + '</td>';
         rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
-        rows += '<td class="team-b-name">' + (nameB || '—') + '</td>';
+        rows += '<td class="team-b-name">' + nameB + '</td>';
         rows += '</tr>';
       }
     });
@@ -3492,111 +3123,8 @@ function exportScheduleCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-async function randomDrawWeek() {
-  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
-  var resultEl = document.getElementById('weekGenResult');
-  var btn = document.getElementById('btnRandomDraw');
-  if (btn) { btn.textContent = '...'; btn.disabled = true; }
-  resultEl.innerHTML = '<span style="color:var(--muted)">Drawing teams and matchups...</span>';
-
-  try {
-    // ── Step 1: Get all players ──
-    var players = [];
-    try {
-      var accounts = await api('GET', '/api/admin/players');
-      if (accounts && accounts.length >= 2) {
-        accounts.forEach(function(p) {
-          players.push({ name: p.first_name + ' ' + p.last_name, id: 'p' + p.id, handicap: 0, nine: 'front' });
-        });
-      }
-    } catch(e) {}
-    if (players.length < 2) {
-      if (!rosterTeams.length) { try { await loadRoster(); } catch(e2) {} }
-      rosterTeams.forEach(function(t) {
-        if (t.player1) players.push({ name: t.player1, id: String(t.id), handicap: t.handicap, nine: t.nine });
-      });
-    }
-    if (players.length < 2) {
-      resultEl.innerHTML = '<span style="color:#ff9999">Need at least 2 players.</span>';
-      if (btn) { btn.textContent = '\uD83C\uDFB2 Random Draw'; btn.disabled = false; }
-      return;
-    }
-
-    // ── Step 2: Shuffle players randomly then pair into 2-man teams ──
-    var shuffled = players.slice();
-    for (var i = shuffled.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
-    }
-    var teams = [];
-    for (var k = 0; k < shuffled.length - 1; k += 2) {
-      teams.push({
-        id: 'team_' + k,
-        player1: shuffled[k].name,
-        player2: shuffled[k+1].name,
-        handicap: 0,
-        nine: 'front'
-      });
-    }
-    if (shuffled.length % 2 !== 0) {
-      // Odd player out — add as solo team
-      var solo = shuffled[shuffled.length - 1];
-      teams.push({ id: 'team_solo', player1: solo.name, player2: '', handicap: 0, nine: 'front' });
-    }
-
-    // ── Step 3: Randomly pair teams as opponents ──
-    var teamShuffled = teams.slice();
-    for (var ti = teamShuffled.length - 1; ti > 0; ti--) {
-      var tj = Math.floor(Math.random() * (ti + 1));
-      var ttmp = teamShuffled[ti]; teamShuffled[ti] = teamShuffled[tj]; teamShuffled[tj] = ttmp;
-    }
-    var matchups = [];
-    for (var mi = 0; mi < teamShuffled.length - 1; mi += 2) {
-      matchups.push({ teamA: teamShuffled[mi], teamB: teamShuffled[mi + 1] });
-    }
-    if (teamShuffled.length % 2 !== 0) {
-      matchups.push({ teamA: teamShuffled[teamShuffled.length - 1], teamB: null });
-    }
-
-    // ── Step 4: Assign holes ──
-    var withHoles = assignHoles(matchups, weekNum);
-
-    // ── Step 5: Save to DB with names ──
-    var slim = [{ week: weekNum, matchups: withHoles.map(function(m) {
-      return {
-        hole: m.hole,
-        nine: m.nine || 'front',
-        teamAId: m.teamA ? m.teamA.id : null,
-        teamBId: m.teamB ? m.teamB.id : null,
-        teamAName: m.teamA ? (m.teamA.player1 + (m.teamA.player2 ? ' / ' + m.teamA.player2 : '')) : null,
-        teamBName: m.teamB ? (m.teamB.player1 + (m.teamB.player2 ? ' / ' + m.teamB.player2 : '')) : null
-      };
-    })}];
-    await api('POST', '/api/league/schedule/save', { weeks: slim });
-    await api('PUT', '/api/league/settings', { currentWeek: weekNum });
-
-    // ── Step 6: Display ──
-    var existing = savedSchedule.findIndex(function(w) { return w.week === weekNum; });
-    var weekData = { week: weekNum, matchups: withHoles };
-    if (existing >= 0) savedSchedule[existing] = weekData;
-    else savedSchedule.push(weekData);
-    savedSchedule.sort(function(a, b) { return a.week - b.week; });
-    renderSavedSchedule(savedSchedule);
-    document.getElementById('startWeek').value = weekNum + 1;
-    resultEl.innerHTML = '<span style="color:var(--green2)">\u2713 Week ' + weekNum + ': ' + players.length + ' players \u2192 ' + teams.length + ' teams \u2192 ' + matchups.filter(function(m) { return m.teamB; }).length + ' matchups.</span>';
-
-  } catch(e) {
-    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
-  }
-  if (btn) { btn.textContent = '\uD83C\uDFB2 Random Draw'; btn.disabled = false; }
-}
-
 async function generateAndSaveWeek() {
-  if (!rosterTeams.length) {
-    // Try loading roster first
-    try { await loadRoster(); } catch(e) {}
-    if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
-  }
+  if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
   var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
   var resultEl = document.getElementById('weekGenResult');
   var btn = document.querySelector('.btn-gen');
@@ -3637,7 +3165,6 @@ async function generateAndSaveWeek() {
     } else {
       // Static round robin
       var rounds = buildRoundRobin(rosterTeams);
-      if (!rounds.length) { resultEl.innerHTML = '<span style="color:#ff9999">Need at least 2 teams in roster.</span>'; if(btn){btn.textContent='📆 Generate & Save Week';btn.disabled=false;} return; }
       var roundIdx = (weekNum - 1) % rounds.length;
       var round = rounds[roundIdx];
       matchups = round.map(function(pair) {
@@ -3645,7 +3172,7 @@ async function generateAndSaveWeek() {
           teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
           teamB: pair[1] !== null ? rosterTeams[pair[1]] : null
         };
-      }).filter(function(m) { return m.teamA; });
+      });
     }
     var withHoles = assignHoles(matchups, weekNum);
     // Slim for DB
@@ -3782,12 +3309,6 @@ async function loadLeagueSettings() {
     if (pctEl) pctEl.value = leagueSettings.hdcpPct || 80;
     var mcEl = document.getElementById('hdcpMaxChange');
     if (mcEl) mcEl.value = leagueSettings.hdcpMaxChange !== undefined ? leagueSettings.hdcpMaxChange : 2;
-    var nhOn  = document.getElementById('settingHdcpOn');
-    var nhOff = document.getElementById('settingHdcpOff');
-    if (nhOn && nhOff) {
-      nhOn.classList.toggle('active',  leagueSettings.noHandicap !== true);
-      nhOff.classList.toggle('active', leagueSettings.noHandicap === true);
-    }
     var pbEl = document.getElementById('playoffBrackets');
     if (pbEl) pbEl.value = leagueSettings.playoffBrackets || 2;
     var ps = document.getElementById('settingPlayoffSingle');
@@ -3802,15 +3323,13 @@ async function loadLeagueSettings() {
     // Populate league name field
     var lni = document.getElementById('leagueNameInp');
     if (lni && league) lni.value = league.leagueName || '';
-    // Update roster subtitle and draw button visibility
+    // Update roster subtitle
     var rst = document.getElementById('rosterSubtitle');
     if (rst) {
       rst.textContent = leagueSettings.teamFormat === 'random'
-        ? 'Random teams mode — click Draw Teams to randomly pair players for the week'
+        ? 'Random teams mode — roster is a list of individual players drawn each week'
         : 'Static partners — same teams every week';
     }
-    var drawBtn = document.getElementById('btnDrawTeams');
-    if (drawBtn) drawBtn.style.display = leagueSettings.teamFormat === 'random' ? '' : 'none';
   } catch(e) { console.warn('Could not load settings', e); }
 }
 
@@ -3831,12 +3350,6 @@ function setSettingFlight(mode, btn) {
 function setSettingSkins(on, btn) {
   leagueSettings.skinsEnabled = on;
   document.querySelectorAll('#settingSkinsOn,#settingSkinsOff').forEach(function(b) { b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-}
-
-function setSettingNoHdcp(noHdcp, btn) {
-  leagueSettings.noHandicap = noHdcp;
-  document.querySelectorAll('#settingHdcpOn,#settingHdcpOff').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
 }
 
@@ -3893,7 +3406,6 @@ async function saveLeagueSettings() {
     hdcpPct: parseInt((document.getElementById('hdcpPct')||{}).value) || 80,
     hdcpMaxChange: parseFloat((document.getElementById('hdcpMaxChange')||{}).value) || 0,
     playoffBrackets: parseInt((document.getElementById('playoffBrackets')||{}).value) || 2,
-    noHandicap: leagueSettings.noHandicap === true,
     playoffFormat: leagueSettings.playoffFormat || 'single'
   };
   try {
@@ -3901,16 +3413,6 @@ async function saveLeagueSettings() {
     leagueSettings = settings;
     flightMode = settings.flightMode;
     skinsEnabled = settings.skinsEnabled;
-    // Re-render roster and schedule tab to reflect format change
-    renderRosterTable();
-    var addBtn = document.getElementById('btnAddTeam');
-    if (addBtn) addBtn.textContent = settings.teamFormat === 'random' ? '+ ADD PLAYER' : '+ ADD TEAM';
-    var rst = document.getElementById('rosterSubtitle');
-    if (rst) rst.textContent = settings.teamFormat === 'random'
-      ? 'Random teams mode — roster is a list of individual players drawn each week'
-      : 'Static partners — same teams every week';
-    var rdBtn = document.getElementById('btnRandomDraw');
-    if (rdBtn) rdBtn.style.display = settings.teamFormat === 'random' ? '' : 'none';
     document.getElementById('settingsSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Settings saved.</span>';
     toast('Settings saved');
   } catch(e) {
@@ -4277,339 +3779,6 @@ function renderBracket(bracket, bi) {
   html += '</div></div>';
   html += '</div>';
   return html;
-}
-
-// ══ LEAGUE EMAIL ══
-async function sendLeagueEmail() {
-  var subject = document.getElementById('leagueEmailSubject').value.trim();
-  var body    = document.getElementById('leagueEmailBody').value.trim();
-  var result  = document.getElementById('leagueEmailResult');
-  if (!subject) { result.innerHTML = '<span style="color:#ff9999">Please enter a subject.</span>'; return; }
-  if (!body)    { result.innerHTML = '<span style="color:#ff9999">Please enter a message.</span>'; return; }
-  result.innerHTML = '<span style="color:var(--muted)">Sending...</span>';
-  try {
-    var res = await api('POST', '/api/league/email', { subject, body });
-    result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + '.</span>';
-  } catch(e) {
-    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
-  }
-}
-
-// ══ RANDOM TEAM DRAW ══
-async function drawRandomTeams() {
-  var drawResult = document.getElementById('drawResult');
-  if (!drawResult) drawResult = { innerHTML: '' };
-  drawResult.innerHTML = '<span style="color:var(--muted)">Drawing teams...</span>';
-
-  // Pull players from Players tab first, fall back to roster
-  var players = [];
-  try {
-    var accounts = await api('GET', '/api/admin/players');
-    if (accounts && accounts.length >= 2) {
-      accounts.forEach(function(p) {
-        players.push({ name: p.first_name + ' ' + p.last_name, handicap: 0, nine: 'front', origId: 'p' + p.id });
-      });
-    }
-  } catch(e) {}
-  // Fall back to roster if no player accounts
-  if (players.length < 2) {
-    rosterTeams.forEach(function(t) {
-      if (t.player1 && t.player1.trim()) players.push({ name: t.player1.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
-      if (t.player2 && t.player2.trim()) players.push({ name: t.player2.trim(), handicap: t.handicap, nine: t.nine, origId: t.id });
-    });
-  }
-
-  if (players.length < 2) { drawResult.innerHTML = '<span style="color:#ff9999">Need at least 2 players in the Players tab.</span>'; return; }
-
-  // Load past pairings from saved schedule to avoid repeats
-  var pastPairings = {};
-  try {
-    var savedWeeks = await api('GET', '/api/league/schedule/all');
-    savedWeeks.forEach(function(w) {
-      w.matchups.forEach(function(m) {
-        if (!m.teamA || !m.teamB) return;
-        var a = (m.teamA.player1||'').trim();
-        var b = (m.teamB.player1||'').trim();
-        if (!a || !b) return;
-        if (!pastPairings[a]) pastPairings[a] = {};
-        if (!pastPairings[b]) pastPairings[b] = {};
-        pastPairings[a][b] = (pastPairings[a][b]||0) + 1;
-        pastPairings[b][a] = (pastPairings[b][a]||0) + 1;
-      });
-    });
-  } catch(e) {}
-
-  // Shuffle players
-  var pool = players.slice();
-  for (var i = pool.length - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
-  }
-
-  // Pair players, trying to avoid recent partners
-  // Use a weighted approach: prefer pairs with fewer past meetings
-  var paired = [];
-  var used = new Array(pool.length).fill(false);
-  var maxAttempts = 50;
-
-  for (var attempt = 0; attempt < maxAttempts; attempt++) {
-    paired = [];
-    used = new Array(pool.length).fill(false);
-    // Re-shuffle for each attempt
-    for (var i2 = pool.length - 1; i2 > 0; i2--) {
-      var j2 = Math.floor(Math.random() * (i2 + 1));
-      var tmp2 = pool[i2]; pool[i2] = pool[j2]; pool[j2] = tmp2;
-    }
-    var valid = true;
-    for (var i3 = 0; i3 < pool.length; i3++) {
-      if (used[i3]) continue;
-      var found = false;
-      for (var j3 = i3 + 1; j3 < pool.length; j3++) {
-        if (used[j3]) continue;
-        var a2 = pool[i3].name;
-        var b2 = pool[j3].name;
-        var timesPlayed = (pastPairings[a2] && pastPairings[a2][b2]) || 0;
-        // Accept if never played together, or if no other option
-        if (timesPlayed === 0 || attempt > 30) {
-          paired.push([pool[i3], pool[j3]]);
-          used[i3] = true;
-          used[j3] = true;
-          found = true;
-          break;
-        }
-      }
-      if (!found && !used[i3]) {
-        // Bye
-        paired.push([pool[i3], null]);
-        used[i3] = true;
-      }
-    }
-    // Check if all paired without repeats (or give up after 50 attempts)
-    var hasRepeat = paired.some(function(p) {
-      if (!p[0] || !p[1]) return false;
-      return (pastPairings[p[0].name] && pastPairings[p[0].name][p[1].name]) > 0;
-    });
-    if (!hasRepeat || attempt === maxAttempts - 1) break;
-  }
-
-  // Apply pairs to roster — update player1/player2 for each team slot
-  var teamIdx = 0;
-  var updatedTeams = [];
-  var warnings = [];
-
-  for (var pi = 0; pi < paired.length; pi++) {
-    var pA = paired[pi][0];
-    var pB = paired[pi][1];
-    var timesStr = '';
-    if (pA && pB) {
-      var t2 = (pastPairings[pA.name] && pastPairings[pA.name][pB.name]) || 0;
-      if (t2 > 0) warnings.push(pA.name + ' & ' + pB.name + ' played together ' + t2 + 'x before');
-    }
-    // Use existing roster team slot or create reference
-    if (teamIdx < rosterTeams.length) {
-      rosterTeams[teamIdx].player1 = pA ? pA.name : '';
-      rosterTeams[teamIdx].player2 = pB ? pB.name : '';
-      rosterTeams[teamIdx].nine = pA ? pA.nine : 'front';
-      updatedTeams.push(rosterTeams[teamIdx]);
-      teamIdx++;
-    }
-  }
-
-  // Re-render
-  renderRosterTable();
-  buildScoringCards();
-
-  var warn = warnings.length ? '<div style="color:var(--gold);font-size:12px;margin-top:6px;">⚠ Repeat pairings (unavoidable): ' + warnings.join(', ') + '</div>' : '';
-  drawResult.innerHTML = '<span style="color:var(--green2)">✓ ' + paired.filter(function(p){return p[1];}).length + ' teams drawn' + (paired.some(function(p){return !p[1];}) ? ' (1 bye)' : '') + '. Click 💾 Save Roster to keep these pairings.</span>' + warn;
-}
-
-// ══ TEAM BUILDER ══
-var builtTeams = [];
-
-async function initTeamBuilder() {
-  var container = document.getElementById('teamBuilderRows');
-  if (!container) return;
-  // Load player accounts for dropdowns
-  try {
-    window._cachedPlayers = await api('GET', '/api/admin/players');
-  } catch(e) { window._cachedPlayers = []; }
-  // Start with empty rows matching half the player count
-  builtTeams = [];
-  var count = window._cachedPlayers && window._cachedPlayers.length ? Math.ceil(window._cachedPlayers.length / 2) : 3;
-  count = Math.min(count, 20);
-  for (var i = 0; i < count; i++) addTeamBuilderRow();
-}
-
-function addTeamBuilderRow() {
-  builtTeams.push({ p1: '', p2: '' });
-  renderTeamBuilderRows();
-}
-
-function renderTeamBuilderRows() {
-  var container = document.getElementById('teamBuilderRows');
-  if (!container) return;
-  // Build player options from roster
-  var playerOpts = '<option value="">-- select player --</option>';
-  // Use player accounts if available, else roster
-  var allPlayerNames = [];
-  if (window._cachedPlayers && window._cachedPlayers.length) {
-    window._cachedPlayers.forEach(function(p) { allPlayerNames.push(p.first_name + ' ' + p.last_name); });
-  } else {
-    rosterTeams.forEach(function(t) {
-      if (t.player1) allPlayerNames.push(t.player1);
-      if (t.player2 && leagueSettings.teamFormat !== 'random') allPlayerNames.push(t.player2);
-    });
-  }
-  allPlayerNames.forEach(function(name) {
-    playerOpts += '<option value="' + esc(name) + '">' + esc(name) + '</option>';
-  });
-  var html = '';
-  builtTeams.forEach(function(team, i) {
-    html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">';
-    html += '<span style="font-size:12px;color:var(--muted);width:20px;">' + (i+1) + '</span>';
-    html += '<select class="week-inp" style="flex:1;min-width:140px;" onchange="builtTeams['+i+'].p1=this.value"><option value="">Player 1</option>' + playerOpts + '</select>';
-    html += '<select class="week-inp" style="flex:1;min-width:140px;" onchange="builtTeams['+i+'].p2=this.value"><option value="">Player 2</option>' + playerOpts + '</select>';
-    html += '<button class="btn-del" onclick="builtTeams.splice('+i+',1);renderTeamBuilderRows()">✕</button>';
-    html += '</div>';
-  });
-  container.innerHTML = html;
-}
-
-async function saveBuiltTeams() {
-  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
-  var resultEl = document.getElementById('teamBuilderResult');
-  var validTeams = builtTeams.filter(function(t) { return t.p1 && t.p2; });
-  if (!validTeams.length) { resultEl.innerHTML = '<span style="color:#ff9999">Add at least one complete team.</span>'; return; }
-
-  // Build matchup pairs from teams
-  var matchups = [];
-  for (var i = 0; i < validTeams.length - 1; i += 2) {
-    matchups.push({
-      teamA: { id: 'built_'+i, player1: validTeams[i].p1, player2: validTeams[i].p2, handicap: 0 },
-      teamB: { id: 'built_'+(i+1), player1: validTeams[i+1].p1, player2: validTeams[i+1].p2, handicap: 0 }
-    });
-  }
-  if (validTeams.length % 2 !== 0) {
-    var last = validTeams[validTeams.length-1];
-    matchups.push({ teamA: { id: 'built_bye', player1: last.p1, player2: last.p2, handicap: 0 }, teamB: null });
-  }
-
-  var withHoles = assignHoles(matchups, weekNum);
-  var slim = [{ week: weekNum, matchups: withHoles.map(function(m) {
-    return { hole: m.hole, nine: m.nine||'front',
-      teamAId: m.teamA ? m.teamA.id : null,
-      teamBId: m.teamB ? m.teamB.id : null,
-      teamAName: m.teamA ? (m.teamA.player1 + (m.teamA.player2?' / '+m.teamA.player2:'')) : null,
-      teamBName: m.teamB ? (m.teamB.player1 + (m.teamB.player2?' / '+m.teamB.player2:'')) : null
-    };
-  })}];
-  try {
-    await api('POST', '/api/league/schedule/save', { weeks: slim });
-    await api('PUT', '/api/league/settings', { currentWeek: weekNum });
-    var weekData = { week: weekNum, matchups: withHoles };
-    var existing = savedSchedule.findIndex(function(w){return w.week===weekNum;});
-    if (existing >= 0) savedSchedule[existing] = weekData;
-    else savedSchedule.push(weekData);
-    savedSchedule.sort(function(a,b){return a.week-b.week;});
-    renderSavedSchedule(savedSchedule);
-    document.getElementById('startWeek').value = weekNum + 1;
-    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved with ' + matchups.length + ' matchups.</span>';
-    // Reset builder
-    builtTeams = []; for(var j=0;j<3;j++) builtTeams.push({p1:'',p2:''});
-    renderTeamBuilderRows();
-  } catch(e) {
-    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
-  }
-}
-
-// ══ SUBSTITUTE LOGGING ══
-async function initSubLog() {
-  // Populate team dropdown
-  var teamEl = document.getElementById('subTeamSelect');
-  if (!teamEl) return;
-  teamEl.innerHTML = '<option value="">Select team...</option>';
-  rosterTeams.forEach(function(t) {
-    teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>';
-  });
-  // Populate round dropdown from history
-  var roundEl = document.getElementById('subRoundSelect');
-  roundEl.innerHTML = '<option value="">Select round...</option>';
-  try {
-    var rounds = await api('GET', '/api/league/rounds');
-    rounds.forEach(function(r, i) {
-      var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
-      roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
-    });
-  } catch(e) {}
-}
-
-async function logSubstitute() {
-  var teamId   = document.getElementById('subTeamSelect').value;
-  var roundId  = document.getElementById('subRoundSelect').value;
-  var subName  = document.getElementById('subName').value.trim();
-  var replaced = document.getElementById('subReplacedName').value.trim();
-  var result   = document.getElementById('subLogResult');
-
-  if (!teamId)   { result.innerHTML = '<span style="color:#ff9999">Select a team.</span>'; return; }
-  if (!roundId)  { result.innerHTML = '<span style="color:#ff9999">Select a round.</span>'; return; }
-  if (!subName)  { result.innerHTML = '<span style="color:#ff9999">Enter the substitute name.</span>'; return; }
-
-  try {
-    await api('POST', '/api/league/rounds/'+roundId+'/sub', {
-      team_id: teamId,
-      sub_name: subName,
-      replaced_name: replaced
-    });
-    result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
-    document.getElementById('subName').value = '';
-    document.getElementById('subReplacedName').value = '';
-  } catch(e) {
-    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
-  }
-}
-
-// ══ LINK PLAYER ══
-var _linkSearchTimer = null;
-function searchPlayersToLink(q) {
-  clearTimeout(_linkSearchTimer);
-  var el = document.getElementById('linkPlayerResults');
-  if (!q || q.length < 3) { el.innerHTML = ''; return; }
-  _linkSearchTimer = setTimeout(async function() {
-    try {
-      var users = await api('GET', '/api/admin/users/search?q=' + encodeURIComponent(q));
-      if (!users.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;">No users found.</div>'; return; }
-      var container = document.getElementById('linkPlayerResults');
-      container.innerHTML = '';
-      users.forEach(function(u) {
-        var row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;';
-        var info = document.createElement('div');
-        info.innerHTML = '<div style="font-weight:700;font-size:13px;">' + esc(u.first_name+' '+u.last_name) + '</div><div style="font-size:11px;color:var(--muted);">' + esc(u.email) + '</div>';
-        var btn = document.createElement('button');
-        btn.className = 'btn-sc-load';
-        btn.style.cssText = 'font-size:12px;padding:5px 12px;';
-        btn.textContent = '+ Add to League';
-        btn.onclick = function() { linkPlayerToLeague(u.email, u.first_name + ' ' + u.last_name); };
-        row.appendChild(info);
-        row.appendChild(btn);
-        container.appendChild(row);
-      });
-      el = container;
-    } catch(e) { document.getElementById('linkPlayerResults').innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>'; }
-  }, 400);
-}
-
-async function linkPlayerToLeague(email, name) {
-  var result = document.getElementById('linkPlayerResult');
-  try {
-    var res = await api('POST', '/api/admin/players/link', { email: email });
-    result.innerHTML = '<span style="color:var(--green2)">✓ ' + esc(res.name) + ' linked to this league. They can now log in with their existing credentials and select this league.</span>';
-    document.getElementById('linkPlayerSearch').value = '';
-    document.getElementById('linkPlayerResults').innerHTML = '';
-    loadPlayersList();
-  } catch(e) {
-    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
-  }
 }
 
 // ══ UTILS ══
