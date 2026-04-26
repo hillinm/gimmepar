@@ -158,6 +158,22 @@ async function init() {
         UNIQUE(user_id, league_id)
       );
     `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS signed_scorecards (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        week_number INTEGER NOT NULL,
+        hole_scores TEXT NOT NULL DEFAULT '[]',
+        gross INTEGER DEFAULT 0,
+        net INTEGER DEFAULT 0,
+        handicap_used INTEGER DEFAULT 0,
+        nine TEXT NOT NULL DEFAULT 'front',
+        signed_at TIMESTAMPTZ DEFAULT NOW(),
+        signed_by TEXT DEFAULT '',
+        UNIQUE(league_id, team_id, week_number)
+      );
+    `);
     console.log('✓ Database tables ready');
   } finally {
     client.release();

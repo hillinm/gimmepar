@@ -758,3 +758,34 @@ router.post('/rounds/:roundId/sub', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── SIGN SCORECARD ──
+router.post('/scorecard/sign', requireAuth, async (req, res) => {
+  try {
+    const { team_id, week_number, hole_scores, gross, net, handicap_used, nine, signed_by } = req.body || {};
+    if (!team_id || !week_number) return res.status(400).json({ error: 'team_id and week_number required' });
+    await query(
+      `INSERT INTO signed_scorecards (league_id, team_id, week_number, hole_scores, gross, net, handicap_used, nine, signed_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (league_id, team_id, week_number) DO UPDATE
+       SET hole_scores=$4, gross=$5, net=$6, handicap_used=$7, nine=$8, signed_by=$9, signed_at=NOW()`,
+      [req.session.leagueId, team_id, week_number, JSON.stringify(hole_scores||[]), gross||0, net||0, handicap_used||0, nine||'front', signed_by||'']
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Get all signed scorecards for current week (for admin view)
+router.get('/scorecard/signed', requireAuth, async (req, res) => {
+  try {
+    const rows = await getAll(
+      `SELECT ss.*, t.player1, t.player2
+       FROM signed_scorecards ss
+       JOIN teams t ON t.id = ss.team_id
+       WHERE ss.league_id = $1
+       ORDER BY ss.week_number DESC, ss.signed_at DESC`,
+      [req.session.leagueId]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
