@@ -1595,21 +1595,16 @@ async function loadPlayerView(data) {
   var opponent = null;
   var matchupHole = null;
   var curr = null;
-  // ── Weekly confirmation button ──
-  var confirmArea = document.createElement('div');
-  confirmArea.id = 'weeklyConfirmArea';
-  confirmArea.style.cssText = 'margin-bottom:20px;';
-  container.appendChild(confirmArea);
-  // Always render the confirm button — determine week and status
+  // Fetch week/confirm status first before touching the DOM
   var activeWeekForConfirm = 1;
   var myConfStatus = null;
   try { var confSettings = await api('GET', '/api/league/settings'); activeWeekForConfirm = confSettings.currentWeek || 1; } catch(e) {}
   try { var myConf = await api('GET', '/api/league/confirm-playing/me/' + activeWeekForConfirm); myConfStatus = myConf.playing; } catch(e) {}
-  renderConfirmButton(confirmArea, activeWeekForConfirm, myConfStatus);
 
   try {
     curr = await api('GET', '/api/league/schedule/current');
     if (curr.currentWeek) {
+      activeWeekForConfirm = curr.currentWeek;
       var weekData = await api('GET', '/api/league/schedule/week/' + curr.currentWeek);
       var myMatchup = weekData.matchups.find(function(m) {
         return (m.teamA && m.teamA.id === team.id) || (m.teamB && m.teamB.id === team.id);
@@ -1621,7 +1616,6 @@ async function loadPlayerView(data) {
           matchupHole = myMatchup.hole;
         }
       }
-      // Show week info
       var nineLabel = team.nine === 'back' ? 'BACK 9' : team.nine === 'all18' ? 'ALL 18' : 'FRONT 9';
       container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
         + ' &nbsp;|&nbsp; ' + nineLabel
@@ -1633,6 +1627,13 @@ async function loadPlayerView(data) {
     container.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px;">Schedule not available.</div>';
   }
 
+  // Add confirm buttons AFTER container.innerHTML is done
+  var confirmArea = document.createElement('div');
+  confirmArea.id = 'weeklyConfirmArea';
+  confirmArea.style.cssText = 'margin-bottom:16px;';
+  container.appendChild(confirmArea);
+  renderConfirmButton(confirmArea, activeWeekForConfirm, myConfStatus);
+
   // Build own editable scorecard
   scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
   var myCard = buildScoreCard(team, scoreTeams[0], 0);
@@ -1640,7 +1641,9 @@ async function loadPlayerView(data) {
 
   // Build opponent read-only card if found
   if (opponent) {
-    var oppSt = { id: opponent.id, nine: opponent.nine || 'front', holes: Array(9).fill(null) };
+    // Opponent plays the same nine as the player (same matchup)
+    var matchupNine = team.nine || 'front';
+    var oppSt = { id: opponent.id, nine: matchupNine, holes: Array(9).fill(null) };
     scoreTeams.push(oppSt);
     var oppCard = buildReadOnlyCard(opponent, oppSt);
     oppCard.id = 'oppCard_' + opponent.id;
