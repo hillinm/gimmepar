@@ -1685,9 +1685,13 @@ async function loadPlayerView(data) {
 }
 
 function renderConfirmButton(area, weekNum, currentStatus) {
-  var deadline = getConfirmDeadline();
-  var past = new Date() > deadline;
-  var deadlineStr = deadline.toLocaleString('en-US', {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+  if (!area) return;
+  var deadline, past = false, deadlineStr = 'Sunday 9pm';
+  try {
+    deadline = getConfirmDeadline();
+    past = new Date() > deadline;
+    deadlineStr = deadline.toLocaleString('en-US', {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+  } catch(e) {}
 
   var html = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:4px;">'
     + '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">WEEK ' + weekNum + ' CONFIRMATION'
