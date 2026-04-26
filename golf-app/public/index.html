@@ -3048,6 +3048,55 @@ async function clearAllScorecards() {
   if (ra) ra.style.display = 'none';
 }
 
+var _noShowState = {};
+
+async function toggleNoShow(teamId) {
+  var isNoShow = !_noShowState[teamId];
+  _noShowState[teamId] = isNoShow;
+  applyNoShowState(teamId, isNoShow);
+  try {
+    var week = (leagueSettings && leagueSettings.currentWeek) || 1;
+    var nsKey = 'noshow_w' + week;
+    var nsStored = {};
+    try { nsStored = JSON.parse(localStorage.getItem(nsKey) || '{}'); } catch(e) {}
+    nsStored[teamId] = isNoShow;
+    localStorage.setItem(nsKey, JSON.stringify(nsStored));
+  } catch(e) {}
+  toast(isNoShow ? '⛔ No-show — excluded from results' : '✓ No-show removed');
+}
+
+function applyNoShowState(teamId, isNoShow) {
+  _noShowState[teamId] = isNoShow;
+  var card = document.getElementById('scard_' + teamId);
+  var btn  = document.getElementById('snoshow_' + teamId);
+  if (!card || !btn) return;
+  if (isNoShow) {
+    card.style.opacity = '0.4';
+    card.style.filter  = 'grayscale(80%)';
+    btn.style.background   = 'rgba(192,57,43,.35)';
+    btn.style.borderColor  = 'rgba(220,80,80,.6)';
+    btn.style.color        = '#ff9999';
+    btn.textContent = '⛔ NO SHOW';
+    var nameEl = document.getElementById('sname_' + teamId);
+    if (nameEl && !document.getElementById('noshow_badge_' + teamId)) {
+      var badge = document.createElement('span');
+      badge.id = 'noshow_badge_' + teamId;
+      badge.style.cssText = 'display:inline-block;background:rgba(192,57,43,.3);border:1px solid rgba(220,80,80,.5);color:#ff9999;font-size:11px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:4px;margin-left:8px;';
+      badge.textContent = 'NO SHOW';
+      nameEl.appendChild(badge);
+    }
+  } else {
+    card.style.opacity = '';
+    card.style.filter  = '';
+    btn.style.background  = 'transparent';
+    btn.style.borderColor = 'rgba(192,57,43,.4)';
+    btn.style.color       = 'var(--muted)';
+    btn.textContent = 'NO SHOW';
+    var badge = document.getElementById('noshow_badge_' + teamId);
+    if (badge) badge.remove();
+  }
+}
+
 function collapseAll() {
   rosterTeams.forEach(t => {
     document.getElementById('sbody_'+t.id)?.classList.add('collapsed');
