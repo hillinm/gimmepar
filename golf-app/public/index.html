@@ -2923,6 +2923,9 @@ function buildScoreCard(team, st, idx) {
         <span class="quick-gross" id="sgross_${team.id}">—</span>
         <span class="quick-net" id="snet_${team.id}"></span>
       </div>
+      <button id="snoshow_${team.id}" onclick="toggleNoShow(${team.id});event.stopPropagation();"
+        style="background:transparent;border:1px solid rgba(192,57,43,.4);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
+        title="Mark team as no-show for this week">NO SHOW</button>
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
@@ -3184,7 +3187,10 @@ function recalcCard(teamId) {
 // ══ CALCULATE ══
 function calculate() {
   const parFront = getParFront(), parBack = getParBack();
-  const data = rosterTeams.map(t => {
+  // Filter out no-show teams
+  const activeTeams = rosterTeams.filter(function(t) { return !_noShowState[t.id]; });
+  if (!activeTeams.length) { toast('No active teams to calculate'); return; }
+  const data = activeTeams.map(t => {
     const st = scoreTeams.find(s=>s.id===t.id);
     const nine = st?.nine || t.nine || 'front';
     const { par, count } = getHoleConfig(nine);

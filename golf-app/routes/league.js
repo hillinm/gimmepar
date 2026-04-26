@@ -979,3 +979,21 @@ router.delete('/standings/clear', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── NO SHOW ──
+router.post('/teams/:teamId/noshow', requireAuth, async (req, res) => {
+  try {
+    const { week_number } = req.body || {};
+    await query(
+      `INSERT INTO weekly_confirmations (league_id, user_id, week_number, playing)
+       SELECT $1, COALESCE(u.id, (SELECT id FROM users WHERE league_id=$1 AND role='leagueadmin' LIMIT 1)), $2, FALSE
+       FROM teams t
+       LEFT JOIN users u ON u.team_id = t.id AND u.league_id = $1
+       WHERE t.id = $3 AND t.league_id = $1
+       ON CONFLICT (league_id, user_id, week_number) DO UPDATE SET playing=FALSE, confirmed_at=NOW()
+       `,
+      [req.session.leagueId, week_number || 1, req.params.teamId]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
