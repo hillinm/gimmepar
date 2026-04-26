@@ -867,6 +867,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
   <!-- SCORING TAB -->
   <div id="tabScoring" class="wrap" style="padding-top:32px;">
+    <div id="confirmSummaryBar" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold);">✅ WEEK CONFIRMATIONS</span>
+      <span id="confirmSummaryText" style="font-size:13px;color:var(--muted);">Loading...</span>
+      <div id="confirmSummaryNames" style="font-size:12px;flex:1;"></div>
+      <button onclick="loadConfirmSummary()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;padding:3px 10px;border-radius:5px;cursor:pointer;">↻ Refresh</button>
+    </div>
     <div class="score-filter-bar">
       <input class="score-search" id="scoreSearch" placeholder="🔍 Search team..." oninput="filterScoringCards()">
       <button class="filter-btn active" id="filterAll" onclick="setFilter('all',this)">ALL</button>
@@ -2760,6 +2766,7 @@ let subCounts = {}; // {teamId: count}
 let signedThisWeek = {}; // {teamId: weekNumber}
 
 async function buildScoringCards() {
+  loadConfirmSummary();
   const container = document.getElementById('scoringTeams');
   if (!container) return;
   container.innerHTML = '';
@@ -3008,6 +3015,35 @@ function toggleCard(teamId) {
   if (!body) return;
   const collapsed = body.classList.toggle('collapsed');
   icon?.classList.toggle('open', !collapsed);
+}
+
+async function loadConfirmSummary() {
+  var textEl = document.getElementById('confirmSummaryText');
+  var namesEl = document.getElementById('confirmSummaryNames');
+  if (!textEl) return;
+  try {
+    var settings = leagueSettings || await api('GET', '/api/league/settings');
+    var weekNum = settings.currentWeek || 1;
+    var rows = await api('GET', '/api/league/confirm-playing/' + weekNum);
+    var playing    = rows.filter(function(r){ return r.playing; });
+    var notPlaying = rows.filter(function(r){ return !r.playing; });
+    var total = rosterTeams.length || '?';
+    textEl.innerHTML = '<span style="color:var(--green2);font-weight:700;">✅ ' + playing.length + ' playing</span>'
+      + ' &nbsp;|&nbsp; <span style="color:#ff9999;">❌ ' + notPlaying.length + ' not playing</span>'
+      + ' &nbsp;|&nbsp; <span style="color:var(--muted);">⏳ ' + (total - rows.length) + ' no response</span>'
+      + ' <span style="color:var(--muted);font-size:11px;">(Week ' + weekNum + ')</span>';
+    if (playing.length) {
+      namesEl.innerHTML = playing.map(function(r){
+        return '<span style="background:rgba(26,110,18,.2);border:1px solid rgba(26,138,16,.3);color:var(--green2);border-radius:4px;padding:2px 7px;margin:2px;display:inline-block;font-size:11px;">'+esc((r.first_name||'')+' '+(r.last_name||''))+'</span>';
+      }).join('') + (notPlaying.length ? notPlaying.map(function(r){
+        return '<span style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block;font-size:11px;">'+esc((r.first_name||'')+' '+(r.last_name||''))+'</span>';
+      }).join('') : '');
+    } else {
+      namesEl.innerHTML = '<span style="color:var(--muted);font-style:italic;font-size:12px;">No confirmations yet for week ' + weekNum + '</span>';
+    }
+  } catch(e) {
+    if (textEl) textEl.textContent = 'Could not load confirmations';
+  }
 }
 
 async function clearAllScorecards() {
@@ -3516,6 +3552,7 @@ function showTab(tab) {
   });
   if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); }
   if (tab==='schedule') initSchedule();
+  if (tab==='scoring') loadConfirmSummary();
   if (tab==='standings') loadStandings();
   if (tab==='course') { loadSI(); }
   if (tab==='playoffs') loadPlayoffs();
