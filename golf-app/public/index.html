@@ -45,33 +45,6 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   border-color: rgba(220,80,80,.6);
   color: #ff9999;
 }
-
-.signed-admin-actions {
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-top:12px;
-  padding-top:12px;
-  border-top:1px dashed var(--border);
-}
-.signed-admin-btn {
-  background:transparent;
-  border:1px solid var(--border);
-  color:var(--gold2);
-  font-family:"Bebas Neue",sans-serif;
-  font-size:13px;
-  letter-spacing:1px;
-  padding:7px 12px;
-  border-radius:7px;
-  cursor:pointer;
-  transition:all .2s;
-}
-.signed-admin-btn:hover { background:rgba(201,168,76,.12); border-color:var(--gold); }
-.signed-admin-btn.save { border-color:var(--green); color:var(--green2); }
-.signed-admin-btn.save:hover { background:rgba(74,140,63,.18); }
-.signed-admin-btn.danger { border-color:rgba(192,57,43,.55); color:#ff9999; }
-.signed-admin-btn.danger:hover { background:rgba(192,57,43,.18); }
-.signed-admin-note { font-size:11px; color:var(--muted); font-style:italic; align-self:center; }
 .sub-badge {
   display: inline-block;
   font-size: 9px;
@@ -95,7 +68,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .standings-flight-title.a { color:var(--green2); }
 .standings-flight-title.b { color:var(--gold); }
 .standings-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-.standings-tbl th { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:1.5px; color:var(--gold2); padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); }
+.standings-tbl th { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:1.5px; color:var(--gold2); padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface); z-index:10; }
 .standings-tbl th.num { text-align:center; }
 .standings-tbl td { padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.04); }
 .standings-tbl td.num { text-align:center; color:var(--muted); }
@@ -216,7 +189,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .schedule-week-title { font-family:"Bebas Neue",sans-serif; font-size:22px; letter-spacing:2px; color:var(--gold); margin-bottom:12px; display:flex; align-items:center; gap:12px; }
 .week-badge { font-size:11px; background:rgba(201,168,76,.15); border:1px solid var(--border); border-radius:6px; padding:3px 10px; color:var(--muted); font-family:"Libre Baskerville",serif; font-style:italic; }
 .sched-table { width:100%; border-collapse:collapse; font-size:13px; }
-.sched-table th { font-family:"Bebas Neue",sans-serif; font-size:13px; letter-spacing:1.5px; color:var(--gold2); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
+.sched-table th { font-family:"Bebas Neue",sans-serif; font-size:13px; letter-spacing:1.5px; color:var(--gold2); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--surface); z-index:10; }
 .sched-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:middle; }
 .sched-table tr:last-child td { border-bottom:none; }
 .sched-table tr:hover td { background:rgba(255,255,255,.02); }
@@ -264,7 +237,9 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-save-roster{background:rgba(74,140,63,.2);border:1px solid var(--green);color:var(--green2);font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;padding:9px 20px;border:1px solid var(--green);border-radius:8px;cursor:pointer;transition:all .2s;}
 .btn-save-roster:hover{background:rgba(74,140,63,.35);}
 .team-table{width:100%;border-collapse:collapse;}
-.team-table th{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--gold2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.team-table th{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--gold2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:10;}
+.team-table{border-collapse:collapse;}
+.team-table-wrap{overflow-y:auto;max-height:420px;}
 .team-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle;}
 .team-table tr:last-child td{border-bottom:none;}
 .team-input{background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:6px;padding:6px 10px;font-family:'Libre Baskerville',serif;font-size:13px;outline:none;width:100%;}
@@ -670,6 +645,27 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 #playerPage .nine-toggle-btn.active-b { background:#8a6000;color:#fff;border-color:#8a6000; }
 #playerPage .nine-toggle-btn.active-18 { background:#1a8a10;color:#fff;border-color:#1a8a10; }
 #playerPage .hdcp-inp { background:#fff;border:2px solid #555;color:#111; }
+
+
+/* ── STICKY TABLE HEADERS ── */
+.team-table, .standings-tbl, .sched-table, .skins-tbl, .sb-tbl {
+  border-collapse: collapse;
+  width: 100%;
+}
+.table-scroll-wrap {
+  overflow-y: auto;
+  max-height: 480px;
+  border-radius: 0 0 10px 10px;
+}
+.team-table thead th,
+.standings-tbl thead th,
+.sched-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--border);
+}
 
 </style>
 </head>
@@ -2097,7 +2093,7 @@ async function loadPlayersList() {
     var teams = rosterTeams;
     var el = document.getElementById('playersList');
     if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
-    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
+    var html = '<div class="table-scroll-wrap"><table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
     players.forEach(function(p) {
       var teamOpts = '<option value="">— unassigned —</option>';
       teams.forEach(function(t) {
@@ -2117,7 +2113,7 @@ async function loadPlayersList() {
       html += '</td>';
       html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     el.innerHTML = html;
   } catch(e) { document.getElementById('playersList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
 }
@@ -2543,44 +2539,6 @@ let currentFilter = 'all';
 
 let subCounts = {}; // {teamId: count}
 let signedThisWeek = {}; // {teamId: weekNumber}
-let signedScorecardsByTeam = {}; // {teamId: signed scorecard row for the active week}
-
-function normalizeSignedHoleScores(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.map(function(v) { var n = parseInt(v); return isNaN(n) ? null : n; });
-  if (typeof raw === 'string') {
-    try {
-      var parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.map(function(v) { var n = parseInt(v); return isNaN(n) ? null : n; });
-    } catch(e) {}
-    return raw.split(',').map(function(v) { var n = parseInt(v.trim()); return isNaN(n) ? null : n; });
-  }
-  return [];
-}
-
-function applySignedScoreToCard(team, st, signed) {
-  var holes = normalizeSignedHoleScores(signed.hole_scores);
-  if (!holes.length) return;
-
-  // If the player submitted a different nine than the roster default, rebuild the grid to match it.
-  if (signed.nine && signed.nine !== st.nine) {
-    st.nine = signed.nine;
-    var gridWrap = document.getElementById('sgrid_' + team.id);
-    if (gridWrap) gridWrap.innerHTML = buildHolesGrid(team.id, st.nine);
-  }
-
-  holes.forEach(function(score, i) {
-    var inp = document.getElementById('shole_' + team.id + '_' + i);
-    if (!inp || score == null || score === 0) return;
-    inp.value = score;
-    colorHole(inp, team.id, i);
-  });
-
-  var hdcpInp = document.getElementById('shdcp_' + team.id);
-  if (hdcpInp && signed.handicap_used != null) hdcpInp.value = signed.handicap_used;
-
-  recalcCard(team.id);
-}
 
 async function buildScoringCards() {
   const container = document.getElementById('scoringTeams');
@@ -2595,39 +2553,17 @@ async function buildScoringCards() {
 
   // Load sub counts and signed scorecards
   try { subCounts = await api('GET', '/api/league/sub-counts'); } catch(e) { subCounts = {}; }
-
-  var activeWeek = null;
-  try {
-    var curr = await api('GET', '/api/league/schedule/current');
-    activeWeek = curr && curr.currentWeek ? curr.currentWeek : null;
-  } catch(e) {}
-
   try {
     var signedRows = await api('GET', '/api/league/scorecard/signed');
     signedThisWeek = {};
-    signedScorecardsByTeam = {};
-
-    signedRows.forEach(function(r) {
-      // Prefer the active week. If there is no active week, use the newest signed card per team.
-      var rowWeek = parseInt(r.week_number);
-      var teamId = r.team_id;
-      if (activeWeek && rowWeek !== parseInt(activeWeek)) return;
-      var existing = signedScorecardsByTeam[teamId];
-      if (!existing || new Date(r.signed_at || 0) > new Date(existing.signed_at || 0)) {
-        signedScorecardsByTeam[teamId] = r;
-        signedThisWeek[teamId] = rowWeek;
-      }
-    });
-  } catch(e) { signedThisWeek = {}; signedScorecardsByTeam = {}; }
+    signedRows.forEach(function(r) { signedThisWeek[r.team_id] = r.week_number; });
+  } catch(e) { signedThisWeek = {}; }
 
   rosterTeams.forEach((t, idx) => {
-    const signed = signedScorecardsByTeam[t.id];
-    const signedHoles = signed ? normalizeSignedHoleScores(signed.hole_scores) : [];
-    const nine = (signed && signed.nine) || t.nine || 'front';
-    const st = { id: t.id, nine, holes: signedHoles.length ? signedHoles : Array(nine === 'all18' ? 18 : 9).fill(null), format: t.format||'2man' };
+    const nine = t.nine || 'front';
+    const st = { id: t.id, nine, holes: Array(9).fill(null), format: t.format||'2man' };
     scoreTeams.push(st);
     container.appendChild(buildScoreCard(t, st, idx));
-    if (signed) applySignedScoreToCard(t, st, signed);
   });
 
   // Apply sub count badges
@@ -2655,105 +2591,15 @@ async function buildScoringCards() {
   updateScoreCount();
 }
 
-function renderSignedAdminActions(teamId, weekNum) {
-  return '<div class="signed-admin-actions" id="signed_actions_' + teamId + '">'
-    + '<button class="signed-admin-btn" onclick="adminEditSignedScorecard(' + teamId + ',' + weekNum + ');event.stopPropagation();">✏️ Edit</button>'
-    + '<button class="signed-admin-btn save" onclick="adminSaveSignedScorecardEdit(' + teamId + ',' + weekNum + ');event.stopPropagation();">💾 Save Edit</button>'
-    + '<button class="signed-admin-btn danger" onclick="adminDeleteSignedScorecard(' + teamId + ',' + weekNum + ');event.stopPropagation();">🗑 Delete</button>'
-    + '<button class="signed-admin-btn danger" onclick="adminResetSignedScorecard(' + teamId + ',' + weekNum + ');event.stopPropagation();">↺ Reset / Reopen</button>'
-    + '<span class="signed-admin-note">Admin controls for the submitted player scorecard</span>'
-    + '</div>';
-}
-
 async function resetSignedScorecard(teamId, weekNum, nameEl) {
-  return adminResetSignedScorecard(teamId, weekNum, nameEl);
-}
-
-function clearSignedScorecardUi(teamId, clearScores) {
-  delete signedThisWeek[teamId];
-  delete signedScorecardsByTeam[teamId];
-  var nameEl = document.getElementById('sname_' + teamId);
-  var badge = nameEl && nameEl.querySelector('.signed-badge');
-  if (badge) badge.remove();
-  var actions = document.getElementById('signed_actions_' + teamId);
-  if (actions) actions.remove();
-  if (clearScores) {
-    var st = scoreTeams.find(function(s) { return s.id === teamId; });
-    var count = st && st.nine === 'all18' ? 18 : 9;
-    for (var i = 0; i < count; i++) {
-      var inp = document.getElementById('shole_' + teamId + '_' + i);
-      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
-    }
-    recalcCard(teamId);
-  }
-}
-
-function adminEditSignedScorecard(teamId, weekNum) {
-  var body = document.getElementById('sbody_' + teamId);
-  var icon = document.getElementById('sicon_' + teamId);
-  if (body) body.classList.remove('collapsed');
-  if (icon) icon.classList.add('open');
-  var card = document.getElementById('scard_' + teamId);
-  if (card) card.scrollIntoView({behavior:'smooth', block:'center'});
-  toast('Edit the scores, then click Save Edit');
-}
-
-async function adminSaveSignedScorecardEdit(teamId, weekNum) {
-  var team = rosterTeams.find(function(t) { return t.id === teamId; });
-  var st = scoreTeams.find(function(s) { return s.id === teamId; });
-  if (!team || !st) { toast('Could not find this team scorecard'); return; }
-
-  var count = st.nine === 'all18' ? 18 : 9;
-  var holes = [];
-  var allFilled = true;
-  for (var i = 0; i < count; i++) {
-    var inp = document.getElementById('shole_' + teamId + '_' + i);
-    var val = inp ? parseInt(inp.value) : null;
-    if (!val) allFilled = false;
-    holes.push(val || 0);
-  }
-  if (!allFilled && !confirm('Some holes are empty. Save this signed scorecard edit anyway?')) return;
-
-  var gross = holes.reduce(function(a,b) { return a + b; }, 0);
-  var hdcp = parseInt(document.getElementById('shdcp_' + teamId)?.value) || 0;
-  var net = gross - hdcp;
-
-  try {
-    await api('POST', '/api/league/scorecard/sign', {
-      team_id: teamId,
-      week_number: weekNum,
-      hole_scores: holes,
-      gross: gross,
-      net: net,
-      handicap_used: hdcp,
-      nine: st.nine || team.nine || 'front',
-      signed_by: 'League Admin Edit'
-    });
-    signedThisWeek[teamId] = weekNum;
-    signedScorecardsByTeam[teamId] = { team_id: teamId, week_number: weekNum, hole_scores: holes, gross: gross, net: net, handicap_used: hdcp, nine: st.nine || team.nine || 'front', signed_at: new Date().toISOString() };
-    recalcCard(teamId);
-    loadSignedScorecards();
-    toast('Signed scorecard edit saved');
-  } catch(e) { toast('Error: ' + e.message); }
-}
-
-async function adminDeleteSignedScorecard(teamId, weekNum) {
-  if (!confirm('Delete this signed scorecard? This removes the submitted scorecard record.')) return;
+  if (!confirm('Reset the signed scorecard for this team? The player will be able to re-submit.')) return;
   try {
     await api('DELETE', '/api/league/scorecard/signed/' + teamId + '/' + weekNum);
-    clearSignedScorecardUi(teamId, true);
+    delete signedThisWeek[teamId];
+    var badge = nameEl && nameEl.querySelector('.signed-badge');
+    if (badge) badge.remove();
+    toast('Signed scorecard reset');
     loadSignedScorecards();
-    toast('Signed scorecard deleted');
-  } catch(e) { toast('Error: ' + e.message); }
-}
-
-async function adminResetSignedScorecard(teamId, weekNum, nameEl) {
-  if (!confirm('Reset/reopen this signed scorecard? The player will be able to submit it again.')) return;
-  try {
-    await api('DELETE', '/api/league/scorecard/signed/' + teamId + '/' + weekNum);
-    clearSignedScorecardUi(teamId, false);
-    loadSignedScorecards();
-    toast('Signed scorecard reset — player can resubmit');
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -2887,7 +2733,6 @@ function buildScoreCard(team, st, idx) {
         <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">—</div></div>
         <div class="total-box"><div class="total-lbl">Net</div><div class="total-val" id="snet2_${team.id}">—</div></div>
       </div>
-      ${signedThisWeek[team.id] ? renderSignedAdminActions(team.id, signedThisWeek[team.id]) : ''}
     </div>`;
   return card;
 }
@@ -4235,7 +4080,7 @@ async function loadSignedScorecards() {
   try {
     var rows = await api('GET', '/api/league/scorecard/signed');
     if (!rows.length) { el.innerHTML = '<div class="empty-state">No signed scorecards yet.</div>'; return; }
-    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th></tr></thead><tbody>';
     rows.forEach(function(r) {
       var name = esc(r.player1||'') + (r.player2 ? ' / ' + esc(r.player2) : '');
       var date = new Date(r.signed_at).toLocaleDateString();
@@ -4248,11 +4093,6 @@ async function loadSignedScorecards() {
       html += '<td style="font-weight:700;color:var(--gold2)">' + r.net + '</td>';
       html += '<td style="color:var(--muted)">' + r.handicap_used + '</td>';
       html += '<td style="font-size:11px;color:var(--green2)">✓ ' + date + '</td>';
-      html += '<td style="white-space:nowrap">'
-        + '<button class="signed-admin-btn" style="font-size:11px;padding:5px 8px;margin-right:4px;" onclick="adminEditSignedScorecard(' + r.team_id + ',' + r.week_number + ')">Edit</button>'
-        + '<button class="signed-admin-btn danger" style="font-size:11px;padding:5px 8px;margin-right:4px;" onclick="adminDeleteSignedScorecard(' + r.team_id + ',' + r.week_number + ')">Delete</button>'
-        + '<button class="signed-admin-btn danger" style="font-size:11px;padding:5px 8px;" onclick="adminResetSignedScorecard(' + r.team_id + ',' + r.week_number + ')">Reset</button>'
-        + '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
