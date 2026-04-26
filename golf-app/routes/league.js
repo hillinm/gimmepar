@@ -846,3 +846,25 @@ router.get('/scorecard/signed', requireAuth, async (req, res) => {
     res.json(rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── RESET SIGNED SCORECARD (admin) ──
+router.delete('/scorecard/signed/:teamId/:weekNumber', requireAuth, async (req, res) => {
+  try {
+    await query(
+      'DELETE FROM signed_scorecards WHERE league_id=$1 AND team_id=$2 AND week_number=$3',
+      [req.session.leagueId, req.params.teamId, req.params.weekNumber]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── RESET SIGNED SCORECARD ──
+router.delete('/scorecard/signed/:teamId/:weekNum', requireAuth, async (req, res) => {
+  try {
+    await query(
+      'DELETE FROM signed_scorecards WHERE league_id=$1 AND team_id=$2 AND week_number=$3',
+      [req.session.leagueId, req.params.teamId, req.params.weekNum]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
