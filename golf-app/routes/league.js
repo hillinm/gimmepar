@@ -140,34 +140,91 @@ router.get('/rounds/:id', requireAuth, async (req, res) => {
 router.post('/course-search', requireAuth, async (req, res) => {
   const { query: q } = req.body;
   if (!q) return res.status(400).json({ error: 'Query required' });
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured on server' });
-  const payload = JSON.stringify({
-    model: 'claude-sonnet-4-20250514', max_tokens: 800,
-    messages: [{ role: 'user', content: `Find golf course matching: "${q}". Return ONLY JSON:
-{"courses":[{"name":"string","location":"City, State","front9par":[4,3,4,4,4,5,3,4,5],"back9par":[4,4,3,5,4,4,3,4,5],"totalPar":72,"confidence":"high|medium|low"}]}
-Up to 3 results. Real hole pars for known courses. Always 9 values per nine.` }]
-  });
+  const apiKey = process.env.GOLF_COURSE_API_KEY || 'RKWDETGQRSPIWRV5I4BRNVO5NA';
+  const https = require('https');
+
   try {
-    const result = await new Promise((resolve, reject) => {
-      const https = require('https');
+    // Search for courses by name using golfcoursesapi.com
+    const searchPath = '/api/v1/courses?search=' + encodeURIComponent(q) + '&per_page=5';
+    const searchResult = await new Promise((resolve, reject) => {
       const options = {
-        hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Length': Buffer.byteLength(payload) }
+        hostname: 'golfcoursesapi.com', path: searchPath, method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + apiKey, 'Accept': 'application/json' }
       };
       const request = https.request(options, (response) => {
         let data = '';
         response.on('data', chunk => data += chunk);
-        response.on('end', () => resolve(JSON.parse(data)));
+        response.on('end', () => {
+          try { resolve({ status: response.statusCode, body: JSON.parse(data) }); }
+          catch(e) { resolve({ status: response.statusCode, body: data }); }
+        });
       });
       request.on('error', reject);
-      request.write(payload);
       request.end();
     });
-    if (result.error) return res.status(500).json({ error: result.error.message });
-    const raw = result.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
-    res.json(JSON.parse(raw));
-  } catch(e) { console.error(e); res.status(500).json({ error: 'Search failed: ' + e.message }); }
+
+    if (searchResult.status !== 200) {
+      return res.status(500).json({ error: 'Golf Course API error: ' + searchResult.status });
+    }
+
+    const data = searchResult.body;
+    const courses = (data.data || data.courses || data || []).slice(0, 5);
+
+    if (!courses.length) return res.json({ courses: [] });
+
+    // For each result, fetch full hole details
+    const mapped = await Promise.all(courses.map(async (c) => {
+      let front9par = [4,3,4,4,4,5,3,4,5];
+      let back9par  = [4,4,3,5,4,4,3,4,5];
+      let totalPar  = 72;
+      try {
+        const courseId = c.id || c.course_id;
+        if (courseId) {
+          const detail = await new Promise((resolve, reject) => {
+            const options = {
+              hostname: 'golfcoursesapi.com',
+              path: '/api/v1/courses/' + courseId,
+              method: 'GET',
+              headers: { 'Authorization': 'Bearer ' + apiKey, 'Accept': 'application/json' }
+            };
+            const req2 = https.request(options, (response) => {
+              let d = '';
+              response.on('data', chunk => d += chunk);
+              response.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { resolve({}); } });
+            });
+            req2.on('error', () => resolve({}));
+            req2.end();
+          });
+          // Extract hole pars from detail
+          const holes = detail.holes || (detail.data && detail.data.holes) || [];
+          if (holes.length >= 9) {
+            front9par = holes.slice(0, 9).map(h => parseInt(h.par) || 4);
+            if (holes.length >= 18) {
+              back9par = holes.slice(9, 18).map(h => parseInt(h.par) || 4);
+            }
+            totalPar = [...front9par, ...back9par].reduce((a,b) => a+b, 0);
+          } else if (detail.par || (detail.data && detail.data.par)) {
+            totalPar = detail.par || detail.data.par;
+          }
+        }
+      } catch(e) { /* use defaults */ }
+
+      const location = [c.city, c.state || c.state_name].filter(Boolean).join(', ') || c.location || '';
+      return {
+        name: c.name || c.course_name || 'Unknown',
+        location,
+        front9par,
+        back9par,
+        totalPar,
+        confidence: 'high'
+      };
+    }));
+
+    res.json({ courses: mapped });
+  } catch(e) {
+    console.error('Course search error:', e);
+    res.status(500).json({ error: 'Search failed: ' + e.message });
+  }
 });
 
 module.exports = router;
