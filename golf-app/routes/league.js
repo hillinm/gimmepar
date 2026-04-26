@@ -907,3 +907,62 @@ router.post('/teams/deduplicate', requireAuth, async (req, res) => {
     res.json({ deleted: toDelete.length, remaining: teams.length - toDelete.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── STROKE INDEX (SI) ──
+router.get('/course/si', requireAuth, async (req, res) => {
+  try {
+    const row = await getOne('SELECT front9si, back9si FROM leagues WHERE id=$1', [req.session.leagueId]);
+    res.json({
+      front9si: JSON.parse(row.front9si || '[1,2,3,4,5,6,7,8,9]'),
+      back9si:  JSON.parse(row.back9si  || '[10,11,12,13,14,15,16,17,18]')
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/course/si', requireAuth, async (req, res) => {
+  try {
+    const { front9si, back9si } = req.body;
+    await query('UPDATE leagues SET front9si=$1, back9si=$2 WHERE id=$3',
+      [JSON.stringify(front9si), JSON.stringify(back9si), req.session.leagueId]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── WEEKLY CONFIRMATION ──
+router.post('/confirm-playing', requireAuth, async (req, res) => {
+  try {
+    const { week_number, playing } = req.body;
+    await query(
+      `INSERT INTO weekly_confirmations (league_id, user_id, week_number, playing)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (league_id, user_id, week_number) DO UPDATE SET playing=$4, confirmed_at=NOW()`,
+      [req.session.leagueId, req.session.userId, week_number, playing !== false]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/confirm-playing/:weekNum', requireAuth, async (req, res) => {
+  try {
+    const rows = await getAll(
+      `SELECT wc.*, u.first_name, u.last_name, u.email
+       FROM weekly_confirmations wc
+       JOIN users u ON u.id = wc.user_id
+       WHERE wc.league_id=$1 AND wc.week_number=$2
+       ORDER BY wc.confirmed_at`,
+      [req.session.leagueId, req.params.weekNum]
+    );
+    res.json(rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// My confirmation for current week
+router.get('/confirm-playing/me/:weekNum', requireAuth, async (req, res) => {
+  try {
+    const row = await getOne(
+      'SELECT * FROM weekly_confirmations WHERE league_id=$1 AND user_id=$2 AND week_number=$3',
+      [req.session.leagueId, req.session.userId, req.params.weekNum]
+    );
+    res.json(row || { playing: null });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

@@ -66,6 +66,20 @@ async function init() {
     // Safe migrations
     await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS nine TEXT NOT NULL DEFAULT 'front'");
     await client.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT");
+    await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS front9si TEXT DEFAULT '[1,2,3,4,5,6,7,8,9]'");
+    await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS back9si TEXT DEFAULT '[10,11,12,13,14,15,16,17,18]'");
+    await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS saved_courses_si TEXT");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS weekly_confirmations (
+        id SERIAL PRIMARY KEY,
+        league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_number INTEGER NOT NULL,
+        confirmed_at TIMESTAMPTZ DEFAULT NOW(),
+        playing BOOLEAN DEFAULT TRUE,
+        UNIQUE(league_id, user_id, week_number)
+      );
+    `);
     await client.query("ALTER TABLE round_scores ADD COLUMN IF NOT EXISTS is_sub BOOLEAN DEFAULT FALSE");
     // Auto-generate usernames for existing users that don't have one
     await client.query(`

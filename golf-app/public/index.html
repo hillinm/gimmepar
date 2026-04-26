@@ -966,6 +966,16 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="par-grid" id="parBackGrid"></div>
         <div class="par-totals" id="parTotalsDisplay"></div>
 
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🏌️ Stroke Index (SI) — Hole Difficulty Ranking</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Rate each hole 1–18 from hardest (1) to easiest (18). Used to break ties — winner is team that scored better on hardest hole.</div>
+        <div class="par-section-label">Front 9 SI — Holes 1–9</div>
+        <div class="par-grid" id="siFrontGrid"></div>
+        <div class="par-section-label" style="margin-top:8px;">Back 9 SI — Holes 10–18</div>
+        <div class="par-grid" id="siBackGrid"></div>
+        <button class="btn-save-course" style="margin-top:12px;padding:8px 20px;font-size:15px;" onclick="saveSI()">💾 Save Stroke Index</button>
+        <div id="siSaveResult" style="margin-top:8px;font-size:13px;"></div>
+
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
           <button class="btn-save-course" onclick="saveCourse()">💾 Save as My Course</button>
           <button class="btn-save-course" style="background:var(--green);color:#fff;" onclick="saveToGlobalLibrary()">🌐 Save to Global Library</button>
@@ -1217,6 +1227,23 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
+        <!-- League Day -->
+        <div style="margin-bottom:28px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">📅 League Day</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Which day does your league play? Used to set the weekly confirmation deadline (Sunday 9pm before league day).</div>
+          <select class="week-inp" id="leagueDayInp" style="width:auto;padding:8px 14px;font-size:14px;">
+            <option value="monday">Monday</option>
+            <option value="tuesday" selected>Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+            <option value="saturday">Saturday</option>
+            <option value="sunday">Sunday</option>
+          </select>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
         <!-- Alternate Nines -->
         <div style="margin-bottom:28px;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔀 Alternate Nines (Schedule)</div>
@@ -1280,6 +1307,21 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div id="historyList" class="section-body">
         <div class="empty-state">No rounds recorded yet.</div>
+      </div>
+    </div>
+
+    <!-- Weekly Confirmations (admin view) -->
+    <div class="section-card" style="margin-bottom:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">✅</span>
+        <div>
+          <div class="section-title">Weekly Confirmations</div>
+          <div class="section-sub">Players confirming they are playing this week</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadWeeklyConfirmations()">↻ Refresh</button>
+      </div>
+      <div class="section-body" id="weeklyConfirmContent">
+        <div class="empty-state">Click Refresh to load.</div>
       </div>
     </div>
 
@@ -1552,6 +1594,21 @@ async function loadPlayerView(data) {
   var opponent = null;
   var matchupHole = null;
   var curr = null;
+  // ── Weekly confirmation button ──
+  var confirmArea = document.createElement('div');
+  confirmArea.id = 'weeklyConfirmArea';
+  confirmArea.style.cssText = 'margin-bottom:20px;';
+  container.appendChild(confirmArea);
+  var activeWeekForConfirm = 1;
+  try {
+    var confSettings = await api('GET', '/api/league/settings');
+    activeWeekForConfirm = confSettings.currentWeek || 1;
+    var myConf = await api('GET', '/api/league/confirm-playing/me/' + activeWeekForConfirm);
+    renderConfirmButton(confirmArea, activeWeekForConfirm, myConf.playing);
+  } catch(e) {
+    renderConfirmButton(confirmArea, activeWeekForConfirm, null);
+  }
+
   try {
     curr = await api('GET', '/api/league/schedule/current');
     if (curr.currentWeek) {
@@ -1567,7 +1624,10 @@ async function loadPlayerView(data) {
         }
       }
       // Show week info
-      container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek + (matchupHole ? ' &nbsp;|&nbsp; STARTING HOLE ' + matchupHole : '') + '</div>';
+      var nineLabel = team.nine === 'back' ? 'BACK 9' : team.nine === 'all18' ? 'ALL 18' : 'FRONT 9';
+      container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
+        + ' &nbsp;|&nbsp; ' + nineLabel
+        + (matchupHole ? ' &nbsp;|&nbsp; STARTING HOLE ' + matchupHole : '') + '</div>';
     } else {
       container.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px;">No schedule set for this week yet.</div>';
     }
@@ -1624,6 +1684,95 @@ async function loadPlayerView(data) {
     signArea.appendChild(signNote);
   }
   container.appendChild(signArea);
+}
+
+function renderConfirmButton(area, weekNum, currentStatus) {
+  var deadline = getConfirmDeadline();
+  var past = new Date() > deadline;
+  var deadlineStr = deadline.toLocaleString('en-US', {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+
+  var html = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:4px;">'
+    + '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">WEEK ' + weekNum + ' CONFIRMATION'
+    + (past ? ' <span style="color:#ff9999;">(deadline passed)</span>' : ' — deadline ' + deadlineStr) + '</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+
+  var playingStyle = currentStatus === true
+    ? 'background:#1a6e12;color:#fff;border-color:#1a6e12;'
+    : 'background:var(--surface);color:var(--cream);border:1px solid var(--border);';
+  var notPlayingStyle = currentStatus === false
+    ? 'background:#c0392b;color:#fff;border-color:#c0392b;'
+    : 'background:var(--surface);color:var(--cream);border:1px solid var(--border);';
+
+  html += '<button id="btnConfirmPlaying" onclick="confirmPlaying(' + weekNum + ', true)" '
+    + 'style="flex:1;padding:12px;border-radius:8px;font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;' + playingStyle + '">'
+    + '✅ PLAYING WEEK ' + weekNum + '</button>';
+  html += '<button id="btnConfirmNotPlaying" onclick="confirmPlaying(' + weekNum + ', false)" '
+    + 'style="flex:1;padding:12px;border-radius:8px;font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;' + notPlayingStyle + '">'
+    + '❌ NOT PLAYING</button>';
+  html += '</div>';
+  if (currentStatus === true) html += '<div style="font-size:12px;color:#6dbe5f;margin-top:8px;">✓ You are confirmed for week ' + weekNum + '. Tap again to change.</div>';
+  if (currentStatus === false) html += '<div style="font-size:12px;color:#ff9999;margin-top:8px;">✗ You have opted out of week ' + weekNum + '. Tap Playing to change.</div>';
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+function getConfirmDeadline() {
+  // Default: Sunday 9pm before the league day
+  // League day from settings (default Tuesday)
+  var leagueDay = (leagueSettings && leagueSettings.leagueDay) || 'tuesday';
+  var days = {sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+  var leagueDayNum = days[leagueDay] || 2;
+  var now = new Date();
+  var day = now.getDay();
+  // Find next league day
+  var daysUntilLeague = (leagueDayNum - day + 7) % 7 || 7;
+  var leagueDate = new Date(now);
+  leagueDate.setDate(now.getDate() + daysUntilLeague);
+  // Deadline = Sunday before league day at 9pm
+  var deadline = new Date(leagueDate);
+  var sundayOffset = (leagueDate.getDay() - 0 + 7) % 7; // days since last sunday
+  deadline.setDate(leagueDate.getDate() - sundayOffset);
+  deadline.setHours(21, 0, 0, 0);
+  return deadline;
+}
+
+async function confirmPlaying(weekNum, playing) {
+  try {
+    await api('POST', '/api/league/confirm-playing', { week_number: weekNum, playing: playing });
+    var area = document.getElementById('weeklyConfirmArea');
+    if (area) renderConfirmButton(area, weekNum, playing);
+    toast(playing ? '✓ Confirmed for week ' + weekNum : '✓ Opted out of week ' + weekNum);
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function loadWeeklyConfirmations() {
+  var el = document.getElementById('weeklyConfirmContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var settings = leagueSettings || await api('GET', '/api/league/settings');
+    var weekNum = settings.currentWeek || 1;
+    var rows = await api('GET', '/api/league/confirm-playing/' + weekNum);
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">No confirmations yet for week ' + weekNum + '.</div>'; return; }
+    var playing = rows.filter(function(r){return r.playing;});
+    var notPlaying = rows.filter(function(r){return !r.playing;});
+    var html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted);">Week ' + weekNum + ' — '
+      + '<span style="color:var(--green2)">✅ ' + playing.length + ' playing</span>'
+      + ' &nbsp;|&nbsp; <span style="color:#ff9999">❌ ' + notPlaying.length + ' not playing</span></div>';
+    html += '<table class="team-table" style="width:100%"><thead><tr><th>Player</th><th>Status</th><th>Confirmed</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var name = esc((r.first_name||'') + ' ' + (r.last_name||''));
+      var status = r.playing
+        ? '<span style="color:var(--green2)">✅ Playing</span>'
+        : '<span style="color:#ff9999">❌ Not Playing</span>';
+      var date = new Date(r.confirmed_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      html += '<tr><td style="font-weight:700">'+name+'</td><td>'+status+'</td><td style="font-size:12px;color:var(--muted)">'+date+'</td></tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
 }
 
 async function signScorecard(team, st, weekNum) {
@@ -2338,6 +2487,59 @@ function buildParGrids() {
     }
   });
   updateParTotals();
+  buildSIGrids();
+}
+
+var _front9si = [1,2,3,4,5,6,7,8,9];
+var _back9si  = [10,11,12,13,14,15,16,17,18];
+
+function buildSIGrids() {
+  ['siFrontGrid','siBackGrid'].forEach(function(gid, gi) {
+    var el = document.getElementById(gid);
+    if (!el) return;
+    el.innerHTML = '';
+    var siArr = gi === 0 ? _front9si : _back9si;
+    for (var i = 0; i < 9; i++) {
+      var hNum = gi === 0 ? i+1 : i+10;
+      var wrap = document.createElement('div');
+      wrap.className = 'par-hole-wrap';
+      wrap.innerHTML = '<div class="par-hole-lbl">H'+hNum+'</div>'
+        + '<input class="par-hole-input" type="number" min="1" max="18" value="'+(siArr[i]||i+1)+'"'
+        + ' id="'+(gi===0?'sif':'sib')+'_'+i+'" inputmode="numeric" style="border-color:rgba(201,168,76,.4);">';
+      el.appendChild(wrap);
+    }
+  });
+}
+
+async function loadSI() {
+  try {
+    var data = await api('GET', '/api/league/course/si');
+    _front9si = data.front9si || [1,2,3,4,5,6,7,8,9];
+    _back9si  = data.back9si  || [10,11,12,13,14,15,16,17,18];
+    buildSIGrids();
+  } catch(e) {}
+}
+
+async function saveSI() {
+  var front9si = Array.from({length:9}, function(_,i) { return parseInt(document.getElementById('sif_'+i)?.value)||i+1; });
+  var back9si  = Array.from({length:9}, function(_,i) { return parseInt(document.getElementById('sib_'+i)?.value)||i+10; });
+  // Validate: all 18 SI values should be unique 1-18
+  var allSI = [...front9si, ...back9si];
+  var unique = new Set(allSI);
+  var result = document.getElementById('siSaveResult');
+  if (unique.size !== 18 || allSI.some(function(v){return v<1||v>18;})) {
+    result.innerHTML = '<span style="color:#ff9999">⚠ Each hole must have a unique SI from 1–18. Check for duplicates.</span>';
+    return;
+  }
+  try {
+    await api('PUT', '/api/league/course/si', { front9si, back9si });
+    _front9si = front9si;
+    _back9si  = back9si;
+    result.innerHTML = '<span style="color:var(--green2)">✓ Stroke index saved.</span>';
+    toast('SI saved');
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
 }
 
 function getParFront() { return Array.from({length:9},(_,i)=>parseInt(document.getElementById('pf_'+i)?.value)||4); }
@@ -3015,8 +3217,22 @@ function renderResults(data, parFront, parBack) {
     const aSet = new Set(sorted.slice(0, mid).map(t=>t.id));
     data.forEach(t => { t.flight = aSet.has(t.id) ? 'A' : 'B'; });
   }
-  const fA = data.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
-  const fB = data.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
+  // 4-flight split: F9A, F9B, B9A, B9B
+  const f9teams = data.filter(t => t.nine === 'front' || t.nine === 'all18');
+  const b9teams = data.filter(t => t.nine === 'back'  || t.nine === 'all18');
+  function splitFlight(teams) {
+    var sorted = teams.slice().sort(function(a,b){return (a.net??999)-(b.net??999);});
+    var mid = Math.ceil(sorted.length/2);
+    sorted.forEach(function(t,i){ t.flight = i<mid ? 'A' : 'B'; });
+  }
+  splitFlight(f9teams);
+  splitFlight(b9teams);
+  // Also set legacy flight for scoreboard
+  data.forEach(function(t){ if (!t.flight) t.flight = 'A'; });
+  const fA = f9teams.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
+  const fB = f9teams.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
+  const bA = b9teams.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
+  const bB = b9teams.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
   // For skins: all18 teams play both nines
   const frontTeams = data.filter(t=>t.nine==='front' || t.nine==='all18').map(t => {
     if (t.nine==='all18') return {...t, holes: t.holes.slice(0,9), nine:'front'};
@@ -3050,7 +3266,8 @@ function renderResults(data, parFront, parBack) {
     <button class="btn-recalc" onclick="recalculate()">⟳ RECALCULATE</button>
     <button class="btn-update-hdcp" onclick="saveUpdatedHandicaps()">💾 SAVE UPDATED HANDICAPS TO ROSTER</button>
     <div class="results-grid">
-      ${flightHTML('A',fA)} ${flightHTML('B',fB)}
+      ${flightHTML('F9 A Flight',fA,'a')} ${flightHTML('F9 B Flight',fB,'b')}
+      ${flightHTML('B9 A Flight',bA,'a')} ${flightHTML('B9 B Flight',bB,'b')}
       ${skinsEnabled ? skinsHTML(skinsFront,'Front 9','Holes 1–9') : ''}
       ${skinsEnabled ? skinsHTML(skinsBack,'Back 9','Holes 10–18') : ''}
       ${scoreboardHTML(data)}
@@ -3111,8 +3328,9 @@ function computeSkins(teams, nine) {
   });
 }
 
-function flightHTML(letter, teams) {
-  const icon = letter==='A'?'🟢':'⚪';
+function flightHTML(letter, teams, cls) {
+  cls = cls || (letter.includes('A') ? 'a' : 'b');
+  const icon = letter.includes('A')?'🟢':'⚪';
   const rows = teams.length ? teams.slice(0,8).map((t,i)=>{
     const pc=i===0?'p1':i===1?'p2':i===2?'p3':'px';
     const tied=i>0&&t.net===teams[0].net;
@@ -3130,9 +3348,9 @@ function flightHTML(letter, teams) {
       </div>
     </div>`;
   }).join('') : '<div class="empty-state">No teams in this flight.</div>';
-  return `<div class="res-card"><div class="res-hdr ${letter==='A'?'a':'b'}">
+  return `<div class="res-card"><div class="res-hdr ${cls}">
     <span class="res-icon">${icon}</span>
-    <div><div class="res-htitle">${letter} Flight</div><div class="res-hsub">Net Stroke Play</div></div>
+    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play</div></div>
   </div><div class="res-body">${rows}</div></div>`;
 }
 
@@ -3236,9 +3454,10 @@ function showTab(tab) {
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
-  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); }
+  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); }
   if (tab==='schedule') initSchedule();
   if (tab==='standings') loadStandings();
+  if (tab==='course') { loadSI(); }
   if (tab==='playoffs') loadPlayoffs();
   if (tab==='players') loadPlayersList();
   if (tab==='roster') loadCalculatedHandicaps();
@@ -3621,6 +3840,8 @@ async function loadLeagueSettings() {
       son.classList.toggle('active', leagueSettings.skinsEnabled !== false);
       soff.classList.toggle('active', leagueSettings.skinsEnabled === false);
     }
+    var ldInp = document.getElementById('leagueDayInp');
+    if (ldInp && leagueSettings.leagueDay) ldInp.value = leagueSettings.leagueDay;
     var anon = document.getElementById('settingAltNinesOn');
     var anoff = document.getElementById('settingAltNinesOff');
     if (anon && anoff) {
@@ -3738,6 +3959,7 @@ async function saveLeagueSettings() {
   var st = parseInt(document.getElementById('subThresholdInp').value) || 2;
   var settings = {
     subThreshold: st,
+    leagueDay: (document.getElementById('leagueDayInp')||{}).value || 'tuesday',
     flightMode: leagueSettings.flightMode || 'hl',
     skinsEnabled: leagueSettings.skinsEnabled !== false,
     alternateNines: leagueSettings.alternateNines === true,
