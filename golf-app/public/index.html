@@ -1271,6 +1271,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <div class="section-sub">Win/loss record by flight — based on saved schedule matchups</div>
         </div>
         <button class="btn-export-sched" style="margin-left:auto;" onclick="loadStandings()">↻ Refresh</button>
+        <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;margin-left:8px;" onclick="clearAllStandings()">🗑 Clear All</button>
       </div>
       <div class="section-body" id="standingsContent">
         <div class="empty-state">Loading...</div>
@@ -3984,6 +3985,17 @@ async function saveLeagueSettings() {
 }
 
 // ══ STANDINGS ══
+async function clearAllStandings() {
+  if (!confirm('Clear ALL rounds, scores, and standings? This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure? This deletes all round history and standings.')) return;
+  try {
+    await api('DELETE', '/api/league/standings/clear');
+    toast('✓ All standings and round history cleared');
+    loadStandings();
+    loadHistory();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
 async function loadStandings() {
   var el = document.getElementById('standingsContent');
   if (!el) return;

@@ -966,3 +966,16 @@ router.get('/confirm-playing/me/:weekNum', requireAuth, async (req, res) => {
     res.json(row || { playing: null });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── CLEAR ALL STANDINGS ──
+router.delete('/standings/clear', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    // Delete round scores, rounds, adjustments, and signed scorecards
+    await query(`DELETE FROM round_scores WHERE round_id IN (SELECT id FROM rounds WHERE league_id=$1)`, [leagueId]);
+    await query(`DELETE FROM rounds WHERE league_id=$1`, [leagueId]);
+    await query(`DELETE FROM standings_adjustments WHERE league_id=$1`, [leagueId]);
+    await query(`DELETE FROM signed_scorecards WHERE league_id=$1`, [leagueId]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
