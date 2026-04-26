@@ -1600,15 +1600,12 @@ async function loadPlayerView(data) {
   confirmArea.id = 'weeklyConfirmArea';
   confirmArea.style.cssText = 'margin-bottom:20px;';
   container.appendChild(confirmArea);
+  // Always render the confirm button — determine week and status
   var activeWeekForConfirm = 1;
-  try {
-    var confSettings = await api('GET', '/api/league/settings');
-    activeWeekForConfirm = confSettings.currentWeek || 1;
-    var myConf = await api('GET', '/api/league/confirm-playing/me/' + activeWeekForConfirm);
-    renderConfirmButton(confirmArea, activeWeekForConfirm, myConf.playing);
-  } catch(e) {
-    renderConfirmButton(confirmArea, activeWeekForConfirm, null);
-  }
+  var myConfStatus = null;
+  try { var confSettings = await api('GET', '/api/league/settings'); activeWeekForConfirm = confSettings.currentWeek || 1; } catch(e) {}
+  try { var myConf = await api('GET', '/api/league/confirm-playing/me/' + activeWeekForConfirm); myConfStatus = myConf.playing; } catch(e) {}
+  renderConfirmButton(confirmArea, activeWeekForConfirm, myConfStatus);
 
   try {
     curr = await api('GET', '/api/league/schedule/current');
