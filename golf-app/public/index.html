@@ -591,6 +591,59 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 /* ── SAFE AREA bottom padding ── */
 .btn-calculate { margin-bottom: 20px; }
 
+
+/* ── HIGH CONTRAST PLAYER SCORECARD ── */
+#playerPage {
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --surface2: #e8e8e8;
+  --border: rgba(0,0,0,0.2);
+  --cream: #111111;
+  --muted: #444444;
+  --gold: #8a6000;
+  --gold2: #a07800;
+  --green: #1a6e12;
+  --green2: #1a8a10;
+  background: #ffffff;
+  color: #111;
+}
+#playerPage .app-header { background: #1a2e1a; color: #fff; }
+#playerPage .app-header .nav-tab { color: #ddd; }
+#playerPage .app-header .nav-tab.active { color: #fff; border-bottom-color: #c9a84c; }
+#playerPage .section-card { background: #f4f4f4; border: 1px solid #ccc; color: #111; }
+#playerPage .score-team-card { background: #fff; border: 2px solid #333; color: #111; }
+#playerPage .score-team-header { background: #1a2e1a; color: #fff; }
+#playerPage .team-name-display { color: #fff; }
+#playerPage .team-num { background: #1a2e1a; color: #c9a84c; border-color: #c9a84c; }
+#playerPage .hole-inp { background: #fff; border: 2px solid #555; color: #111; font-size: 20px; font-weight: 700; }
+#playerPage .hole-inp:focus { border-color: #1a6e12; background: #f0fff0; }
+#playerPage .hole-inp.eagle { background:#fff3b0;border-color:#a07800;color:#7a4f00; }
+#playerPage .hole-inp.birdie { background:#d4f7d4;border-color:#1a6e12;color:#1a4e10; }
+#playerPage .hole-inp.bogey { background:#ffe0e0;border-color:#c00;color:#900; }
+#playerPage .hole-inp.double { background:#ffb0b0;border-color:#900;color:#600; }
+#playerPage .score-team-body { color: #111; }
+#playerPage .par-row { color: #333; background:#f0f0f0; }
+#playerPage .hdcp-row label { color: #333; }
+#playerPage .hdcp-row input { background:#fff;border:2px solid #555;color:#111; }
+#playerPage .btn-sub { border-color:#555;color:#333;background:#eee; }
+#playerPage .btn-sub.active { background:#1a2e1a;color:#c9a84c;border-color:#c9a84c; }
+#playerPage .btn-calculate { background:#1a2e1a;color:#fff;border-color:#1a2e1a;font-size:18px;padding:14px 28px; }
+#playerPage .section-title { color: #111; }
+#playerPage .section-sub { color: #444; }
+#playerPage .empty-state { color: #444; }
+#playerPage .btn-logout { background:#c0392b;color:#fff;border-color:#c0392b; }
+#playerPage .standings-tbl { color: #111; }
+#playerPage .standings-tbl th { color: #333; border-bottom-color:#ccc; }
+#playerPage .standings-tbl td { border-bottom-color:#eee; }
+#playerPage .standings-flight-title { color: #1a2e1a; }
+#playerPage .total-lbl { color: #555; }
+#playerPage .total-val { color: #111; }
+#playerPage .nine-toggle-btn { border-color:#555;color:#333;background:#eee; }
+#playerPage .nine-toggle-btn.active-f { background:#1a6e12;color:#fff;border-color:#1a6e12; }
+#playerPage .nine-toggle-btn.active-b { background:#8a6000;color:#fff;border-color:#8a6000; }
+#playerPage .nine-toggle-btn.active-18 { background:#1a8a10;color:#fff;border-color:#1a8a10; }
+#playerPage .hdcp-inp { background:#fff;border:2px solid #555;color:#111; }
+
 </style>
 </head>
 <body>
@@ -663,7 +716,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   </div>
 
   <!-- PLAYER VIEW -->
-  <div id="playerPage" class="page">
+  <div id="playerPage" class="page" style="background:#fff;min-height:100vh;">
     <div class="app-header">
       <div class="app-logo" style="display:flex;align-items:center;gap:10px;">
         <div style="width:36px;height:36px;flex-shrink:0;"><img src="/logo.png" style="width:100%;height:100%;object-fit:contain;"></div>
