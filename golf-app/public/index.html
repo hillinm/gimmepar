@@ -3612,9 +3612,9 @@ function renderSavedSchedule(weeks) {
       var tB = m.teamB;
       var hole = m.hole;
       if (!hole) return;
-      var isBack = hole >= 10;
+      var isBack = (m.nine === 'back') || (!m.nine && hole >= 10);
       var chipClass = 'hole-chip' + (isBack ? ' back' : '');
-      var nineDisplay = m.nine === 'back' ? 'Back 9' : 'Front 9';
+      var nineDisplay = isBack ? 'Back 9' : 'Front 9';
       var nameA = tA ? esc(tA.player1||'') + ' / ' + esc(tA.player2||'') : 'BYE';
       if (!tB) {
         rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
@@ -3633,9 +3633,14 @@ function renderSavedSchedule(weeks) {
     var section = document.createElement('div');
     section.className = 'schedule-week';
     section.innerHTML = '<div class="schedule-week-title">Week ' + weekNum + '</div>' +
-      '<div class="section-card"><table class="sched-table">' +
-      '<thead><tr><th>Hole</th><th>Nine</th><th>Team A</th><th></th><th>Team B</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table></div>';
+      '<div class="section-card"><div class="table-scroll-wrap" style="max-height:400px;">' +
+      '<table class="sched-table">' +
+      '<thead><tr><th style="position:sticky;top:0;background:var(--surface);z-index:5;">Hole</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Nine</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team A</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team B</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div></div>';
     output.appendChild(section);
   });
 }
