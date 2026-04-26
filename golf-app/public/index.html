@@ -1473,8 +1473,9 @@ async function loadPlayerView(data) {
   // Find current week matchup
   var opponent = null;
   var matchupHole = null;
+  var curr = null;
   try {
-    var curr = await api('GET', '/api/league/schedule/current');
+    curr = await api('GET', '/api/league/schedule/current');
     if (curr.currentWeek) {
       var weekData = await api('GET', '/api/league/schedule/week/' + curr.currentWeek);
       var myMatchup = weekData.matchups.find(function(m) {
