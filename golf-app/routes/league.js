@@ -555,17 +555,19 @@ router.get('/handicaps/calculated', requireAuth, async (req, res) => {
         return s.gross - par;
       });
 
-      // Apply rolling cap: each round's diff cannot deviate more than hdcpMaxChange from prior round
+      // Apply asymmetric rolling cap:
+      // - Can improve (go lower) as much as calculated
+      // - Can only get worse (go higher) by 1 stroke per week max
+      // hdcpMaxChange applies only to the "getting worse" direction
+      const worseLimit = 1; // max strokes worse per week
       let cappedDiffs = [rawDiffs[0]];
       for (let i = 1; i < rawDiffs.length; i++) {
-        if (hdcpMaxChange > 0) {
-          const prev = cappedDiffs[i - 1];
-          const raw  = rawDiffs[i];
-          const capped = Math.max(prev - hdcpMaxChange, Math.min(prev + hdcpMaxChange, raw));
-          cappedDiffs.push(capped);
-        } else {
-          cappedDiffs.push(rawDiffs[i]);
-        }
+        const prev = cappedDiffs[i - 1];
+        const raw  = rawDiffs[i];
+        // If getting worse (higher diff = harder), cap at prev + worseLimit
+        // If getting better (lower diff = easier), allow freely
+        const capped = raw > prev + worseLimit ? prev + worseLimit : raw;
+        cappedDiffs.push(capped);
       }
       const avgDiff = cappedDiffs.reduce((a,b)=>a+b,0) / cappedDiffs.length;
 

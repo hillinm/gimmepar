@@ -1092,9 +1092,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <label style="font-size:13px;color:var(--cream);">Max change per week:</label>
             <input class="week-inp" type="number" id="hdcpMaxChange" value="2" min="0" max="10" step="0.5" style="width:65px;">
             <label style="font-size:13px;color:var(--cream);">strokes</label>
-            <span style="font-size:11px;color:var(--muted);font-style:italic;">(0 = no cap)</span>
+            <span style="font-size:11px;color:var(--muted);font-style:italic;">(max strokes worse per week)</span>
           </div>
-          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">Handicap cannot go up or down more than this amount in a single week.</div>
+          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">Handicap can improve freely each week, but can only get worse by 1 stroke per week maximum — bad weeks are filtered out.</div>
         </div>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
