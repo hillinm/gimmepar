@@ -868,3 +868,42 @@ router.delete('/scorecard/signed/:teamId/:weekNum', requireAuth, async (req, res
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── CLEAR ALL SIGNED SCORECARDS FOR A WEEK ──
+router.delete('/scorecard/signed/all/:weekNum', requireAuth, async (req, res) => {
+  try {
+    await query(
+      'DELETE FROM signed_scorecards WHERE league_id=$1 AND week_number=$2',
+      [req.session.leagueId, req.params.weekNum]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── DEDUPLICATE ROSTER ──
+router.post('/teams/deduplicate', requireAuth, async (req, res) => {
+  try {
+    // Keep only the first team for each unique player1+player2 combo, delete the rest
+    const teams = await getAll(
+      'SELECT id, player1, player2 FROM teams WHERE league_id=$1 ORDER BY id ASC',
+      [req.session.leagueId]
+    );
+    const seen = new Set();
+    const toDelete = [];
+    teams.forEach(function(t) {
+      const key = (t.player1||'').trim().toLowerCase() + '|' + (t.player2||'').trim().toLowerCase();
+      if (seen.has(key)) {
+        toDelete.push(t.id);
+      } else {
+        seen.add(key);
+      }
+    });
+    if (toDelete.length) {
+      await query(
+        'DELETE FROM teams WHERE id = ANY($1) AND league_id=$2',
+        [toDelete, req.session.leagueId]
+      );
+    }
+    res.json({ deleted: toDelete.length, remaining: teams.length - toDelete.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

@@ -875,9 +875,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="filter-btn" id="filterBack" onclick="setFilter('back',this)">B9</button>
       <span class="score-count" id="scoreCount"></span>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
+      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearAllScorecards()">🗑 Clear All Scores</button>
     </div>
     <div id="scoringTeams"></div>
     <div class="result-settings">
@@ -2283,6 +2284,17 @@ function setRosterFormat(id, format, btn) {
   syncP34Headers();
 }
 
+async function deduplicateRoster() {
+  var dupeCount = rosterTeams.length;
+  if (!confirm('This will remove duplicate teams from your roster. Continue?')) return;
+  try {
+    var res = await api('POST', '/api/league/teams/deduplicate');
+    toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+    await loadRoster();
+    buildScoringCards();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
 async function addTeamRow() {
   try {
     const t = await api('POST', '/api/league/teams', {player1:'', player2:'', player3:'', player4:'', handicap:0, format:'2man'});
@@ -2786,6 +2798,44 @@ function toggleCard(teamId) {
   if (!body) return;
   const collapsed = body.classList.toggle('collapsed');
   icon?.classList.toggle('open', !collapsed);
+}
+
+async function clearAllScorecards() {
+  if (!confirm('Clear ALL entered scores and signed scorecards for this week? This cannot be undone.')) return;
+  if (!confirm('Are you sure? All hole scores will be wiped.')) return;
+
+  // Clear all hole inputs on screen
+  rosterTeams.forEach(function(t) {
+    var st = scoreTeams.find(function(s) { return s.id === t.id; });
+    var count = st ? (st.nine === 'all18' ? 18 : 9) : 9;
+    for (var i = 0; i < count; i++) {
+      var inp = document.getElementById('shole_' + t.id + '_' + i);
+      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
+    }
+    // Reset totals
+    var g = document.getElementById('sgross_' + t.id); if (g) g.textContent = '—';
+    var n = document.getElementById('snet_' + t.id);   if (n) n.textContent = '';
+    var g2 = document.getElementById('sgross2_' + t.id); if (g2) g2.textContent = '—';
+    var tp = document.getElementById('stopar_' + t.id);  if (tp) tp.textContent = '—';
+    var n2 = document.getElementById('snet2_' + t.id);   if (n2) n2.textContent = '—';
+    // Remove signed badge
+    var badge = document.getElementById('signed_badge_' + t.id);
+    if (badge) badge.remove();
+  });
+
+  // Also clear signed scorecards from DB for current week
+  try {
+    var currSettings = leagueSettings || await api('GET', '/api/league/settings');
+    var weekNum = currSettings.currentWeek || 1;
+    await api('DELETE', '/api/league/scorecard/signed/all/' + weekNum);
+    toast('✓ All scores cleared for week ' + weekNum);
+  } catch(e) {
+    toast('Scores cleared on screen — DB error: ' + e.message);
+  }
+
+  // Hide results area if visible
+  var ra = document.getElementById('resultsArea');
+  if (ra) ra.style.display = 'none';
 }
 
 function collapseAll() {
