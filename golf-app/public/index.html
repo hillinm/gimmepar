@@ -862,6 +862,8 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="nav-tab" onclick="showTab('playoffs')" id="tab-playoffs">Playoffs</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
+    <button id="btnBackToSuperAdmin" style="display:none;background:rgba(201,168,76,.2);border:1px solid var(--gold);color:var(--gold2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;" onclick="backToSuperAdmin()">← Super Admin</button>
+    <button id="btnViewAsPlayer" style="background:rgba(74,140,63,.2);border:1px solid var(--green);color:var(--green2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;" onclick="showViewAsPlayerPicker()">👤 View as Player</button>
     <button class="btn-logout" onclick="logout()">Sign Out</button>
   </div>
 
@@ -1495,6 +1497,8 @@ async function onLogin(data) {
     var hl = document.getElementById('headerLeague');
     if (hl) hl.textContent = (data.leagueName || '') + ' League';
     showPage('app');
+    var backBtn = document.getElementById('btnBackToSuperAdmin');
+    if (backBtn) backBtn.style.display = data.superAdminOverride ? '' : 'none';
     await loadRoster();
     if (league.course) loadCourseData(league.course);
     buildScoringCards();
@@ -2073,6 +2077,7 @@ async function loadSuperAdmin() {
         html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td>';
         html += '<td style="white-space:nowrap">';
         html += '<td style="white-space:nowrap">';
+        html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="superAdminEnterLeague(this.dataset.lid,this.dataset.lname)">▶ Enter</button>';
         html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="adminResetLeaguePassword(this.dataset.lid,this.dataset.lname)">Reset PW</button>';
         html += '<button class="btn-del" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="adminDeleteLeague(this.dataset.lid,this.dataset.lname)">Delete</button>';
       });
@@ -2122,6 +2127,14 @@ async function adminResetPassword(userId, userName) {
     await api('POST', '/api/admin/users/'+userId+'/reset-password', {newPassword: newPass});
     toast('Password reset for ' + userName);
   } catch(e) { toast('Error: '+e.message); }
+}
+
+async function superAdminEnterLeague(leagueId, leagueName) {
+  try {
+    var res = await api('POST', '/api/admin/enter-league', { league_id: leagueId });
+    await onLogin(res);
+    toast('Entered league: ' + leagueName);
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 async function adminResetLeaguePassword(leagueId, leagueName) {
