@@ -1246,7 +1246,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
   <!-- HISTORY TAB -->
   <div id="tabHistory" class="wrap" style="padding-top:32px;display:none;">
-    <div class="section-card">
+    <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
         <span style="font-size:24px;">📅</span>
         <div>
@@ -1256,6 +1256,60 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div id="historyList" class="section-body">
         <div class="empty-state">No rounds recorded yet.</div>
+      </div>
+    </div>
+
+    <!-- Signed Scorecards -->
+    <div class="section-card" style="margin-bottom:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">✍</span>
+        <div>
+          <div class="section-title">Signed Scorecards</div>
+          <div class="section-sub">Player-submitted and finalized scores</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadSignedScorecards()">↻ Refresh</button>
+      </div>
+      <div class="section-body" id="signedScorecardsContent">
+        <div class="empty-state">No signed scorecards yet — players sign from their scorecard view.</div>
+      </div>
+    </div>
+
+    <!-- Log Substitute -->
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">🔄</span>
+        <div>
+          <div class="section-title">Log Substitute</div>
+          <div class="section-sub">Record a sub who played for a team in a past week</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TEAM</div>
+            <select class="week-inp" id="subTeamSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
+              <option value="">Select team...</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WEEK / ROUND</div>
+            <select class="week-inp" id="subRoundSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
+              <option value="">Select round...</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SUBSTITUTE NAME</div>
+            <input class="search-input" id="subName" placeholder="e.g. John Smith" style="width:100%;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WHICH PLAYER THEY REPLACED</div>
+            <input class="search-input" id="subReplacedName" placeholder="e.g. TJ Atwood" style="width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+        <button class="btn-save-roster" onclick="logSubstitute()">💾 Save Sub Record</button>
+        <div id="subLogResult" style="margin-top:10px;font-size:13px;"></div>
       </div>
     </div>
   </div>
@@ -3077,7 +3131,7 @@ function showTab(tab) {
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
-  if (tab==='history') loadHistory();
+  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); }
   if (tab==='schedule') initSchedule();
   if (tab==='standings') loadStandings();
   if (tab==='playoffs') loadPlayoffs();
@@ -3961,6 +4015,75 @@ function renderBracket(bracket, bi) {
   html += '</div></div>';
   html += '</div>';
   return html;
+}
+
+// ══ SIGNED SCORECARDS ══
+async function loadSignedScorecards() {
+  var el = document.getElementById('signedScorecardsContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var rows = await api('GET', '/api/league/scorecard/signed');
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">No signed scorecards yet.</div>'; return; }
+    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var name = esc(r.player1||'') + (r.player2 ? ' / ' + esc(r.player2) : '');
+      var date = new Date(r.signed_at).toLocaleDateString();
+      var nineLabel = r.nine==='back'?'B9':r.nine==='all18'?'All 18':'F9';
+      html += '<tr>';
+      html += '<td style="font-weight:700;color:var(--gold)">Week ' + r.week_number + '</td>';
+      html += '<td style="font-weight:700">' + name + '</td>';
+      html += '<td style="color:var(--muted);font-size:12px">' + nineLabel + '</td>';
+      html += '<td>' + r.gross + '</td>';
+      html += '<td style="font-weight:700;color:var(--gold2)">' + r.net + '</td>';
+      html += '<td style="color:var(--muted)">' + r.handicap_used + '</td>';
+      html += '<td style="font-size:11px;color:var(--green2)">✓ ' + date + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
+
+// ══ SUBSTITUTE LOGGING ══
+async function initSubLog() {
+  var teamEl = document.getElementById('subTeamSelect');
+  if (!teamEl) return;
+  teamEl.innerHTML = '<option value="">Select team...</option>';
+  rosterTeams.forEach(function(t) {
+    teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>';
+  });
+  var roundEl = document.getElementById('subRoundSelect');
+  if (!roundEl) return;
+  roundEl.innerHTML = '<option value="">Select round...</option>';
+  try {
+    var rounds = await api('GET', '/api/league/rounds');
+    rounds.forEach(function(r, i) {
+      var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
+      roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
+    });
+  } catch(e) {}
+}
+
+async function logSubstitute() {
+  var teamId   = document.getElementById('subTeamSelect').value;
+  var roundId  = document.getElementById('subRoundSelect').value;
+  var subName  = document.getElementById('subName').value.trim();
+  var replaced = document.getElementById('subReplacedName').value.trim();
+  var result   = document.getElementById('subLogResult');
+  if (!teamId)  { result.innerHTML = '<span style="color:#ff9999">Select a team.</span>'; return; }
+  if (!roundId) { result.innerHTML = '<span style="color:#ff9999">Select a round.</span>'; return; }
+  if (!subName) { result.innerHTML = '<span style="color:#ff9999">Enter the substitute name.</span>'; return; }
+  try {
+    await api('POST', '/api/league/rounds/'+roundId+'/sub', { team_id: teamId, sub_name: subName, replaced_name: replaced });
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
+    document.getElementById('subName').value = '';
+    document.getElementById('subReplacedName').value = '';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
 }
 
 // ══ UTILS ══
