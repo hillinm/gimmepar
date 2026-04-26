@@ -1516,20 +1516,18 @@ async function loadPlayerView(data) {
     container.appendChild(noOpp);
   }
 
-  // Sign Scorecard button
+  // Sign Scorecard button — always shown regardless of schedule
   var signArea = document.createElement('div');
   signArea.id = 'signScorecardArea';
   signArea.style.cssText = 'margin-top:24px;';
 
   // Check if already signed this week
   var alreadySigned = false;
+  var activeWeek = curr && curr.currentWeek ? curr.currentWeek : 1;
   try {
     var signedList = await api('GET', '/api/league/scorecard/signed');
-    var weekNum2 = curr && curr.currentWeek ? curr.currentWeek : null;
-    if (weekNum2) {
-      var mySig = signedList.find(function(s) { return s.team_id === team.id && s.week_number === weekNum2; });
-      if (mySig) alreadySigned = true;
-    }
+    var mySig = signedList.find(function(s) { return s.team_id === team.id && s.week_number === activeWeek; });
+    if (mySig) alreadySigned = true;
   } catch(e) {}
 
   if (alreadySigned) {
@@ -1537,11 +1535,11 @@ async function loadPlayerView(data) {
   } else {
     var signBtn = document.createElement('button');
     signBtn.id = 'signScorecardBtn';
-    signBtn.style.cssText = 'width:100%;background:#1a2e1a;color:#fff;font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:3px;padding:16px;border:none;border-radius:12px;cursor:pointer;margin-bottom:8px;';
+    signBtn.style.cssText = 'width:100%;background:#1a2e1a;color:#fff;font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:3px;padding:16px;border:none;border-radius:12px;cursor:pointer;margin-bottom:8px;box-shadow:0 6px 20px rgba(0,0,0,.3);';
     signBtn.textContent = '✍ SIGN SCORECARD';
-    signBtn.onclick = function() { signScorecard(team, scoreTeams[0], curr && curr.currentWeek); };
+    signBtn.onclick = function() { signScorecard(team, scoreTeams[0], activeWeek); };
     var signNote = document.createElement('div');
-    signNote.style.cssText = 'text-align:center;font-size:12px;color:#555;';
+    signNote.style.cssText = 'text-align:center;font-size:12px;color:#555;margin-top:4px;';
     signNote.textContent = 'By signing, you confirm your scores are accurate and final.';
     signArea.appendChild(signBtn);
     signArea.appendChild(signNote);
@@ -2694,9 +2692,35 @@ async function switchNine(teamId, nine) {
     else                      btns[2]?.classList.add('active-b');
   }
 
-  // Rebuild the entire holes grid (handles 9 vs 18)
+  // Save scores before rebuilding grid
   const gridWrap = document.getElementById('sgrid_'+teamId);
+  const savedScores = [];
+  if (gridWrap) {
+    gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
+      savedScores[i] = inp.value;
+    });
+  }
+
+  // Rebuild the entire holes grid
   if (gridWrap) gridWrap.innerHTML = buildHolesGrid(teamId, nine);
+
+  // Restore saved scores into new inputs
+  if (gridWrap && savedScores.length) {
+    gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
+      if (savedScores[i] !== undefined && savedScores[i] !== '') {
+        inp.value = savedScores[i];
+        var parVal = parseInt(inp.dataset.par) || 4;
+        var val = parseInt(savedScores[i]);
+        inp.classList.remove('eagle','birdie','bogey','double');
+        if (!isNaN(val)) {
+          if (val <= parVal - 2) inp.classList.add('eagle');
+          else if (val === parVal - 1) inp.classList.add('birdie');
+          else if (val === parVal + 1) inp.classList.add('bogey');
+          else if (val >= parVal + 2) inp.classList.add('double');
+        }
+      }
+    });
+  }
 
   // Update number badge
   const numBadge = document.getElementById('snum_'+teamId);
