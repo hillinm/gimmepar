@@ -1128,27 +1128,31 @@ router.delete('/rounds/week/:weekNum', requireAuth, async (req, res) => {
 router.post('/teams/clear-duplicates', requireAuth, async (req, res) => {
   try {
     const leagueId = req.session.leagueId;
-    // Get all teams ordered by id
     const teams = await getAll(
       'SELECT id, player1, player2 FROM teams WHERE league_id=$1 ORDER BY id ASC',
       [leagueId]
     );
-    const seen = new Set();
+    const seen = new Map();
     const toDelete = [];
     teams.forEach(function(t) {
-      const key = (t.player1||'').trim().toLowerCase() + '|' + (t.player2||'').trim().toLowerCase();
-      if (seen.has(key) || (!t.player1 && !t.player2)) {
+      // Normalize: trim, lowercase, sort player names so "A/B" == "B/A" treated same
+      const p1 = (t.player1||'').trim().toLowerCase();
+      const p2 = (t.player2||'').trim().toLowerCase();
+      const parts = [p1, p2].filter(Boolean).sort();
+      const key = parts.join('|');
+      if (!key || seen.has(key)) {
         toDelete.push(t.id);
       } else {
-        seen.add(key);
+        seen.set(key, t.id);
       }
     });
-    if (toDelete.length) {
-      for (const id of toDelete) {
-        await query('DELETE FROM round_scores WHERE team_id=$1', [id]);
-        await query('DELETE FROM teams WHERE id=$1 AND league_id=$2', [id, leagueId]);
-      }
+    let deleted = 0;
+    for (const id of toDelete) {
+      await query('DELETE FROM round_scores WHERE team_id=$1', [id]);
+      await query('DELETE FROM signed_scorecards WHERE team_id=$1', [id]);
+      await query('DELETE FROM teams WHERE id=$1 AND league_id=$2', [id, leagueId]);
+      deleted++;
     }
-    res.json({ deleted: toDelete.length, remaining: teams.length - toDelete.length });
+    res.json({ deleted, remaining: teams.length - deleted });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
