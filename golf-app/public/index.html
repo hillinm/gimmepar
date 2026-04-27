@@ -1301,7 +1301,8 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <div class="section-title">Season Standings</div>
           <div class="section-sub">Win/loss record by flight — based on saved schedule matchups</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadStandings()">↻ Refresh</button>
+        <input class="score-search" id="standingsSearch" placeholder="🔍 Search team..." oninput="filterStandings(this.value)" style="max-width:200px;margin-left:auto;">
+        <button class="btn-export-sched" style="margin-left:8px;" onclick="loadStandings()">↻ Refresh</button>
         <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;margin-left:8px;" onclick="clearAllStandings()">🗑 Clear All</button>
       </div>
       <div class="section-body" id="standingsContent">
@@ -3037,9 +3038,7 @@ function buildScoreCard(team, st, idx) {
       <button id="snoshow_${team.id}" onclick="toggleNoShow(${team.id});event.stopPropagation();"
         style="background:transparent;border:1px solid rgba(192,57,43,.4);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
         title="Mark team as no-show for this week">NO SHOW</button>
-      <button onclick="deleteTeamCard(${team.id});event.stopPropagation();"
-        style="background:rgba(192,57,43,.25);border:1px solid rgba(220,80,80,.5);color:#ff9999;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
-        title="Delete this team">✕ DELETE</button>
+
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
@@ -4314,6 +4313,14 @@ async function clearAllStandings() {
     loadStandings();
     loadHistory();
   } catch(e) { toast('Error: ' + e.message); }
+}
+
+function filterStandings(q) {
+  q = (q||'').toLowerCase();
+  document.querySelectorAll('#standingsContent .standings-tbl tbody tr').forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
 }
 
 async function loadStandings() {
