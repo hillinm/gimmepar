@@ -2489,7 +2489,6 @@ async function loadRoster() {
   try {
     rosterTeams = await api('GET', '/api/league/teams');
     renderRosterTable();
-    buildScoringCards();
   } catch(e) { console.warn('Could not load roster', e); }
 }
 
@@ -2885,7 +2884,11 @@ let currentFilter = 'all';
 let subCounts = {}; // {teamId: count}
 let signedThisWeek = {}; // {teamId: weekNumber}
 
+var _buildingScoringCards = false;
 async function buildScoringCards() {
+  if (_buildingScoringCards) return;
+  _buildingScoringCards = true;
+  setTimeout(function(){ _buildingScoringCards = false; }, 3000);
   loadConfirmSummary();
   // Set week input from settings
   var wkEl = document.getElementById('scoringWeekNum');
