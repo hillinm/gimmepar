@@ -3037,6 +3037,9 @@ function buildScoreCard(team, st, idx) {
       <button id="snoshow_${team.id}" onclick="toggleNoShow(${team.id});event.stopPropagation();"
         style="background:transparent;border:1px solid rgba(192,57,43,.4);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
         title="Mark team as no-show for this week">NO SHOW</button>
+      <button onclick="deleteTeamCard(${team.id});event.stopPropagation();"
+        style="background:rgba(192,57,43,.25);border:1px solid rgba(220,80,80,.5);color:#ff9999;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
+        title="Delete this team">✕ DELETE</button>
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
@@ -3189,6 +3192,19 @@ async function clearAllScorecards() {
 }
 
 var _noShowState = {};
+
+async function deleteTeamCard(teamId) {
+  var team = rosterTeams.find(function(t){ return t.id === teamId; });
+  var name = team ? (team.player1 + (team.player2 ? ' / ' + team.player2 : '')) : 'this team';
+  if (!confirm('Delete ' + name + ' from the roster? This cannot be undone.')) return;
+  try {
+    await api('DELETE', '/api/league/teams/' + teamId);
+    rosterTeams = rosterTeams.filter(function(t){ return t.id !== teamId; });
+    var card = document.getElementById('scard_' + teamId);
+    if (card) card.remove();
+    toast('✓ ' + name + ' deleted');
+  } catch(e) { toast('Error: ' + e.message); }
+}
 
 async function toggleNoShow(teamId) {
   var isNoShow = !_noShowState[teamId];
