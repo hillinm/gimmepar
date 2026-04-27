@@ -1163,7 +1163,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             </div>
             <div style="min-width:120px;">
               <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">CURRENT WEEK</div>
-              <input class="week-inp" type="number" id="currentWeekInp" min="1" max="99" value="1" style="width:100%;text-align:center;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input class="week-inp" type="number" id="currentWeekInp" min="1" max="99" value="1" style="width:70px;text-align:center;">
+                <button class="btn-save-roster" onclick="saveCurrentWeek()" style="padding:6px 12px;font-size:12px;">💾 Save</button>
+              </div>
+              <div id="currentWeekResult" style="font-size:11px;margin-top:4px;"></div>
             </div>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
@@ -4436,6 +4440,26 @@ function setSettingAltNines(on, btn) {
   leagueSettings.alternateNines = on;
   document.querySelectorAll('#settingAltNinesOn,#settingAltNinesOff').forEach(function(b) { b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
+}
+
+async function saveCurrentWeek() {
+  var weekNum = parseInt(document.getElementById('currentWeekInp').value) || 1;
+  var result = document.getElementById('currentWeekResult');
+  try {
+    var updated = Object.assign({}, leagueSettings, { currentWeek: weekNum });
+    await api('PUT', '/api/league/settings', updated);
+    leagueSettings.currentWeek = weekNum;
+    // Update WK badges on scoring tab
+    document.querySelectorAll('.wk-badge-num').forEach(function(el) { el.textContent = weekNum; });
+    // Update scoring week input too
+    var swn = document.getElementById('scoringWeekNum');
+    if (swn) swn.value = weekNum;
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved</span>';
+    toast('Current week set to ' + weekNum);
+    setTimeout(function(){ result.innerHTML = ''; }, 3000);
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error</span>';
+  }
 }
 
 async function saveLeagueSettings() {
