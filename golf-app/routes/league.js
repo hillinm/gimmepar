@@ -1104,3 +1104,22 @@ router.get('/email/welcome/status', requireAuth, async (req, res) => {
     res.json({ sentIds });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── DELETE ROUND BY WEEK ──
+router.delete('/rounds/week/:weekNum', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    const weekNum = parseInt(req.params.weekNum);
+    // Find rounds for this league ordered by date — week 1 = first round, etc.
+    const rounds = await getAll(
+      'SELECT id FROM rounds WHERE league_id=$1 ORDER BY played_on ASC, id ASC',
+      [leagueId]
+    );
+    const round = rounds[weekNum - 1];
+    if (!round) return res.status(404).json({ error: 'No round found for week ' + weekNum });
+    await query('DELETE FROM round_scores WHERE round_id=$1', [round.id]);
+    await query('DELETE FROM rounds WHERE id=$1', [round.id]);
+    await query('DELETE FROM signed_scorecards WHERE league_id=$1 AND week_number=$2', [leagueId, weekNum]);
+    res.json({ success: true, deleted: round.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

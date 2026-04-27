@@ -891,10 +891,14 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="filter-btn" id="filterBack" onclick="setFilter('back',this)">B9</button>
       <span class="score-count" id="scoreCount"></span>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
-      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearAllScorecards()">🗑 Clear All Scores</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
+        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1">
+        <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete This Week</button>
+      </div>
     </div>
     <div id="scoringTeams"></div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
@@ -3225,6 +3229,31 @@ function applyNoShowState(teamId, isNoShow) {
     var badge = document.getElementById('noshow_badge_' + teamId);
     if (badge) badge.remove();
   }
+}
+
+async function deleteRoundWeek() {
+  var weekNum = parseInt(document.getElementById('scoringWeekNum').value) || 1;
+  if (!confirm('Delete ALL saved scores and signed scorecards for week ' + weekNum + '? This cannot be undone.')) return;
+  try {
+    await api('DELETE', '/api/league/rounds/week/' + weekNum);
+    toast('✓ Week ' + weekNum + ' deleted — scorecards cleared');
+    // Clear all hole inputs on screen
+    rosterTeams.forEach(function(t) {
+      for (var i = 0; i < 18; i++) {
+        var inp = document.getElementById('shole_' + t.id + '_' + i);
+        if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
+      }
+      ['sgross_','snet_','sgross2_','stopar_','snet2_'].forEach(function(pre) {
+        var el = document.getElementById(pre + t.id);
+        if (el) el.textContent = '—';
+      });
+      var badge = document.getElementById('signed_badge_' + t.id);
+      if (badge) badge.remove();
+    });
+    document.getElementById('resultsArea').style.display = 'none';
+    loadHistory();
+    loadSignedScorecards();
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 function collapseAll() {
