@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GimmePar</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GimmePar">
 <meta name="theme-color" content="#0f1a0f">
@@ -1737,37 +1740,41 @@ async function loadPlayerView(data) {
   var opponent = null;
   var matchupHole = null;
   var curr = null;
-  // Fetch week/confirm status first before touching the DOM
+  // Always fetch fresh settings for current week — don't rely on cached leagueSettings
   var activeWeekForConfirm = 1;
   var myConfStatus = null;
-  try { var confSettings = await api('GET', '/api/league/settings'); activeWeekForConfirm = confSettings.currentWeek || 1; } catch(e) {}
+  try {
+    var freshSettings = await api('GET', '/api/league/settings');
+    activeWeekForConfirm = freshSettings.currentWeek || 1;
+    // Update leagueSettings with fresh data
+    if (leagueSettings) leagueSettings.currentWeek = activeWeekForConfirm;
+  } catch(e) {}
   try { var myConf = await api('GET', '/api/league/confirm-playing/me/' + activeWeekForConfirm); myConfStatus = myConf.playing; } catch(e) {}
 
   try {
     curr = await api('GET', '/api/league/schedule/current');
-    if (curr.currentWeek) {
-      activeWeekForConfirm = curr.currentWeek;
-      var weekData = await api('GET', '/api/league/schedule/week/' + curr.currentWeek);
-      var myMatchup = weekData.matchups.find(function(m) {
-        return (m.teamA && m.teamA.id === team.id) || (m.teamB && m.teamB.id === team.id);
-      });
-      if (myMatchup) {
-        var opponentTeam = (myMatchup.teamA && myMatchup.teamA.id === team.id) ? myMatchup.teamB : myMatchup.teamA;
-        if (opponentTeam) {
-          opponent = rosterTeams.find(function(t) { return t.id === opponentTeam.id; }) || opponentTeam;
-          matchupHole = myMatchup.hole;
-        }
+    // Use currentWeek from settings as authoritative source
+    var settingsWeek = activeWeekForConfirm || 1;
+    curr = curr || {};
+    curr.currentWeek = settingsWeek;
+    var weekData = await api('GET', '/api/league/schedule/week/' + curr.currentWeek);
+    var myMatchup = weekData.matchups.find(function(m) {
+      return (m.teamA && m.teamA.id === team.id) || (m.teamB && m.teamB.id === team.id);
+    });
+    if (myMatchup) {
+      var opponentTeam = (myMatchup.teamA && myMatchup.teamA.id === team.id) ? myMatchup.teamB : myMatchup.teamA;
+      if (opponentTeam) {
+        opponent = rosterTeams.find(function(t) { return t.id === opponentTeam.id; }) || opponentTeam;
+        matchupHole = myMatchup.hole;
       }
-      var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
-        : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
-        : (team.nine || 'front');
-      var nineLabel = matchupNine === 'back' ? 'BACK 9' : matchupNine === 'all18' ? 'ALL 18' : 'FRONT 9';
-      container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
-        + ' &nbsp;|&nbsp; ' + nineLabel
-        + (matchupHole ? ' &nbsp;|&nbsp; STARTING HOLE ' + matchupHole : '') + '</div>';
-    } else {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px;">No schedule set for this week yet.</div>';
     }
+    var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
+      : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
+      : (team.nine || 'front');
+    var nineLabel = matchupNine === 'back' ? 'BACK 9' : matchupNine === 'all18' ? 'ALL 18' : 'FRONT 9';
+    container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
+      + ' &nbsp;|&nbsp; ' + nineLabel
+      + (matchupHole ? ' &nbsp;|&nbsp; STARTING HOLE ' + matchupHole : '') + '</div>';
   } catch(e) {
     container.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:12px;">Schedule not available.</div>';
   }
@@ -1778,6 +1785,11 @@ async function loadPlayerView(data) {
   confirmArea.style.cssText = 'margin-bottom:16px;';
   container.appendChild(confirmArea);
   renderConfirmButton(confirmArea, activeWeekForConfirm, myConfStatus);
+
+  // Update WK badges to show correct week
+  document.querySelectorAll('.wk-badge-num').forEach(function(el) {
+    el.textContent = activeWeekForConfirm;
+  });
 
   // Build own editable scorecard
   scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
@@ -4372,6 +4384,11 @@ async function loadLeagueSettings() {
     // Populate current week
     var cwi = document.getElementById('currentWeekInp');
     if (cwi) cwi.value = leagueSettings.currentWeek || 1;
+    // Update WK badges and scoring week input
+    var weekNum = leagueSettings.currentWeek || 1;
+    document.querySelectorAll('.wk-badge-num').forEach(function(el) { el.textContent = weekNum; });
+    var swn = document.getElementById('scoringWeekNum');
+    if (swn) swn.value = weekNum;
     // Update roster subtitle
     var rst = document.getElementById('rosterSubtitle');
     if (rst) {
