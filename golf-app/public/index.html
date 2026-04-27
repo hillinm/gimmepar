@@ -1930,34 +1930,21 @@ async function loadAdminTeams() {
 }
 async function loadAdminScorecard() {
   var leagueId = document.getElementById('adminLeagueSelect').value;
-  var teamId = document.getElementById('adminTeamSelect').value;
+  var teamId   = document.getElementById('adminTeamSelect').value;
   var area = document.getElementById('adminScorecardArea');
   if (!leagueId || !teamId) { area.innerHTML = '<div class="empty-state">Select a league and team first.</div>'; return; }
   area.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
-    var teams = await api('GET', '/api/league/teams?leagueId='+leagueId);
-    var leagueInfo = await api('GET', '/api/admin/league/'+leagueId);
-    var myTeam = teams.find(function(t){return t.id==teamId;});
+    // Enter the league so session has correct leagueId
+    var leagueData = await api('POST', '/api/admin/enter-league', { league_id: leagueId });
+    // Get teams now that session is set
+    var teams = await api('GET', '/api/league/teams');
+    var myTeam = teams.find(function(t){ return t.id == teamId; });
     if (!myTeam) { area.innerHTML = '<div class="empty-state">Team not found.</div>'; return; }
-    rosterTeams = teams;
-    var st = {id:myTeam.id, nine:myTeam.nine||'front', holes:Array(9).fill(null)};
-    scoreTeams = [st];
-    if (leagueInfo && leagueInfo.course) {
-      leagueInfo.course.front9par.forEach(function(p,i){var el=document.getElementById('pf_'+i);if(el)el.value=p;});
-      leagueInfo.course.back9par.forEach(function(p,i){var el=document.getElementById('pb_'+i);if(el)el.value=p;});
-      updateParTotals();
-    }
-    var opponent=null, matchupHole=null;
-    try {
-      var curr=await api('GET','/api/league/schedule/current?leagueId='+leagueId);
-      if(curr&&curr.currentWeek){var wd=await api('GET','/api/league/schedule/week/'+curr.currentWeek+'?leagueId='+leagueId);var mm=wd.matchups.find(function(m){return(m.teamA&&m.teamA.id==teamId)||(m.teamB&&m.teamB.id==teamId);});if(mm){var op=(mm.teamA&&mm.teamA.id==teamId)?mm.teamB:mm.teamA;if(op)opponent=teams.find(function(t){return t.id===op.id;})||op;matchupHole=mm.hole;}}
-    } catch(e){}
-    area.innerHTML='';
-    if(matchupHole){var wi=document.createElement('div');wi.style.cssText='font-size:13px;color:var(--gold);margin-bottom:12px;font-weight:700;';wi.textContent='STARTING HOLE '+matchupHole;area.appendChild(wi);}
-    area.appendChild(buildScoreCard(myTeam,st,0));
-    if(opponent){var os={id:opponent.id,nine:opponent.nine||'front',holes:Array(9).fill(null)};scoreTeams.push(os);area.appendChild(buildReadOnlyCard(opponent,os));}
-    var cb=document.createElement('button');cb.className='btn-calculate';cb.style.marginTop='20px';cb.innerHTML='&#9971; CALCULATE';cb.onclick=calculate;area.appendChild(cb);
-  } catch(e){area.innerHTML='<div style="color:#ff9999">Error: '+e.message+'</div>';}
+    // Switch to player view
+    area.innerHTML = '';
+    await viewAsPlayer(myTeam);
+  } catch(e) { area.innerHTML = '<div style="color:#ff9999">Error: '+e.message+'</div>'; }
 }
 async function initAdminScorecard() {
   var leagueEl = document.getElementById('adminLeagueSelect');
