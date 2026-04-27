@@ -1161,6 +1161,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
               <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LEAGUE NAME</div>
               <input class="search-input" id="leagueNameInp" placeholder="League name" style="width:100%;box-sizing:border-box;">
             </div>
+            <div style="min-width:120px;">
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">CURRENT WEEK</div>
+              <input class="week-inp" type="number" id="currentWeekInp" min="1" max="99" value="1" style="width:100%;text-align:center;">
+            </div>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
             <div style="flex:1;min-width:180px;">
@@ -4360,6 +4364,9 @@ async function loadLeagueSettings() {
     // Populate league name field
     var lni = document.getElementById('leagueNameInp');
     if (lni && league) lni.value = league.leagueName || '';
+    // Populate current week
+    var cwi = document.getElementById('currentWeekInp');
+    if (cwi) cwi.value = leagueSettings.currentWeek || 1;
     // Update roster subtitle
     var rst = document.getElementById('rosterSubtitle');
     if (rst) {
@@ -4434,6 +4441,7 @@ async function saveLeagueSettings() {
   var st = parseInt(document.getElementById('subThresholdInp').value) || 2;
   var settings = {
     subThreshold: st,
+    currentWeek: parseInt((document.getElementById('currentWeekInp')||{}).value) || 1,
     leagueDay: (document.getElementById('leagueDayInp')||{}).value || 'tuesday',
     flightMode: leagueSettings.flightMode || 'hl',
     skinsEnabled: leagueSettings.skinsEnabled !== false,
