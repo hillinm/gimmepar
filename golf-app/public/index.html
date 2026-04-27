@@ -3523,10 +3523,30 @@ function renderResults(data, parFront, parBack) {
   splitFlight(b9teams);
   // Also set legacy flight for scoreboard
   data.forEach(function(t){ if (!t.flight) t.flight = 'A'; });
-  const fA = f9teams.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
-  const fB = f9teams.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
-  const bA = b9teams.filter(t=>t.flight==='A').sort((a,b)=>(a.net??999)-(b.net??999));
-  const bB = b9teams.filter(t=>t.flight==='B').sort((a,b)=>(a.net??999)-(b.net??999));
+  // SI tiebreaker sort — if nets are tied, compare scores on hardest holes first
+  function siSort(a, b) {
+    var netDiff = (a.net??999) - (b.net??999);
+    if (netDiff !== 0) return netDiff;
+    // Tiebreaker: compare hole scores on hardest holes (SI 1, 2, 3...)
+    var front = _front9si || [1,2,3,4,5,6,7,8,9];
+    var back  = _back9si  || [10,11,12,13,14,15,16,17,18];
+    var allSI = front.concat(back); // index 0 = SI rank 1-18
+    // Build SI rank -> hole index map
+    var siOrder = Array.from({length:18}, function(_,i){ return i; });
+    siOrder.sort(function(i,j){ return allSI[i]-allSI[j]; }); // sorted by SI rank
+    for (var k = 0; k < siOrder.length; k++) {
+      var holeIdx = siOrder[k];
+      var aScore = (a.holes && a.holes[holeIdx]) || 99;
+      var bScore = (b.holes && b.holes[holeIdx]) || 99;
+      if (aScore !== bScore) return aScore - bScore; // lower score wins
+    }
+    return 0;
+  }
+
+  const fA = f9teams.filter(t=>t.flight==='A').sort(siSort);
+  const fB = f9teams.filter(t=>t.flight==='B').sort(siSort);
+  const bA = b9teams.filter(t=>t.flight==='A').sort(siSort);
+  const bB = b9teams.filter(t=>t.flight==='B').sort(siSort);
   // For skins: all18 teams play both nines
   const frontTeams = data.filter(t=>t.nine==='front' || t.nine==='all18').map(t => {
     if (t.nine==='all18') return {...t, holes: t.holes.slice(0,9), nine:'front'};
