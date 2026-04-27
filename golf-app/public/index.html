@@ -897,18 +897,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearAllScorecards()">🗑 Clear All Scores</button>
     </div>
     <div id="scoringTeams"></div>
-    <div class="result-settings">
-      <label>Flights</label>
-      <div class="setting-toggle">
-        <button class="setting-btn active" id="flightModeHL" onclick="setFlightMode('hl',this)">High / Low</button>
-        <button class="setting-btn" id="flightModePar" onclick="setFlightMode('par',this)">+3 / +4</button>
-      </div>
-      <label style="margin-left:8px;">Skins</label>
-      <div class="setting-toggle">
-        <button class="setting-btn active" id="skinsOn" onclick="setSkinsMode(true,this)">On</button>
-        <button class="setting-btn" id="skinsOff" onclick="setSkinsMode(false,this)">Off</button>
-      </div>
-    </div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
     <div style="max-width:440px;margin:0 auto 16px;display:flex;gap:10px;">
       <button class="btn-calculate" style="background:linear-gradient(135deg,#1a2e1a,#2a4e2a);font-size:18px;padding:14px;margin:0;flex:1;" onclick="adminSignAndSave()">✍ SIGN & SAVE ROUND</button>
