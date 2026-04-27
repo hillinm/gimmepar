@@ -1067,8 +1067,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div class="section-body">
         <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Sends a personalized welcome email to every player with their username, temp password, and app instructions.</div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <button class="btn-save-roster" style="background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="sendWelcomeEmails()">📧 Send Welcome Emails</button>
+        <div id="welcomeEmailStatus" style="font-size:13px;color:var(--muted);margin-bottom:10px;"></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="btn-save-roster" style="background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="sendWelcomeEmails(false)">📧 Send All Welcome Emails</button>
+          <button class="btn-save-roster" id="btnRetryWelcome" style="display:none;" onclick="sendWelcomeEmails(true)">🔄 Retry Failed</button>
           <span id="welcomeEmailResult" style="font-size:13px;"></span>
         </div>
       </div>
@@ -2301,13 +2303,41 @@ async function uploadPlayers() {
   btn.disabled = false; btn.textContent = 'Upload Players';
 }
 
-async function sendWelcomeEmails() {
+async function loadWelcomeEmailStatus() {
+  var statusEl = document.getElementById('welcomeEmailStatus');
+  var retryBtn = document.getElementById('btnRetryWelcome');
+  if (!statusEl) return;
+  try {
+    var res = await api('GET', '/api/league/email/welcome/status');
+    var sentCount = res.sentIds ? res.sentIds.length : 0;
+    if (sentCount > 0) {
+      statusEl.innerHTML = '<span style="color:var(--green2)">✓ ' + sentCount + ' players have received the welcome email.</span>';
+      if (retryBtn) retryBtn.style.display = '';
+    } else {
+      statusEl.innerHTML = 'No welcome emails sent yet.';
+      if (retryBtn) retryBtn.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+async function sendWelcomeEmails(retryOnly) {
   var result = document.getElementById('welcomeEmailResult');
-  if (!confirm('Send welcome emails with login credentials to all players?')) return;
+  var msg = retryOnly ? 'Send welcome emails to players who have NOT received one yet?' : 'Send welcome emails with login credentials to ALL players?';
+  if (!confirm(msg)) return;
   result.innerHTML = '<span style="color:var(--muted)">Sending...</span>';
   try {
-    var res = await api('POST', '/api/league/email/welcome', {});
-    result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + (res.errors && res.errors.length ? ' (' + res.errors.length + ' failed)' : '') + '.</span>';
+    var res = await api('POST', '/api/league/email/welcome', { retryOnly: retryOnly || false });
+    if (res.message) {
+      result.innerHTML = '<span style="color:var(--green2)">✓ ' + res.message + '</span>';
+    } else {
+      var failMsg = res.errors && res.errors.length ? ' (' + res.errors.length + ' failed — click Retry Failed tomorrow)' : '';
+      result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + failMsg + '.</span>';
+      if (res.errors && res.errors.length) {
+        var retryBtn = document.getElementById('btnRetryWelcome');
+        if (retryBtn) retryBtn.style.display = '';
+      }
+    }
+    loadWelcomeEmailStatus();
   } catch(e) {
     result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
@@ -3621,7 +3651,7 @@ function showTab(tab) {
   if (tab==='standings') loadStandings();
   if (tab==='course') { loadSI(); }
   if (tab==='playoffs') loadPlayoffs();
-  if (tab==='players') loadPlayersList();
+  if (tab==='players') { loadPlayersList(); loadWelcomeEmailStatus(); }
   if (tab==='roster') loadCalculatedHandicaps();
   if (tab==='settings') loadLeagueSettings();
   // Scroll to top on tab change

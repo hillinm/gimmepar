@@ -1004,16 +1004,25 @@ router.post('/email/welcome', requireAuth, async (req, res) => {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'Email not configured' });
 
-    const league = await getOne('SELECT name, admin_email FROM leagues WHERE id=$1', [req.session.leagueId]);
-    const players = await getAll(
-      "SELECT email, first_name, last_name, username, must_change_password FROM users WHERE league_id=$1 AND email IS NOT NULL AND email != '' AND role='player'",
+    const retryOnly = req.body && req.body.retryOnly;
+    const league = await getOne('SELECT name, admin_email, settings FROM leagues WHERE id=$1', [req.session.leagueId]);
+    const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
+    const sentIds = settings.welcomeEmailSent || [];
+
+    let players = await getAll(
+      "SELECT id, email, first_name, last_name, username FROM users WHERE league_id=$1 AND email IS NOT NULL AND email != '' AND role='player'",
       [req.session.leagueId]
     );
-    if (!players.length) return res.status(400).json({ error: 'No players found' });
+
+    // If retryOnly, filter to only unsent players
+    if (retryOnly) {
+      players = players.filter(p => !sentIds.includes(p.id));
+    }
+
+    if (!players.length) return res.json({ sent: 0, errors: [], total: 0, message: 'All players already received the welcome email!' });
 
     const https = require('https');
     const appUrl = process.env.APP_URL || 'https://gimmepar.com';
-    const bcrypt = require('bcryptjs');
     let sent = 0, errors = [];
 
     for (const p of players) {
@@ -1083,3 +1092,14 @@ router.post('/email/welcome', requireAuth, async (req, res) => {
 });
 
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── TRACK WELCOME EMAIL SENT ──
+// Uses a simple JSON column in league settings to track sent user IDs
+router.get('/email/welcome/status', requireAuth, async (req, res) => {
+  try {
+    const league = await getOne('SELECT settings FROM leagues WHERE id=$1', [req.session.leagueId]);
+    const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
+    const sentIds = settings.welcomeEmailSent || [];
+    res.json({ sentIds });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
