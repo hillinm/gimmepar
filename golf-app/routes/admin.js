@@ -325,3 +325,48 @@ router.get('/users/search', requireRole('superadmin','leagueadmin'), async (req,
     res.json(users);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── SUPER ADMIN: Enter a league as league admin ──
+router.post('/enter-league', requireRole('superadmin'), async (req, res) => {
+  try {
+    const { league_id } = req.body || {};
+    if (!league_id) return res.status(400).json({ error: 'league_id required' });
+    const league = await getOne(
+      'SELECT l.*, l.settings FROM leagues l WHERE l.id=$1',
+      [league_id]
+    );
+    if (!league) return res.status(404).json({ error: 'League not found' });
+
+    // Set session as league admin for this league
+    req.session.leagueId = league.id;
+    req.session.role = 'leagueadmin';
+    req.session.superAdminOverride = true; // remember we came from super admin
+
+    const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
+    const front9par = JSON.parse(league.front9par || '[4,3,4,4,4,5,3,4,5]');
+    const back9par  = JSON.parse(league.back9par  || '[4,3,4,4,4,5,3,4,5]');
+
+    res.json({
+      role: 'leagueadmin',
+      leagueId: league.id,
+      leagueName: league.name,
+      userId: req.session.userId,
+      course: { name: league.course_name || '', location: league.course_location || '', front9par, back9par },
+      settings
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── RESTORE SUPER ADMIN SESSION ──
+router.post('/restore-superadmin', async (req, res) => {
+  try {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not logged in' });
+    // Verify this user is actually a superadmin
+    const user = await getOne('SELECT role FROM users WHERE id=$1', [req.session.userId]);
+    if (!user || user.role !== 'superadmin') return res.status(403).json({ error: 'Not a superadmin' });
+    req.session.role = 'superadmin';
+    req.session.leagueId = null;
+    req.session.superAdminOverride = false;
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

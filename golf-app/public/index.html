@@ -1897,13 +1897,14 @@ async function fetchOpponentScore(oppTeamId) {
 
 // ══ SUPER ADMIN ══
 function showAdminTab(tab) {
-  ['leagues','users','courses'].forEach(function(t) {
+  ['leagues','users','courses','scorecard'].forEach(function(t) {
     var panel = document.getElementById('saTab'+t.charAt(0).toUpperCase()+t.slice(1));
     var btn   = document.getElementById('satab-'+t);
     if (panel) panel.style.display = t===tab ? '' : 'none';
     if (btn)   btn.classList.toggle('active', t===tab);
   });
   if (tab==='courses') adminCourseSearch('');
+  if (tab==='scorecard') initAdminScorecard();
 }
 
 async function initAdminScorecard() {
@@ -3722,45 +3723,37 @@ function getTeamNine(team, weekNum) {
 function assignHoles(matchups, weekNum) {
   var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
   var byes = matchups.filter(function(m) { return !m.teamB; });
-  var useAlt = leagueSettings && leagueSettings.alternateNines;
 
-  if (!useAlt) {
-    // No alternating — all 18 holes, one group per hole
-    var allHoles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
-    var offset = (weekNum - 1) % allHoles.length;
-    var rotated = allHoles.slice(offset).concat(allHoles.slice(0, offset));
-    var assigned = realMatchups.map(function(m, i) {
-      return Object.assign({}, m, { hole: rotated[i % rotated.length], nine: 'front' });
-    });
-    assigned.sort(function(a, b) { return a.hole - b.hole; });
-    return assigned.concat(byes.map(function(m) { return Object.assign({}, m, { hole: null }); }));
-  }
-
-  // Alternate nines — the MATCHUP alternates together.
-  // Each matchup is assigned a nine based on its position index + week, so they flip each week.
-  // Both teams in the matchup play the SAME nine.
-  // Split matchups evenly: first half play F9, second half play B9
   var frontHoles = [1,2,3,4,5,6,7,8,9];
   var backHoles  = [10,11,12,13,14,15,16,17,18];
+
+  // Rotate starting holes each week
   var fOff = (weekNum - 1) % frontHoles.length;
   var bOff = (weekNum - 1) % backHoles.length;
   var fRot = frontHoles.slice(fOff).concat(frontHoles.slice(0, fOff));
   var bRot = backHoles.slice(bOff).concat(backHoles.slice(0, bOff));
 
   var total = realMatchups.length;
-  var half  = Math.ceil(total / 2);
+  var half  = Math.floor(total / 2);
+  var extra = total % 2; // 1 if odd number of matchups
 
-  // Alternate which half plays front vs back each week
-  // Odd weeks: first half on front, second half on back
-  // Even weeks: first half on back, second half on front
+  // Alternate which half goes to front vs back each week
+  // Week 1: first half = front, second half = back
+  // Week 2: first half = back, second half = front
   var firstHalfFront = (weekNum % 2 !== 0);
+
+  // Count how many go to each nine
+  var frontCount = firstHalfFront ? half + extra : half;
+  var backCount  = firstHalfFront ? half : half + extra;
 
   var fIdx = 0, bIdx = 0;
   var assigned = realMatchups.map(function(m, i) {
-    var inFirstHalf = (i < half);
-    var playFront = firstHalfFront ? inFirstHalf : !inFirstHalf;
+    var playFront = firstHalfFront ? (i < frontCount) : (i >= backCount);
     var nine = playFront ? 'front' : 'back';
-    var hole = playFront ? fRot[fIdx++ % fRot.length] : bRot[bIdx++ % bRot.length];
+    // Only double up holes if more matchups than holes on that nine
+    var hole = playFront
+      ? fRot[fIdx++ % fRot.length]
+      : bRot[bIdx++ % bRot.length];
     return Object.assign({}, m, { hole: hole, nine: nine });
   });
 
