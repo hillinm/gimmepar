@@ -1750,11 +1750,9 @@ async function loadPlayerView(data) {
           matchupHole = myMatchup.hole;
         }
       }
-      var matchupNine = (myMatchup && myMatchup.nine) || team.nine || 'front';
-      // Also derive nine from hole number if not explicitly set
-      if (matchupHole && !myMatchup.nine) {
-        matchupNine = matchupHole >= 10 ? 'back' : 'front';
-      }
+      var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
+        : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
+        : (team.nine || 'front');
       var nineLabel = matchupNine === 'back' ? 'BACK 9' : matchupNine === 'all18' ? 'ALL 18' : 'FRONT 9';
       container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
         + ' &nbsp;|&nbsp; ' + nineLabel
@@ -1781,10 +1779,9 @@ async function loadPlayerView(data) {
   // Build opponent read-only card if found
   if (opponent) {
     // Opponent plays the same nine as the matchup
-    var matchupNine = (myMatchup && myMatchup.nine) || team.nine || 'front';
-    if (matchupHole && !(myMatchup && myMatchup.nine)) {
-      matchupNine = matchupHole >= 10 ? 'back' : 'front';
-    }
+    var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
+      : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
+      : (team.nine || 'front');
     var oppSt = { id: opponent.id, nine: matchupNine, holes: Array(9).fill(null) };
     scoreTeams.push(oppSt);
     var oppCard = buildReadOnlyCard(opponent, oppSt);
