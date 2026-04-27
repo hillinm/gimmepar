@@ -1743,6 +1743,8 @@ async function loadPlayerView(data) {
     activeWeekForConfirm = freshSettings.currentWeek || 1;
     // Update leagueSettings with fresh data
     if (leagueSettings) leagueSettings.currentWeek = activeWeekForConfirm;
+    // Update all WK badges on screen
+    document.querySelectorAll('.wk-badge-num').forEach(function(el) { el.textContent = activeWeekForConfirm; });
   } catch(e) {}
   try { var myConf = await api('GET', '/api/league/confirm-playing/me/' + activeWeekForConfirm); myConfStatus = myConf.playing; } catch(e) {}
 
@@ -3074,7 +3076,7 @@ function buildScoreCard(team, st, idx) {
       <div class="team-name-display" id="sname_${team.id}">
         ${esc(team.player1)} / ${esc(team.player2)}${team.format==='4man'&&team.player3?' / '+esc(team.player3):''}${team.format==='4man'&&team.player4?' / '+esc(team.player4):''}
         <span class="format-badge ${team.format==='4man'?'four':'two'}">${team.format==='4man'?'4-Man':'2-Man'}</span>
-        <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK <span class='wk-badge-num'>${(function(){ var el=document.getElementById('scoringWeekNum'); return el?el.value:leagueSettings&&leagueSettings.currentWeek||'?'; })()}</span></span>
+        <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK <span class='wk-badge-num'>${leagueSettings&&leagueSettings.currentWeek||'?'}</span></span>
       </div>
       <div class="card-quick-totals">
         <span class="quick-gross" id="sgross_${team.id}">—</span>
