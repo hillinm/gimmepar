@@ -1056,6 +1056,24 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
     </div>
 
+    <!-- Welcome Email -->
+    <div class="section-card" style="margin-top:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">🎉</span>
+        <div>
+          <div class="section-title">Send Welcome Email</div>
+          <div class="section-sub">Send each player their username and password</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Sends a personalized welcome email to every player with their username, temp password, and app instructions.</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="btn-save-roster" style="background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="sendWelcomeEmails()">📧 Send Welcome Emails</button>
+          <span id="welcomeEmailResult" style="font-size:13px;"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- Calculated Handicaps -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
@@ -2281,6 +2299,18 @@ async function uploadPlayers() {
     document.getElementById('uploadResult').innerHTML = '<div style="color:#ff9999">Error: '+e.message+'</div>';
   }
   btn.disabled = false; btn.textContent = 'Upload Players';
+}
+
+async function sendWelcomeEmails() {
+  var result = document.getElementById('welcomeEmailResult');
+  if (!confirm('Send welcome emails with login credentials to all players?')) return;
+  result.innerHTML = '<span style="color:var(--muted)">Sending...</span>';
+  try {
+    var res = await api('POST', '/api/league/email/welcome', {});
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + (res.errors && res.errors.length ? ' (' + res.errors.length + ' failed)' : '') + '.</span>';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
 }
 
 async function loadPlayersList() {
