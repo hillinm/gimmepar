@@ -2937,8 +2937,9 @@ async function buildScoringCards() {
       btn.title = 'Subs used this season: ' + count + (count >= 2 ? ' — Full handicap applies if sub used again' : ' — 1 more sub gets full handicap');
       btn.innerHTML = 'SUB <span style="font-size:10px;opacity:.8;">('+count+')</span>';
     }
-    // Apply signed badge
-    if (signedThisWeek[t.id]) {
+    var currentWeekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
+    // Apply signed badge only for current week
+    if (signedThisWeek[t.id] && signedThisWeek[t.id] === currentWeekNum) {
       var nameEl = document.getElementById('sname_' + t.id);
       if (nameEl && !nameEl.querySelector('.signed-badge')) {
         var badge = document.createElement('span');
