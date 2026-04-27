@@ -3020,7 +3020,7 @@ function buildScoreCard(team, st, idx) {
       <div class="team-name-display" id="sname_${team.id}">
         ${esc(team.player1)} / ${esc(team.player2)}${team.format==='4man'&&team.player3?' / '+esc(team.player3):''}${team.format==='4man'&&team.player4?' / '+esc(team.player4):''}
         <span class="format-badge ${team.format==='4man'?'four':'two'}">${team.format==='4man'?'4-Man':'2-Man'}</span>
-        <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK ${leagueSettings && leagueSettings.currentWeek ? leagueSettings.currentWeek : '—'}</span>
+        <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK ${leagueSettings && leagueSettings.currentWeek ? leagueSettings.currentWeek : (savedSchedule && savedSchedule.length ? Math.max(...savedSchedule.map(function(w){return w.week;})) : '—')}</span>
       </div>
       <div class="card-quick-totals">
         <span class="quick-gross" id="sgross_${team.id}">—</span>
