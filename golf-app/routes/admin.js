@@ -370,3 +370,23 @@ router.post('/restore-superadmin', async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── GET TEAMS FOR ANY LEAGUE (super admin) ──
+router.get('/leagues/:leagueId/teams', requireRole('superadmin'), async (req, res) => {
+  try {
+    const teams = await getAll('SELECT * FROM teams WHERE league_id=$1 ORDER BY sort_order,id', [req.params.leagueId]);
+    res.json(teams);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET LEAGUE INFO (super admin) ──
+router.get('/league/:leagueId', requireRole('superadmin'), async (req, res) => {
+  try {
+    const league = await getOne('SELECT * FROM leagues WHERE id=$1', [req.params.leagueId]);
+    if (!league) return res.status(404).json({ error: 'Not found' });
+    const front9par = JSON.parse(league.front9par || '[4,3,4,4,4,5,3,4,5]');
+    const back9par  = JSON.parse(league.back9par  || '[4,3,4,4,4,5,3,4,5]');
+    const settings  = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
+    res.json({ ...league, course: { name: league.course_name||'', location: league.course_location||'', front9par, back9par }, settings });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
