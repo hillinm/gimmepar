@@ -1123,3 +1123,32 @@ router.delete('/rounds/week/:weekNum', requireAuth, async (req, res) => {
     res.json({ success: true, deleted: round.id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── CLEAR DUPLICATE TEAMS ──
+router.post('/teams/clear-duplicates', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    // Get all teams ordered by id
+    const teams = await getAll(
+      'SELECT id, player1, player2 FROM teams WHERE league_id=$1 ORDER BY id ASC',
+      [leagueId]
+    );
+    const seen = new Set();
+    const toDelete = [];
+    teams.forEach(function(t) {
+      const key = (t.player1||'').trim().toLowerCase() + '|' + (t.player2||'').trim().toLowerCase();
+      if (seen.has(key) || (!t.player1 && !t.player2)) {
+        toDelete.push(t.id);
+      } else {
+        seen.add(key);
+      }
+    });
+    if (toDelete.length) {
+      for (const id of toDelete) {
+        await query('DELETE FROM round_scores WHERE team_id=$1', [id]);
+        await query('DELETE FROM teams WHERE id=$1 AND league_id=$2', [id, leagueId]);
+      }
+    }
+    res.json({ deleted: toDelete.length, remaining: teams.length - toDelete.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

@@ -894,10 +894,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
+      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearAndRegenerateWeek()">🔄 Clear &amp; Regenerate</button>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
         <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
-        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1">
-        <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete This Week</button>
+        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value)">
+        <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete Week</button>
       </div>
     </div>
     <div id="scoringTeams"></div>
@@ -2864,6 +2865,11 @@ let signedThisWeek = {}; // {teamId: weekNumber}
 
 async function buildScoringCards() {
   loadConfirmSummary();
+  // Set week input from settings
+  var wkEl = document.getElementById('scoringWeekNum');
+  if (wkEl && leagueSettings && leagueSettings.currentWeek) {
+    wkEl.value = leagueSettings.currentWeek;
+  }
   const container = document.getElementById('scoringTeams');
   if (!container) return;
   container.innerHTML = '';
@@ -3022,7 +3028,7 @@ function buildScoreCard(team, st, idx) {
       <div class="team-name-display" id="sname_${team.id}">
         ${esc(team.player1)} / ${esc(team.player2)}${team.format==='4man'&&team.player3?' / '+esc(team.player3):''}${team.format==='4man'&&team.player4?' / '+esc(team.player4):''}
         <span class="format-badge ${team.format==='4man'?'four':'two'}">${team.format==='4man'?'4-Man':'2-Man'}</span>
-        <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK ${leagueSettings && leagueSettings.currentWeek ? leagueSettings.currentWeek : (savedSchedule && savedSchedule.length ? Math.max(...savedSchedule.map(function(w){return w.week;})) : '—')}</span>
+        <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK <span class='wk-badge-num'>${(function(){ var el=document.getElementById('scoringWeekNum'); return el?el.value:leagueSettings&&leagueSettings.currentWeek||'?'; })()}</span></span>
       </div>
       <div class="card-quick-totals">
         <span class="quick-gross" id="sgross_${team.id}">—</span>
@@ -3229,6 +3235,26 @@ function applyNoShowState(teamId, isNoShow) {
     var badge = document.getElementById('noshow_badge_' + teamId);
     if (badge) badge.remove();
   }
+}
+
+async function clearAndRegenerateWeek() {
+  if (!confirm('This will remove duplicate scorecards and regenerate clean cards for all teams. Continue?')) return;
+  try {
+    // Remove duplicates from DB
+    var res = await api('POST', '/api/league/teams/clear-duplicates');
+    // Reload roster and rebuild scoring cards
+    await loadRoster();
+    await buildScoringCards();
+    toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function updateScoringWeek(val) {
+  var weekNum = parseInt(val) || 1;
+  // Update all WK badges
+  document.querySelectorAll('.wk-badge-num').forEach(function(el) {
+    el.textContent = weekNum;
+  });
 }
 
 async function deleteRoundWeek() {
