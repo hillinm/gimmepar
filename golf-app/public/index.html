@@ -265,10 +265,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .par-lbl{font-size:11px;text-align:center;color:var(--muted);padding:2px 0;}
 .hole-inp{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--cream);text-align:center;border-radius:5px;padding:7px 2px;font-family:'Libre Baskerville',serif;font-size:15px;outline:none;}
 .hole-inp:focus{border-color:var(--gold);}
-.hole-inp.eagle{background:rgba(201,168,76,.25);border-color:var(--gold);color:var(--gold);}
-.hole-inp.birdie{background:rgba(109,190,95,.2);border-color:var(--green2);color:var(--green2);}
-.hole-inp.bogey{background:rgba(180,80,80,.15);border-color:rgba(180,80,80,.4);}
-.hole-inp.double{background:rgba(180,80,80,.25);border-color:rgba(200,60,60,.6);color:#e07070;}
+/* Birdie — circle */
+.hole-inp.birdie{background:rgba(109,190,95,.2);border-color:var(--green2);color:var(--green2);border-radius:50%;border-width:2px;}
+/* Eagle — double circle */
+.hole-inp.eagle{background:rgba(201,168,76,.25);border-color:var(--gold);color:var(--gold);border-radius:50%;border-width:2px;box-shadow:0 0 0 3px var(--gold);}
+/* Bogey — square */
+.hole-inp.bogey{background:rgba(180,80,80,.15);border-color:rgba(220,80,80,.6);border-radius:3px;border-width:2px;}
+/* Double bogey — double square */
+.hole-inp.double{background:rgba(180,80,80,.25);border-color:rgba(220,60,60,.8);color:#e07070;border-radius:3px;border-width:2px;box-shadow:0 0 0 3px rgba(200,60,60,.5);}
 .score-totals{display:flex;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .total-box{flex:1;background:var(--bg);border-radius:8px;padding:7px 10px;text-align:center;}
 .total-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
@@ -619,10 +623,14 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 #playerPage .team-num { background: #1a2e1a; color: #c9a84c; border-color: #c9a84c; }
 #playerPage .hole-inp { background: #fff; border: 2px solid #555; color: #111; font-size: 20px; font-weight: 700; }
 #playerPage .hole-inp:focus { border-color: #1a6e12; background: #f0fff0; }
-#playerPage .hole-inp.eagle { background:#fff3b0;border-color:#a07800;color:#7a4f00; }
-#playerPage .hole-inp.birdie { background:#d4f7d4;border-color:#1a6e12;color:#1a4e10; }
-#playerPage .hole-inp.bogey { background:#ffe0e0;border-color:#c00;color:#900; }
-#playerPage .hole-inp.double { background:#ffb0b0;border-color:#900;color:#600; }
+/* Player birdie — circle */
+#playerPage .hole-inp.birdie { background:#d4f7d4;border-color:#1a6e12;color:#1a4e10;border-radius:50%;border-width:2px; }
+/* Player eagle — double circle */
+#playerPage .hole-inp.eagle { background:#fff3b0;border-color:#a07800;color:#7a4f00;border-radius:50%;border-width:2px;box-shadow:0 0 0 3px #a07800; }
+/* Player bogey — square */
+#playerPage .hole-inp.bogey { background:#ffe0e0;border-color:#cc0000;color:#900;border-radius:3px;border-width:2px; }
+/* Player double bogey — double square */
+#playerPage .hole-inp.double { background:#ffb0b0;border-color:#900;color:#600;border-radius:3px;border-width:2px;box-shadow:0 0 0 3px #cc0000; }
 #playerPage .score-team-body { color: #111; }
 #playerPage .par-row { color: #333; background:#f0f0f0; }
 #playerPage .hdcp-row label { color: #333; }
