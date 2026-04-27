@@ -1156,3 +1156,28 @@ router.post('/teams/clear-duplicates', requireAuth, async (req, res) => {
     res.json({ deleted, remaining: teams.length - deleted });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── HARD DEDUPLICATE — keeps lowest ID per unique player1/player2 combo ──
+router.post('/teams/hard-dedup', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    await query(`
+      DELETE FROM round_scores WHERE team_id IN (
+        SELECT id FROM teams WHERE league_id=$1
+        AND id NOT IN (
+          SELECT MIN(id) FROM teams WHERE league_id=$1
+          GROUP BY LOWER(TRIM(COALESCE(player1,''))), LOWER(TRIM(COALESCE(player2,'')))
+        )
+      )
+    `, [leagueId]);
+    const result = await query(`
+      DELETE FROM teams WHERE league_id=$1
+      AND id NOT IN (
+        SELECT MIN(id) FROM teams WHERE league_id=$1
+        GROUP BY LOWER(TRIM(COALESCE(player1,''))), LOWER(TRIM(COALESCE(player2,'')))
+      )
+    `, [leagueId]);
+    const remaining = await getOne('SELECT COUNT(*) as cnt FROM teams WHERE league_id=$1', [leagueId]);
+    res.json({ deleted: result.rowCount, remaining: parseInt(remaining.cnt) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

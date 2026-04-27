@@ -894,7 +894,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
-      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearAndRegenerateWeek()">🔄 Clear &amp; Regenerate</button>
+      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
         <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
         <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value)">
@@ -3282,6 +3282,16 @@ async function clearAndRegenerateWeek() {
     await loadRoster();
     await buildScoringCards();
     toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function hardDeduplicateTeams() {
+  if (!confirm('Remove all duplicate scorecards? This keeps one card per team and deletes the rest.')) return;
+  try {
+    var res = await api('POST', '/api/league/teams/hard-dedup');
+    toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+    await loadRoster();
+    await buildScoringCards();
   } catch(e) { toast('Error: ' + e.message); }
 }
 
