@@ -1552,6 +1552,85 @@ async function register() {
   }
 }
 
+async function viewAsPlayer(team) {
+  var playerData = {
+    role: 'player',
+    userId: currentUser && currentUser.userId,
+    leagueId: currentUser && currentUser.leagueId,
+    leagueName: currentUser && currentUser.leagueName,
+    teamId: team.id,
+    team: team,
+    course: league && league.course,
+    _adminOverride: true
+  };
+  var pln = document.getElementById('playerLeagueName');
+  if (pln) pln.textContent = (playerData.leagueName||'') + ' League';
+  showPage('player');
+  // Add back button
+  var playerHeader = document.querySelector('#playerPage .app-header');
+  var existingBack = document.getElementById('btnBackToAdmin');
+  if (existingBack) existingBack.remove();
+  if (playerHeader) {
+    var backBtn = document.createElement('button');
+    backBtn.id = 'btnBackToAdmin';
+    backBtn.style.cssText = 'background:rgba(201,168,76,.2);border:1px solid var(--gold);color:var(--gold2);font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;';
+    backBtn.textContent = '← Back to Admin';
+    backBtn.onclick = function() {
+      backBtn.remove();
+      // Restore super admin session
+      api('POST', '/api/admin/restore-superadmin').then(function() {
+        showPage('superadmin');
+        loadSuperAdmin();
+      }).catch(function() {
+        showPage('superadmin');
+        loadSuperAdmin();
+      });
+    };
+    var signOutBtn = playerHeader.querySelector('.btn-logout');
+    if (signOutBtn) playerHeader.insertBefore(backBtn, signOutBtn);
+    else playerHeader.appendChild(backBtn);
+  }
+  await loadPlayerView(playerData);
+}
+
+async function backToSuperAdmin() {
+  try {
+    await api('POST', '/api/admin/restore-superadmin');
+  } catch(e) {}
+  league = null; rosterTeams = []; scoreTeams = [];
+  showPage('superadmin');
+  loadSuperAdmin();
+}
+
+function showViewAsPlayerPicker() {
+  var overlay = document.createElement('div');
+  overlay.id = 'viewAsPlayerOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
+  var inner = document.createElement('div');
+  inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:420px;width:90%;margin:20px;max-height:80vh;overflow-y:auto;';
+  inner.innerHTML = '<div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:6px;">👤 View as Player</div>'
+    + '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Select a team to view the player scorecard:</div>'
+    + '<div id="playerPickerList">Loading teams...</div>'
+    + '<div style="text-align:center;margin-top:14px;"><button onclick="document.getElementById(\'viewAsPlayerOverlay\').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;text-decoration:underline;">Cancel</button></div>';
+  overlay.appendChild(inner);
+  document.body.appendChild(overlay);
+  var listEl = document.getElementById('playerPickerList');
+  if (!rosterTeams.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">No teams in roster.</div>'; return; }
+  listEl.innerHTML = '';
+  rosterTeams.forEach(function(t) {
+    var btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--cream);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;text-align:left;';
+    btn.innerHTML = esc(t.player1||'') + (t.player2?' / '+esc(t.player2):'') + '<span style="font-size:11px;color:var(--muted);margin-left:8px;">'+(t.nine==='back'?'B9':t.nine==='all18'?'All 18':'F9')+'</span>';
+    btn.onmouseover = function(){ btn.style.borderColor='var(--gold)'; };
+    btn.onmouseout  = function(){ btn.style.borderColor='var(--border)'; };
+    btn.onclick = function() {
+      document.getElementById('viewAsPlayerOverlay').remove();
+      viewAsPlayer(t);
+    };
+    listEl.appendChild(btn);
+  });
+}
+
 async function logout() {
   await api('POST', '/api/auth/logout');
   league = null; currentUser = null; rosterTeams = []; scoreTeams = []; lastCalcData = [];
