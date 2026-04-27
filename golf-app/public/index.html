@@ -898,10 +898,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     </div>
     <div id="scoringTeams"></div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
-    <div style="max-width:440px;margin:0 auto 16px;display:flex;gap:10px;">
-      <button class="btn-calculate" style="background:linear-gradient(135deg,#1a2e1a,#2a4e2a);font-size:18px;padding:14px;margin:0;flex:1;" onclick="adminSignAndSave()">✍ SIGN & SAVE ROUND</button>
-    </div>
-    <div id="adminSignResult" style="text-align:center;font-size:13px;margin-bottom:16px;"></div>
+    <div id="adminSignResult" style="text-align:center;font-size:13px;margin-bottom:8px;"></div>
     <div id="resultsArea" style="display:none"></div>
   </div>
 
@@ -3465,7 +3462,8 @@ function renderResults(data, parFront, parBack) {
       ${scoreboardHTML(data)}
     </div>
     <div class="result-actions">
-      <button class="btn-green-outline" onclick="saveRound()">📅 Save Round to History</button>
+      <button class="btn-calculate" style="font-size:18px;padding:14px 28px;margin-bottom:0;" onclick="adminSignAndSave()">✍ SIGN & SAVE ROUND</button>
+      <button class="btn-green-outline" onclick="saveRound()">📅 Save to History Only</button>
       <button class="btn-outline" onclick="downloadCSV()">⬇ Download CSV</button>
       <button class="btn-outline" onclick="document.getElementById('resultsArea').style.display='none'">↩ Back to Scores</button>
     </div>`;
