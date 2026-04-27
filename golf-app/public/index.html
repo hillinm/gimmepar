@@ -1633,14 +1633,9 @@ async function viewAsPlayer(team) {
     backBtn.textContent = '← Back to Admin';
     backBtn.onclick = function() {
       backBtn.remove();
-      // Restore super admin session
-      api('POST', '/api/admin/restore-superadmin').then(function() {
-        showPage('superadmin');
-        loadSuperAdmin();
-      }).catch(function() {
-        showPage('superadmin');
-        loadSuperAdmin();
-      });
+      // Just go back to the league admin app page — no session change needed
+      showPage('app');
+      showTab('scoring');
     };
     var signOutBtn = playerHeader.querySelector('.btn-logout');
     if (signOutBtn) playerHeader.insertBefore(backBtn, signOutBtn);
