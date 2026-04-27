@@ -763,25 +763,48 @@ router.get('/draw/history', requireAuth, async (req, res) => {
 // Returns the most recent round score for a team (for opponent live updates)
 router.get('/scores/latest/:teamId', requireAuth, async (req, res) => {
   try {
-    const row = await getOne(
-      `SELECT rs.hole_scores, rs.gross, rs.net, rs.handicap_used, rs.nine, r.played_on
-       FROM round_scores rs
-       JOIN rounds r ON r.id = rs.round_id
-       WHERE r.league_id = $1 AND rs.team_id = $2
-       ORDER BY r.played_on DESC, r.id DESC
-       LIMIT 1`,
-      [req.session.leagueId, req.params.teamId]
-    );
-    if (!row) return res.json({ found: false });
-    res.json({
-      found: true,
-      hole_scores: JSON.parse(row.hole_scores || '[]'),
-      gross: row.gross,
-      net: row.net,
-      handicap_used: row.handicap_used,
-      nine: row.nine,
-      played_on: row.played_on
-    });
+    // Get current week from league settings
+    const league = await getOne('SELECT settings FROM leagues WHERE id=$1', [req.session.leagueId]);
+    const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
+    const currentWeek = settings.currentWeek || null;
+
+    // First try signed scorecard for current week
+    if (currentWeek) {
+      const signed = await getOne(
+        `SELECT hole_scores, gross, net, handicap_used, nine FROM signed_scorecards
+         WHERE league_id=$1 AND team_id=$2 AND week_number=$3`,
+        [req.session.leagueId, req.params.teamId, currentWeek]
+      );
+      if (signed) return res.json({
+        found: true,
+        hole_scores: JSON.parse(signed.hole_scores || '[]'),
+        gross: signed.gross, net: signed.net,
+        handicap_used: signed.handicap_used, nine: signed.nine
+      });
+    }
+
+    // Then try round_scores for current week only
+    if (currentWeek) {
+      const rounds = await getAll(
+        'SELECT id FROM rounds WHERE league_id=$1 ORDER BY id ASC',
+        [req.session.leagueId]
+      );
+      const round = rounds[currentWeek - 1];
+      if (round) {
+        const row = await getOne(
+          'SELECT hole_scores, gross, net, handicap_used, nine FROM round_scores WHERE round_id=$1 AND team_id=$2',
+          [round.id, req.params.teamId]
+        );
+        if (row) return res.json({
+          found: true,
+          hole_scores: JSON.parse(row.hole_scores || '[]'),
+          gross: row.gross, net: row.net,
+          handicap_used: row.handicap_used, nine: row.nine
+        });
+      }
+    }
+
+    return res.json({ found: false });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
