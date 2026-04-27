@@ -1026,8 +1026,9 @@ router.post('/email/welcome', requireAuth, async (req, res) => {
     let sent = 0, errors = [];
 
     for (const p of players) {
-      // Generate a fresh temp password
-      const temp = p.first_name.charAt(0).toUpperCase() + (p.last_name||'').toLowerCase() + '2026';
+      // Use same format as CSV upload: LastName2026
+      const lastName = (p.last_name||'').charAt(0).toUpperCase() + (p.last_name||'').slice(1).toLowerCase();
+      const temp = lastName + '2026';
 
       const html = [
         '<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">',
