@@ -1097,6 +1097,27 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
   <!-- SCHEDULE TAB -->
   <div id="tabSchedule" class="wrap" style="padding-top:32px;display:none;">
+    <div class="section-card" style="margin-bottom:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">✏️</span>
+        <div>
+          <div class="section-title">Manual Matchups</div>
+          <div class="section-sub">Enter specific matchups when you already know who played who</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="toggleManualMatchups()">▼ Show</button>
+      </div>
+      <div id="manualMatchupSection" style="display:none;" class="section-body">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+          <label style="font-size:11px;color:var(--muted);letter-spacing:1px;">WEEK</label>
+          <input class="week-inp" type="number" id="manualWeekNum" value="1" min="1" max="99" style="width:65px;">
+          <button class="btn-save-roster" onclick="addManualMatchupRow()">+ Add Matchup</button>
+          <button class="btn-gen" style="font-size:14px;padding:8px 18px;" onclick="saveManualMatchups()">💾 Save Week</button>
+        </div>
+        <div id="manualMatchupRows"></div>
+        <div id="manualMatchupResult" style="margin-top:10px;font-size:13px;"></div>
+      </div>
+    </div>
+
     <div class="section-card">
       <div class="section-header">
         <span style="font-size:24px;">📆</span>
@@ -1301,7 +1322,8 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <div class="section-title">Season Standings</div>
           <div class="section-sub">Win/loss record by flight — based on saved schedule matchups</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadStandings()">↻ Refresh</button>
+        <input class="score-search" id="standingsSearch" placeholder="🔍 Search team..." oninput="filterStandings(this.value)" style="max-width:200px;margin-left:auto;">
+        <button class="btn-export-sched" style="margin-left:8px;" onclick="loadStandings()">↻ Refresh</button>
         <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;margin-left:8px;" onclick="clearAllStandings()">🗑 Clear All</button>
       </div>
       <div class="section-body" id="standingsContent">
@@ -3037,9 +3059,7 @@ function buildScoreCard(team, st, idx) {
       <button id="snoshow_${team.id}" onclick="toggleNoShow(${team.id});event.stopPropagation();"
         style="background:transparent;border:1px solid rgba(192,57,43,.4);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
         title="Mark team as no-show for this week">NO SHOW</button>
-      <button onclick="deleteTeamCard(${team.id});event.stopPropagation();"
-        style="background:rgba(192,57,43,.25);border:1px solid rgba(220,80,80,.5);color:#ff9999;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
-        title="Delete this team">✕ DELETE</button>
+
       <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
@@ -3807,6 +3827,102 @@ function showPage(name) {
 // ══ SCHEDULE GENERATOR ══
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
+function toggleManualMatchups() {
+  var sec = document.getElementById('manualMatchupSection');
+  var btn = event.target;
+  if (sec.style.display === 'none') {
+    sec.style.display = '';
+    btn.textContent = '▲ Hide';
+    // Build initial rows if empty
+    if (!document.getElementById('manualMatchupRows').children.length) {
+      // Add rows based on half the team count
+      var count = Math.floor(rosterTeams.length / 2) || 6;
+      for (var i = 0; i < count; i++) addManualMatchupRow();
+    }
+  } else {
+    sec.style.display = 'none';
+    btn.textContent = '▼ Show';
+  }
+}
+
+var _manualRowCount = 0;
+function addManualMatchupRow() {
+  var container = document.getElementById('manualMatchupRows');
+  var idx = _manualRowCount++;
+  var row = document.createElement('div');
+  row.id = 'mrow_' + idx;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;';
+
+  // Build team options
+  var teamOpts = '<option value="">Select team...</option>';
+  rosterTeams.forEach(function(t) {
+    var name = esc(t.player1||'') + (t.player2?' / '+esc(t.player2):'');
+    teamOpts += '<option value="'+t.id+'">'+name+'</option>';
+  });
+
+  row.innerHTML =
+    '<select class="week-inp" id="mteamA_'+idx+'" style="width:100%;padding:6px 8px;font-size:12px;">'+teamOpts+'</select>' +
+    '<span style="color:var(--muted);font-family:\'Bebas Neue\',sans-serif;font-size:14px;">VS</span>' +
+    '<select class="week-inp" id="mteamB_'+idx+'" style="width:100%;padding:6px 8px;font-size:12px;">'+teamOpts+'</select>' +
+    '<div style="display:flex;align-items:center;gap:4px;"><label style="font-size:11px;color:var(--muted);">HOLE</label><input class="week-inp" id="mhole_'+idx+'" type="number" min="1" max="18" style="width:55px;padding:6px;text-align:center;" placeholder="1"></div>' +
+    '<button onclick="document.getElementById(\'mrow_'+idx+'\').remove();" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:14px;">✕</button>';
+
+  container.appendChild(row);
+}
+
+async function saveManualMatchups() {
+  var weekNum = parseInt(document.getElementById('manualWeekNum').value) || 1;
+  var result = document.getElementById('manualMatchupResult');
+  var rows = document.getElementById('manualMatchupRows').children;
+  var matchups = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var idx = row.id.replace('mrow_','');
+    var teamAId = parseInt(document.getElementById('mteamA_'+idx).value);
+    var teamBId = parseInt(document.getElementById('mteamB_'+idx).value);
+    var hole    = parseInt(document.getElementById('mhole_'+idx).value) || (i+1);
+    if (!teamAId || !teamBId) continue;
+    var teamA = rosterTeams.find(function(t){return t.id===teamAId;});
+    var teamB = rosterTeams.find(function(t){return t.id===teamBId;});
+    var nine = hole >= 10 ? 'back' : 'front';
+    matchups.push({
+      hole: hole, nine: nine,
+      teamAId: teamAId, teamBId: teamBId,
+      teamAName: teamA ? (teamA.player1+(teamA.player2?' / '+teamA.player2:'')) : '',
+      teamBName: teamB ? (teamB.player1+(teamB.player2?' / '+teamB.player2:'')) : ''
+    });
+  }
+
+  if (!matchups.length) { result.innerHTML = '<span style="color:#ff9999">Add at least one complete matchup.</span>'; return; }
+
+  result.innerHTML = '<span style="color:var(--muted)">Saving...</span>';
+  try {
+    await api('POST', '/api/league/schedule/save', { weeks: [{ week: weekNum, matchups: matchups }] });
+    await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekNum }));
+    if (leagueSettings) leagueSettings.currentWeek = weekNum;
+
+    // Reload schedule display
+    var weekData = { week: weekNum, matchups: matchups.map(function(m) {
+      return {
+        hole: m.hole, nine: m.nine,
+        teamA: rosterTeams.find(function(t){return t.id===m.teamAId;}),
+        teamB: rosterTeams.find(function(t){return t.id===m.teamBId;})
+      };
+    })};
+    var existing = savedSchedule.findIndex(function(w){return w.week===weekNum;});
+    if (existing>=0) savedSchedule[existing]=weekData; else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b){return a.week-b.week;});
+    renderSavedSchedule(savedSchedule);
+
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week '+weekNum+' saved with '+matchups.length+' matchups.</span>';
+    document.getElementById('startWeek').value = weekNum + 1;
+    toast('Week ' + weekNum + ' matchups saved');
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
 async function initSchedule() {
   var out = document.getElementById('scheduleOutput');
   // Always try to load saved schedule from DB
@@ -4316,6 +4432,14 @@ async function clearAllStandings() {
   } catch(e) { toast('Error: ' + e.message); }
 }
 
+function filterStandings(q) {
+  q = (q||'').toLowerCase();
+  document.querySelectorAll('#standingsContent .standings-tbl tbody tr').forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+}
+
 async function loadStandings() {
   var el = document.getElementById('standingsContent');
   if (!el) return;
@@ -4719,10 +4843,17 @@ async function initSubLog() {
   roundEl.innerHTML = '<option value="">Select round...</option>';
   try {
     var rounds = await api('GET', '/api/league/rounds');
-    rounds.forEach(function(r, i) {
-      var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
-      roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
-    });
+    if (rounds && rounds.length) {
+      rounds.forEach(function(r, i) {
+        var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
+        roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
+      });
+    } else {
+      // No rounds saved yet — show week numbers
+      for (var w = 1; w <= 10; w++) {
+        roundEl.innerHTML += '<option value="week_'+w+'">Week ' + w + ' (not yet saved)</option>';
+      }
+    }
   } catch(e) {}
 }
 
