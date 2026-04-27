@@ -997,3 +997,89 @@ router.post('/teams/:teamId/noshow', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── SEND WELCOME EMAIL with credentials ──
+router.post('/email/welcome', requireAuth, async (req, res) => {
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Email not configured' });
+
+    const league = await getOne('SELECT name, admin_email FROM leagues WHERE id=$1', [req.session.leagueId]);
+    const players = await getAll(
+      "SELECT email, first_name, last_name, username, must_change_password FROM users WHERE league_id=$1 AND email IS NOT NULL AND email != '' AND role='player'",
+      [req.session.leagueId]
+    );
+    if (!players.length) return res.status(400).json({ error: 'No players found' });
+
+    const https = require('https');
+    const appUrl = process.env.APP_URL || 'https://gimmepar.com';
+    const bcrypt = require('bcryptjs');
+    let sent = 0, errors = [];
+
+    for (const p of players) {
+      // Generate a fresh temp password
+      const temp = p.first_name.charAt(0).toUpperCase() + (p.last_name||'').toLowerCase() + '2026';
+
+      const html = [
+        '<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">',
+        '<div style="background:#1a2e1a;padding:16px 24px;border-radius:8px 8px 0 0;">',
+        '<span style="color:#c9a84c;font-size:20px;font-weight:700;letter-spacing:2px;">⛳ ' + esc(league.name) + '</span>',
+        '</div>',
+        '<div style="border:1px solid #ddd;border-top:none;padding:24px;border-radius:0 0 8px 8px;">',
+        '<p>Hi ' + esc(p.first_name) + ',</p>',
+        '<p>Welcome to the Mitchell Golf League! We\'re using <strong>GimmePar</strong> this season to track scores, standings, and weekly matchups right from your phone.</p>',
+        '<div style="background:#f4f4f4;border-radius:8px;padding:16px;margin:20px 0;">',
+        '<div style="font-weight:700;margin-bottom:10px;">🔐 YOUR LOGIN INFO</div>',
+        '<div>🌐 <strong>Website:</strong> <a href="' + appUrl + '">' + appUrl + '</a></div>',
+        '<div>👤 <strong>Username:</strong> <span style="font-size:18px;font-weight:bold;color:#1a2e1a;">' + esc(p.username||'') + '</span></div>',
+        '<div>🔑 <strong>Password:</strong> <span style="font-size:18px;font-weight:bold;color:#1a2e1a;">' + esc(temp) + '</span></div>',
+        '</div>',
+        '<p>You\'ll be asked to set a new password on your first login.</p>',
+        '<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">',
+        '<p><strong>ON THE COURSE (Tuesday 5pm):</strong></p>',
+        '<ul>',
+        '<li>Open gimmepar.com and log in</li>',
+        '<li>Your scorecard shows your starting hole and which nine you\'re playing</li>',
+        '<li>Enter scores hole by hole — your opponent\'s scores update live</li>',
+        '<li>When finished, tap ✍ <strong>SIGN SCORECARD</strong> to submit your official scores</li>',
+        '</ul>',
+        '<p><strong>✅ CONFIRM YOU\'RE PLAYING:</strong><br>Log in and tap <strong>PLAYING THIS WEEK</strong> at the top of your scorecard. <em>No deadline this week — just confirm before Tuesday.</em> Starting next week the deadline is Sunday at 9pm.</p>',
+        '<p><strong>📱 INSTALL THE APP:</strong><br>iPhone: Safari → Share → "Add to Home Screen"<br>Android: Chrome → Menu → "Add to Home Screen"</p>',
+        '<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">',
+        '<p>Questions? Email <a href="mailto:mark.hillin@gmail.com">mark.hillin@gmail.com</a></p>',
+        '<p>See you Tuesday at 5! ⛳</p>',
+        '<p><em>Mark Hillin<br>Mitchell League Admin</em></p>',
+        '</div></div>'
+      ].join('');
+
+      const emailBody = JSON.stringify({
+        from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
+        to: [p.email],
+        reply_to: league.admin_email || 'mark.hillin@gmail.com',
+        subject: 'Mitchell Golf League — GimmePar App is Live! ⛳',
+        html
+      });
+
+      await new Promise((resolve) => {
+        const options = {
+          hostname: 'api.resend.com', path: '/emails', method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(emailBody) }
+        };
+        const req2 = https.request(options, (r) => {
+          let d = ''; r.on('data', c => d += c);
+          r.on('end', () => {
+            if (r.statusCode >= 200 && r.statusCode < 300) sent++;
+            else errors.push(p.email + ': ' + r.statusCode);
+            resolve();
+          });
+        });
+        req2.on('error', (e) => { errors.push(p.email + ': ' + e.message); resolve(); });
+        req2.write(emailBody); req2.end();
+      });
+    }
+
+    res.json({ sent, errors, total: players.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
