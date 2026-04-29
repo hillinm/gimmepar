@@ -900,7 +900,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
         <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
-        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value)">
+        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);">
         <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete Week</button>
       </div>
     </div>
@@ -2913,10 +2913,12 @@ async function buildScoringCards() {
   _buildingScoringCards = true;
   setTimeout(function(){ _buildingScoringCards = false; }, 3000);
   loadConfirmSummary();
-  // Set week input from settings
+  // Set week input from settings or localStorage
   var wkEl = document.getElementById('scoringWeekNum');
-  if (wkEl && leagueSettings && leagueSettings.currentWeek) {
-    wkEl.value = leagueSettings.currentWeek;
+  if (wkEl) {
+    var savedWeek = localStorage.getItem('gimmepar_week');
+    var settingsWeek = leagueSettings && leagueSettings.currentWeek;
+    wkEl.value = settingsWeek || savedWeek || 1;
   }
   const container = document.getElementById('scoringTeams');
   if (!container) return;
@@ -3905,16 +3907,59 @@ async function loadHistory() {
     const rounds = await api('GET', '/api/league/rounds');
     const el = document.getElementById('historyList');
     if (!rounds.length) { el.innerHTML='<div class="empty-state">No rounds recorded yet.</div>'; return; }
-    el.innerHTML = rounds.map(r=>`
-      <div class="history-item" onclick="viewRound(${r.id})">
-        <div class="history-date">${r.played_on}</div>
-        <div class="history-info">
-          <div class="history-title">Round #${r.id}</div>
-          <div class="history-sub">${r.notes||'No notes'}</div>
+    el.innerHTML = rounds.map((r,i)=>`
+      <div class="history-item" style="cursor:pointer;">
+        <div class="history-date">${(r.played_on||'').slice(0,10)}</div>
+        <div class="history-info" style="flex:1;">
+          <div class="history-title">Week ${i+1}${r.notes?' — '+r.notes:''}</div>
+          <div class="history-sub">${r.played_on ? new Date(r.played_on).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : ''}</div>
         </div>
+        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:8px;" onclick="loadRoundIntoScoring(${r.id}, ${i+1});event.stopPropagation();">📋 Load</button>
         <div class="history-arrow">›</div>
       </div>`).join('');
-  } catch {}
+  } catch(e) { console.warn(e); }
+}
+
+async function loadRoundIntoScoring(roundId, weekNum) {
+  try {
+    const round = await api('GET', `/api/league/rounds/${roundId}`);
+    if (!round.scores || !round.scores.length) { toast('No scores found for this round'); return; }
+
+    // Switch to scoring tab
+    showTab('scoring');
+
+    // Set week number
+    var wkEl = document.getElementById('scoringWeekNum');
+    if (wkEl) wkEl.value = weekNum;
+    if (leagueSettings) leagueSettings.currentWeek = weekNum;
+    document.querySelectorAll('.wk-badge-num').forEach(function(el){ el.textContent = weekNum; });
+
+    // Load each team's scores into their card
+    round.scores.forEach(function(s) {
+      var holeScores = [];
+      try { holeScores = JSON.parse(s.hole_scores || '[]'); } catch(e) {}
+
+      // Switch nine if needed
+      var st = scoreTeams.find(function(t){ return t.id === s.team_id; });
+      if (!st) return;
+      if (s.nine && st.nine !== s.nine) switchNine(s.team_id, s.nine);
+
+      // Fill hole inputs
+      holeScores.forEach(function(score, i) {
+        var inp = document.getElementById('shole_' + s.team_id + '_' + i);
+        if (inp && score != null) inp.value = score;
+      });
+
+      // Set handicap
+      var hdcpEl = document.getElementById('shdcp_' + s.team_id);
+      if (hdcpEl && s.handicap_used != null) hdcpEl.value = s.handicap_used;
+
+      // Recalculate display
+      calcTeamScore(s.team_id);
+    });
+
+    toast('✓ Week ' + weekNum + ' scores loaded into scoring tab');
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 async function viewRound(id) {
