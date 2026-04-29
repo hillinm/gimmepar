@@ -2711,9 +2711,10 @@ function loadCourseData(course) {
   course.front9par.forEach((p,i) => { const el = document.getElementById('pf_'+i); if(el) el.value=p; });
   course.back9par.forEach((p,i)  => { const el = document.getElementById('pb_'+i); if(el) el.value=p; });
   updateParTotals();
-
   const inp = document.getElementById('courseInput');
-  if (inp) inp.value = course.name;
+  if (inp && course.name) inp.value = course.name;
+  const loc = document.getElementById('courseLocation');
+  if (loc && course.location) loc.value = course.location;
 }
 
 async function searchCourse() {
@@ -2929,10 +2930,15 @@ async function buildScoringCards() {
 
   // Load sub counts and signed scorecards
   try { subCounts = await api('GET', '/api/league/sub-counts'); } catch(e) { subCounts = {}; }
+  var signedScoreData = {}; // teamId -> signed scorecard data
   try {
     var signedRows = await api('GET', '/api/league/scorecard/signed');
     signedThisWeek = {};
-    signedRows.forEach(function(r) { signedThisWeek[r.team_id] = r.week_number; });
+    var currentWeekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
+    signedRows.forEach(function(r) {
+      signedThisWeek[r.team_id] = r.week_number;
+      if (r.week_number === currentWeekNum) signedScoreData[r.team_id] = r;
+    });
   } catch(e) { signedThisWeek = {}; }
 
   rosterTeams.forEach((t, idx) => {
@@ -2942,7 +2948,7 @@ async function buildScoringCards() {
     container.appendChild(buildScoreCard(t, st, idx));
   });
 
-  // Apply sub count badges
+  // Apply sub count badges and load signed scores
   rosterTeams.forEach(function(t) {
     var count = subCounts[t.id] || 0;
     var btn = document.getElementById('ssub_'+t.id);
@@ -2951,6 +2957,32 @@ async function buildScoringCards() {
       btn.innerHTML = 'SUB <span style="font-size:10px;opacity:.8;">('+count+')</span>';
     }
     var currentWeekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
+
+    // Load signed scores into hole inputs
+    var signed = signedScoreData[t.id];
+    if (signed) {
+      var holeScores = [];
+      try { holeScores = JSON.parse(signed.hole_scores || '[]'); } catch(e) {}
+      var st = scoreTeams.find(function(s){ return s.id === t.id; });
+      // Switch to correct nine first
+      if (signed.nine && st && st.nine !== signed.nine) {
+        switchNine(t.id, signed.nine);
+      }
+      // Fill in hole scores
+      holeScores.forEach(function(score, i) {
+        var inp = document.getElementById('shole_' + t.id + '_' + i);
+        if (inp && score != null) {
+          inp.value = score;
+          inp.dispatchEvent(new Event('input'));
+        }
+      });
+      // Set handicap
+      var hdcpEl = document.getElementById('shdcp_' + t.id);
+      if (hdcpEl && signed.handicap_used != null) hdcpEl.value = signed.handicap_used;
+      // Trigger score calculation display
+      calcTeamScore(t.id);
+    }
+
     // Apply signed badge only for current week
     if (signedThisWeek[t.id] && signedThisWeek[t.id] === currentWeekNum) {
       var nameEl = document.getElementById('sname_' + t.id);
@@ -3235,6 +3267,40 @@ async function clearAllScorecards() {
   // Hide results area if visible
   var ra = document.getElementById('resultsArea');
   if (ra) ra.style.display = 'none';
+}
+
+function calcTeamScore(teamId) {
+  var st = scoreTeams.find(function(s){ return s.id === teamId; });
+  if (!st) return;
+  var count = st.nine === 'all18' ? 18 : 9;
+  var holes = [];
+  for (var i = 0; i < count; i++) {
+    var inp = document.getElementById('shole_' + teamId + '_' + i);
+    var v = inp ? parseInt(inp.value) : NaN;
+    holes.push(isNaN(v) ? null : v);
+  }
+  st.holes = holes;
+  var gross = holes.reduce(function(a,b){ return b!=null?a+b:a; }, 0);
+  var hasAll = holes.every(function(h){ return h!=null; });
+  var hdcpEl = document.getElementById('shdcp_' + teamId);
+  var hdcp = parseInt(hdcpEl ? hdcpEl.value : 0) || 0;
+  var net = hasAll ? gross - hdcp : null;
+  var g1 = document.getElementById('sgross_'+teamId); if (g1) g1.textContent = gross || '—';
+  var g2 = document.getElementById('sgross2_'+teamId); if (g2) g2.textContent = gross || '—';
+  var n1 = document.getElementById('snet_'+teamId); if (n1) n1.textContent = net != null ? ('Net '+net) : '';
+  var n2 = document.getElementById('snet2_'+teamId); if (n2) n2.textContent = net != null ? net : '—';
+  // Color hole inputs
+  var parArr = st.nine === 'back' ? getParBack() : getParFront();
+  for (var j = 0; j < count; j++) {
+    var inp2 = document.getElementById('shole_' + teamId + '_' + j);
+    if (!inp2 || holes[j] == null) continue;
+    var par = parArr[j] || 4;
+    inp2.classList.remove('eagle','birdie','bogey','double');
+    if (holes[j] <= par-2) inp2.classList.add('eagle');
+    else if (holes[j] === par-1) inp2.classList.add('birdie');
+    else if (holes[j] === par+1) inp2.classList.add('bogey');
+    else if (holes[j] >= par+2) inp2.classList.add('double');
+  }
 }
 
 var _noShowState = {};
@@ -3718,19 +3784,40 @@ function computeSkins(teams, nine) {
   });
 }
 
+function getTiebreakerHole(a, b) {
+  var front = _front9si || [1,2,3,4,5,6,7,8,9];
+  var back  = _back9si  || [10,11,12,13,14,15,16,17,18];
+  var allSI = front.concat(back);
+  var siOrder = Array.from({length:18}, function(_,i){ return i; });
+  siOrder.sort(function(i,j){ return allSI[i]-allSI[j]; });
+  for (var k = 0; k < siOrder.length; k++) {
+    var holeIdx = siOrder[k];
+    var aScore = (a.holes && a.holes[holeIdx] != null) ? a.holes[holeIdx] : 99;
+    var bScore = (b.holes && b.holes[holeIdx] != null) ? b.holes[holeIdx] : 99;
+    if (aScore !== bScore) return { hole: holeIdx+1, winnerScore: Math.min(aScore,bScore), loserScore: Math.max(aScore,bScore) };
+  }
+  return null;
+}
+
 function flightHTML(letter, teams, cls) {
   cls = cls || (letter.includes('A') ? 'a' : 'b');
   const icon = letter.includes('A')?'🟢':'⚪';
   const rows = teams.length ? teams.slice(0,8).map((t,i)=>{
     const pc=i===0?'p1':i===1?'p2':i===2?'p3':'px';
-    const tied=i>0&&t.net===teams[0].net;
+    const prevNet = i>0 ? teams[i-1].net : null;
+    const netTied = i>0 && t.net === prevNet;
+    var tbNote = '';
+    if (netTied) {
+      var tb = getTiebreakerHole(teams[i-1], t);
+      if (tb) tbNote = ' <span style="font-size:10px;color:var(--gold2);"> • TB: H'+tb.hole+' ('+tb.winnerScore+' vs '+tb.loserScore+')</span>';
+    }
     const diff=t.gross-(t.parTotal||36);
     const ds=diff===0?'E':diff>0?'+'+diff:''+diff;
     return `<div class="flight-row">
       <div class="place ${pc}">${i+1}</div>
       <div class="fr-info">
-        <div class="fr-name">${esc(t.name)}${tied?' <span style="color:var(--gold2);font-size:10px">(T)</span>':''}</div>
-        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}</div>
+        <div class="fr-name">${esc(t.name)}</div>
+        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}${tbNote}</div>
       </div>
       <div class="fr-score">
         <div class="fr-net">${t.net??'—'}</div>
@@ -3740,7 +3827,7 @@ function flightHTML(letter, teams, cls) {
   }).join('') : '<div class="empty-state">No teams in this flight.</div>';
   return `<div class="res-card"><div class="res-hdr ${cls}">
     <span class="res-icon">${icon}</span>
-    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play</div></div>
+    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play • SI Tiebreaker</div></div>
   </div><div class="res-body">${rows}</div></div>`;
 }
 
@@ -3848,7 +3935,7 @@ function showTab(tab) {
   if (tab==='schedule') initSchedule();
   if (tab==='scoring') loadConfirmSummary();
   if (tab==='standings') loadStandings();
-  if (tab==='course') { loadSI(); }
+  if (tab==='course') { loadSI(); if (league && league.course) loadCourseData(league.course); }
   if (tab==='playoffs') loadPlayoffs();
   if (tab==='players') { loadPlayersList(); loadWelcomeEmailStatus(); }
   if (tab==='roster') loadCalculatedHandicaps();
