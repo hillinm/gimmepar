@@ -3520,23 +3520,10 @@ function calculate() {
 }
 
 function renderResults(data, parFront, parBack) {
-  // Split flights based on current mode
-  if (flightMode === 'par') {
-    // Fixed cutoff: A = +3 and under, B = +4 and over
-    data.forEach(t => {
-      const diff = (t.net ?? 999) - t.parTotal;
-      t.flight = diff <= 3 ? 'A' : 'B';
-    });
-  } else {
-    // High / Low split: lower half = A, upper half = B
-    const sorted = [...data].sort((a,b)=>(a.net??999)-(b.net??999));
-    const mid = Math.ceil(sorted.length / 2);
-    const aSet = new Set(sorted.slice(0, mid).map(t=>t.id));
-    data.forEach(t => { t.flight = aSet.has(t.id) ? 'A' : 'B'; });
-  }
-  // 4-flight split: F9A, F9B, B9A, B9B
+  // 4-flight split: F9A, F9B, B9A, B9B — always split within each nine
   const f9teams = data.filter(t => t.nine === 'front' || t.nine === 'all18');
   const b9teams = data.filter(t => t.nine === 'back'  || t.nine === 'all18');
+
   function splitFlight(teams) {
     var sorted = teams.slice().sort(function(a,b){return (a.net??999)-(b.net??999);});
     var mid = Math.ceil(sorted.length/2);
@@ -3544,7 +3531,7 @@ function renderResults(data, parFront, parBack) {
   }
   splitFlight(f9teams);
   splitFlight(b9teams);
-  // Also set legacy flight for scoreboard
+  // Any team not in f9 or b9 defaults to A
   data.forEach(function(t){ if (!t.flight) t.flight = 'A'; });
   // SI tiebreaker sort — if nets are tied, compare scores on hardest holes first
   function siSort(a, b) {
@@ -3579,8 +3566,10 @@ function renderResults(data, parFront, parBack) {
     if (t.nine==='all18') return {...t, holes: t.holes.slice(9), nine:'back'};
     return t;
   });
-  const skinsFront = skinsEnabled ? computeSkins(frontTeams,'front') : [];
-  const skinsBack  = skinsEnabled ? computeSkins(backTeams,'back')  : [];
+  const skinsFrontA = skinsEnabled ? computeSkins(fA,'front') : [];
+  const skinsFrontB = skinsEnabled ? computeSkins(fB,'front') : [];
+  const skinsBackA  = skinsEnabled ? computeSkins(bA,'back')  : [];
+  const skinsBackB  = skinsEnabled ? computeSkins(bB,'back')  : [];
   const pft = parFront.reduce((a,b)=>a+b,0);
   const pbt = parBack.reduce((a,b)=>a+b,0);
   const cut = 3; // fixed cutoff: A=+3 and under, B=+4 and over
@@ -3605,8 +3594,10 @@ function renderResults(data, parFront, parBack) {
     <div class="results-grid">
       ${flightHTML('F9 A Flight',fA,'a')} ${flightHTML('F9 B Flight',fB,'b')}
       ${flightHTML('B9 A Flight',bA,'a')} ${flightHTML('B9 B Flight',bB,'b')}
-      ${skinsEnabled ? skinsHTML(skinsFront,'Front 9','Holes 1–9') : ''}
-      ${skinsEnabled ? skinsHTML(skinsBack,'Back 9','Holes 10–18') : ''}
+      ${skinsEnabled ? skinsHTML(skinsFrontA,'F9 A Flight Skins','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsFrontB,'F9 B Flight Skins','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBackA, 'B9 A Flight Skins','Holes 10–18') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBackB, 'B9 B Flight Skins','Holes 10–18') : ''}
       ${scoreboardHTML(data)}
     </div>
     <div class="result-actions">
