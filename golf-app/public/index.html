@@ -4656,6 +4656,7 @@ async function loadStandings() {
     var data = await api('GET', '/api/league/standings');
     var adjs = {};
     try { adjs = await api('GET', '/api/league/standings/adjustments'); } catch(e) {}
+    window._standingsAdj = adjs; // store for edit modal
 
     // Apply adjustments
     data.forEach(function(s) {
@@ -4779,20 +4780,25 @@ async function editStandingsRow(btn) {
 
   document.getElementById('adjCancelBtn').onclick = function() { overlay.remove(); };
   document.getElementById('adjSaveBtn').onclick = async function() {
-    var w = parseFloat(document.getElementById('adjW').value) || 0;
-    var l = parseFloat(document.getElementById('adjL').value) || 0;
-    var t2 = parseFloat(document.getElementById('adjT').value) || 0;
+    var w  = parseFloat(document.getElementById('adjW').value)  || 0;
+    var l  = parseFloat(document.getElementById('adjL').value)  || 0;
+    var t2 = parseFloat(document.getElementById('adjT').value)  || 0;
     try {
-      // Store as adjustments (difference from calculated)
+      // Calculate what the round-based record is (without adjustments)
+      var existingAdj = (window._standingsAdj && (window._standingsAdj[tid] || window._standingsAdj[parseInt(tid)]));
+      var calcWins   = wins   - (existingAdj ? parseFloat(existingAdj.wins_adj)   || 0 : 0);
+      var calcLosses = losses - (existingAdj ? parseFloat(existingAdj.losses_adj) || 0 : 0);
+      var calcTies   = ties   - (existingAdj ? parseFloat(existingAdj.ties_adj)   || 0 : 0);
+      // Save the difference between what they typed and the calculated record
       await api('PUT', '/api/league/standings/adjustments/' + tid, {
-        wins_adj: w - wins,
-        losses_adj: l - losses,
-        ties_adj: t2 - ties,
+        wins_adj:   w  - calcWins,
+        losses_adj: l  - calcLosses,
+        ties_adj:   t2 - calcTies,
         note: 'Manual adjustment'
       });
       overlay.remove();
       loadStandings();
-      toast('Record updated');
+      toast('✓ Record updated to ' + w + '-' + l + (t2 ? '-'+t2 : ''));
     } catch(e) {
       document.getElementById('adjErr').textContent = 'Error: ' + e.message;
     }
