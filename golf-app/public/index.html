@@ -3530,13 +3530,16 @@ function colorHole(input, teamId, holeIdx) {
   else if (val>=p+2) input.classList.add('double');
 }
 
+var _autoSaveTimers = {};
 function recalcCard(teamId) {
   const st = scoreTeams.find(s=>s.id===teamId);
   const { par, count } = getHoleConfig(st?.nine||'front');
   const parTotal = par.reduce((a,b)=>a+b,0);
   let gross=0, filled=0;
+  const holes = [];
   for (let i=0;i<count;i++) {
     const v = parseInt(document.getElementById(`shole_${teamId}_${i}`)?.value);
+    holes.push(isNaN(v) ? null : v);
     if (!isNaN(v)) { gross+=v; filled++; }
   }
   const hdcp = parseInt(document.getElementById(`shdcp_${teamId}`)?.value)||0;
@@ -3556,6 +3559,21 @@ function recalcCard(teamId) {
   if (gEl) gEl.textContent = gross;
   if (tEl) { tEl.textContent = diffStr; tEl.className='total-val '+(diff>0?'over':diff<0?'under':'even'); }
   if (nEl) nEl.textContent = filled===count ? net : '—';
+
+  // Auto-save after 1.5 seconds of inactivity
+  if (_autoSaveTimers[teamId]) clearTimeout(_autoSaveTimers[teamId]);
+  _autoSaveTimers[teamId] = setTimeout(function() {
+    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+    var nine = st ? st.nine : 'front';
+    api('PUT', '/api/league/scores/draft/' + teamId, {
+      hole_scores: holes,
+      nine: nine,
+      handicap_used: hdcp,
+      gross: gross,
+      net: filled === count ? net : 0,
+      week_number: weekNum
+    }).catch(function(){});
+  }, 1500);
 }
 
 // ══ CALCULATE ══

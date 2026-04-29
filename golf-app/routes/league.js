@@ -1204,3 +1204,22 @@ router.post('/teams/hard-dedup', requireAuth, async (req, res) => {
     res.json({ deleted: result.rowCount, remaining: parseInt(remaining.cnt) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── DRAFT SCORES (auto-save) ──
+router.put('/scores/draft/:teamId', requireAuth, async (req, res) => {
+  try {
+    const { hole_scores, nine, handicap_used, week_number } = req.body || {};
+    const leagueId = req.session.leagueId;
+    await query(
+      `INSERT INTO signed_scorecards (league_id, team_id, week_number, hole_scores, gross, net, handicap_used, nine, signed_at, signed_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),'draft')
+       ON CONFLICT (league_id, team_id, week_number)
+       DO UPDATE SET hole_scores=$4, gross=$5, net=$6, handicap_used=$7, nine=$8, signed_at=NOW(), signed_by=CASE WHEN signed_scorecards.signed_by='draft' THEN 'draft' ELSE signed_scorecards.signed_by END`,
+      [leagueId, req.params.teamId, week_number||1,
+       JSON.stringify(hole_scores||[]),
+       req.body.gross||0, req.body.net||0,
+       handicap_used||0, nine||'front']
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
