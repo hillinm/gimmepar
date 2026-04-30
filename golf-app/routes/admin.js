@@ -390,3 +390,21 @@ router.get('/league/:leagueId', requireRole('superadmin'), async (req, res) => {
     res.json({ ...league, course: { name: league.course_name||'', location: league.course_location||'', front9par, back9par }, settings });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── REGENERATE ALL USERNAMES FOR A LEAGUE ──
+router.post('/players/regenerate-usernames', requireRole('superadmin','leagueadmin'), async (req, res) => {
+  try {
+    const leagueId = req.session.role === 'superadmin' ? (req.body.leagueId || req.session.leagueId) : req.session.leagueId;
+    const players = await getAll('SELECT id, first_name, last_name FROM users WHERE league_id=$1', [leagueId]);
+    // Clear all usernames first so uniqueUsername works cleanly
+    await query('UPDATE users SET username=NULL WHERE league_id=$1', [leagueId]);
+    let updated = 0;
+    for (const p of players) {
+      const base = makeUsername(p.first_name||'x', p.last_name||'x');
+      const uname = await uniqueUsername(base);
+      await query('UPDATE users SET username=$1 WHERE id=$2', [uname, p.id]);
+      updated++;
+    }
+    res.json({ success: true, updated });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});

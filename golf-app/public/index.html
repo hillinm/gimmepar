@@ -2456,6 +2456,15 @@ async function sendLeagueEmail() {
 }
 
 var cachedPlayers = [];
+async function regenerateUsernames() {
+  if (!confirm('Regenerate all usernames? This will reset any custom usernames.')) return;
+  try {
+    var res = await api('POST', '/api/admin/players/regenerate-usernames', {});
+    toast('✓ Regenerated ' + res.updated + ' usernames');
+    loadPlayersList();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
 async function loadPlayersList() {
   try {
     var players = await api('GET', '/api/admin/players');
@@ -4236,12 +4245,17 @@ function renderSavedSchedule(weeks) {
         rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
       } else {
         var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
-        rows += '<tr>';
+        var mIdx = w.matchups.indexOf(m);
+        rows += '<tr id="srow_'+weekNum+'_'+mIdx+'">';
         rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
         rows += '<td class="nine-col">' + nineDisplay + '</td>';
         rows += '<td class="team-a-name">' + nameA + '</td>';
         rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
         rows += '<td class="team-b-name">' + nameB + '</td>';
+        rows += '<td style="white-space:nowrap;">'
+          + '<button onclick="markTeamBye('+weekNum+','+mIdx+',\'A\');event.stopPropagation();" style="background:rgba(192,57,43,.15);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:10px;margin-right:3px;" title="Mark '+nameA+' as BYE">A BYE</button>'
+          + '<button onclick="markTeamBye('+weekNum+','+mIdx+',\'B\');event.stopPropagation();" style="background:rgba(192,57,43,.15);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:10px;" title="Mark '+nameB+' as BYE">B BYE</button>'
+          + '</td>';
         rows += '</tr>';
       }
     });
@@ -4255,10 +4269,44 @@ function renderSavedSchedule(weeks) {
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Nine</th>' +
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team A</th>' +
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th>' +
-      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team B</th></tr></thead>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team B</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div></div>';
     output.appendChild(section);
   });
+}
+
+async function markTeamBye(weekNum, matchupIdx, side) {
+  var weekData = savedSchedule.find(function(w){ return w.week === weekNum; });
+  if (!weekData) return;
+  var m = weekData.matchups[matchupIdx];
+  var outTeam = side === 'A' ? (m.teamA ? (m.teamA.player1+(m.teamA.player2?' / '+m.teamA.player2:'')) : '') : (m.teamB ? (m.teamB.player1+(m.teamB.player2?' / '+m.teamB.player2:'')) : '');
+  var stayTeam = side === 'A' ? (m.teamB ? (m.teamB.player1+(m.teamB.player2?' / '+m.teamB.player2:'')) : '') : (m.teamA ? (m.teamA.player1+(m.teamA.player2?' / '+m.teamA.player2:'')) : '');
+  if (!confirm(outTeam + ' will be BYE. ' + stayTeam + ' stays without opponent. Continue?')) return;
+
+  // Set the out team to null (BYE)
+  if (side === 'A') m.teamA = null;
+  else m.teamB = null;
+
+  // Save updated week to DB
+  try {
+    var toSave = weekData.matchups.map(function(mm) {
+      return {
+        hole: mm.hole, nine: mm.nine,
+        teamAId: mm.teamA ? mm.teamA.id : null,
+        teamBId: mm.teamB ? mm.teamB.id : null
+      };
+    });
+    await api('POST', '/api/league/schedule/save', { weeks: [{ week: weekNum, matchups: toSave }] });
+    renderSavedSchedule(savedSchedule);
+    toast('✓ ' + outTeam + ' marked as BYE for week ' + weekNum);
+  } catch(e) {
+    toast('Error: ' + e.message);
+    // Revert on failure
+    if (side === 'A') m.teamA = rosterTeams.find(function(t){ return t.id === (m.teamA||{}).id; }) || m.teamA;
+    else m.teamB = rosterTeams.find(function(t){ return t.id === (m.teamB||{}).id; }) || m.teamB;
+    renderSavedSchedule(savedSchedule);
+  }
 }
 
 async function clearSavedSchedule() {
