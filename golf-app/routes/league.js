@@ -718,9 +718,10 @@ router.post('/email', requireAuth, async (req, res) => {
       const chunk = toAddrs.slice(i, i + chunkSize);
       await new Promise((resolve) => {
         const emailBody = JSON.stringify({
-          from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
+          from: process.env.RESEND_FROM || 'GimmePar <league@gimmepar.com>',
           to: chunk,
-          reply_to: league.admin_email || undefined,
+          from_name: 'GimmePar',
+          reply_to: [league.admin_email || 'mark.hillin@gmail.com'],
           subject: subject,
           html
         });
@@ -1096,9 +1097,9 @@ router.post('/email/welcome', requireAuth, async (req, res) => {
       ].join('');
 
       const emailBody = JSON.stringify({
-        from: process.env.RESEND_FROM || 'GimmePar <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM || 'GimmePar <league@gimmepar.com>',
         to: [p.email],
-        reply_to: league.admin_email || 'mark.hillin@gmail.com',
+        reply_to: [league.admin_email || 'mark.hillin@gmail.com'],
         subject: 'Mitchell Golf League — GimmePar App is Live! ⛳',
         html
       });
