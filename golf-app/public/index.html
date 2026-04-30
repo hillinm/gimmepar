@@ -2456,6 +2456,13 @@ async function sendLeagueEmail() {
 }
 
 var cachedPlayers = [];
+function filterPlayersList(q) {
+  q = (q||'').toLowerCase();
+  document.querySelectorAll('#playersList tbody tr').forEach(function(row) {
+    row.style.display = (!q || row.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
+}
+
 async function regenerateUsernames() {
   if (!confirm('Regenerate all usernames? This will reset any custom usernames.')) return;
   try {
@@ -2472,7 +2479,8 @@ async function loadPlayersList() {
     var teams = rosterTeams;
     var el = document.getElementById('playersList');
     if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
-    var html = '<div class="table-scroll-wrap"><table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
+    var html = '<div style="margin-bottom:10px;"><input class="score-search" id="playerSearchInp" placeholder="🔍 Search player..." oninput="filterPlayersList(this.value)" style="width:100%;box-sizing:border-box;"></div>'
+      + '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
     players.forEach(function(p) {
       var teamOpts = '<option value="">— unassigned —</option>';
       teams.forEach(function(t) {
@@ -2492,7 +2500,7 @@ async function loadPlayersList() {
       html += '</td>';
       html += '</tr>';
     });
-    html += '</tbody></table></div>';
+    html += '</tbody></table>';
     el.innerHTML = html;
   } catch(e) { document.getElementById('playersList').innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
 }
