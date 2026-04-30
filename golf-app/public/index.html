@@ -1062,26 +1062,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
     </div>
 
-    <!-- Welcome Email -->
-    <div class="section-card" style="margin-top:20px;">
-      <div class="section-header">
-        <span style="font-size:24px;">🎉</span>
-        <div>
-          <div class="section-title">Send Welcome Email</div>
-          <div class="section-sub">Send each player their username and password</div>
-        </div>
-      </div>
-      <div class="section-body">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Sends a personalized welcome email to every player with their username, temp password, and app instructions.</div>
-        <div id="welcomeEmailStatus" style="font-size:13px;color:var(--muted);margin-bottom:10px;"></div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button class="btn-save-roster" style="background:var(--gold);color:var(--bg);border-color:var(--gold);" onclick="sendWelcomeEmails(false)">📧 Send All Welcome Emails</button>
-          <button class="btn-save-roster" id="btnRetryWelcome" style="display:none;" onclick="sendWelcomeEmails(true)">🔄 Retry Failed</button>
-          <span id="welcomeEmailResult" style="font-size:13px;"></span>
-        </div>
-      </div>
-    </div>
-
     <!-- Calculated Handicaps -->
     <!-- Email League -->
     <div class="section-card" style="margin-top:20px;">
