@@ -63,13 +63,23 @@ function makeUsername(first, last) {
   return (first.charAt(0) + last).toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-async function uniqueUsername(base) {
-  // If username taken, append a number
+function makeUsernameFromFull(first, last) {
+  // Use first 2 chars of first name for disambiguation
+  return (first.slice(0,2) + last).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+async function uniqueUsername(base, fullFirst, last) {
   let username = base;
   let n = 2;
+  // First try with more of the first name before appending numbers
   while (true) {
     const existing = await getOne('SELECT id FROM users WHERE username=$1', [username]);
     if (!existing) return username;
+    // Try using first 2 chars of first name
+    if (n === 2 && fullFirst && last) {
+      const alt = makeUsernameFromFull(fullFirst, last);
+      if (alt !== base) { username = alt; continue; }
+    }
     username = base + n++;
   }
 }
@@ -124,7 +134,7 @@ router.get('/players', requireRole('superadmin','leagueadmin'), async (req, res)
     // Generate and save usernames for any users missing them
     for (const u of users) {
       if (!u.username && u.first_name) {
-        const uname = await uniqueUsername(makeUsername(u.first_name, u.last_name || ''));
+        const uname = await uniqueUsername(makeUsername(u.first_name, u.last_name || ''), u.first_name, u.last_name || '');
         await query('UPDATE users SET username=$1 WHERE id=$2', [uname, u.id]);
         u.username = uname;
       }
@@ -205,18 +215,23 @@ router.get('/league/:id', requireRole('superadmin'), async (req, res) => {
 // ── Update player info (name + email) ──
 router.put('/players/:id/info', requireRole('superadmin','leagueadmin'), async (req, res) => {
   try {
-    const { first_name, last_name, email } = req.body || {};
+    const { first_name, last_name, email, username } = req.body || {};
     if (!first_name || !last_name || !email) return res.status(400).json({ error: 'Name and email required' });
-    // Verify player is in league
     if (req.session.role === 'leagueadmin') {
       const user = await getOne('SELECT id FROM users WHERE id=$1 AND league_id=$2', [req.params.id, req.session.leagueId]);
       if (!user) return res.status(403).json({ error: 'Not your player' });
     }
-    // Check email not taken by someone else
     const existing = await getOne('SELECT id FROM users WHERE email=$1 AND id!=$2', [email.toLowerCase().trim(), req.params.id]);
     if (existing) return res.status(409).json({ error: 'Email already in use by another account' });
-    await query('UPDATE users SET first_name=$1, last_name=$2, email=$3 WHERE id=$4',
-      [first_name.trim(), last_name.trim(), email.toLowerCase().trim(), req.params.id]);
+    if (username) {
+      const unameTaken = await getOne('SELECT id FROM users WHERE username=$1 AND id!=$2', [username.toLowerCase().trim(), req.params.id]);
+      if (unameTaken) return res.status(409).json({ error: 'Username already taken' });
+      await query('UPDATE users SET first_name=$1, last_name=$2, email=$3, username=$4 WHERE id=$5',
+        [first_name.trim(), last_name.trim(), email.toLowerCase().trim(), username.toLowerCase().trim(), req.params.id]);
+    } else {
+      await query('UPDATE users SET first_name=$1, last_name=$2, email=$3 WHERE id=$4',
+        [first_name.trim(), last_name.trim(), email.toLowerCase().trim(), req.params.id]);
+    }
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -401,7 +416,7 @@ router.post('/players/regenerate-usernames', requireRole('superadmin','leagueadm
     let updated = 0;
     for (const p of players) {
       const base = makeUsername(p.first_name||'x', p.last_name||'x');
-      const uname = await uniqueUsername(base);
+      const uname = await uniqueUsername(base, p.first_name||'x', p.last_name||'x');
       await query('UPDATE users SET username=$1 WHERE id=$2', [uname, p.id]);
       updated++;
     }

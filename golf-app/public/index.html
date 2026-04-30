@@ -2494,7 +2494,7 @@ async function loadPlayersList() {
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
       html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
-      html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" onclick="editPlayer(this)">Edit</button>';
+      html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" data-pusername="'+esc(p.username||'')+'" onclick="editPlayer(this)">Edit</button>';
       html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
       html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">✕</button>';
       html += '</td>';
@@ -2530,10 +2530,11 @@ async function sendResetEmail(userId, userEmail) {
 }
 
 function editPlayer(btn) {
-  var pid    = btn.dataset.pid;
-  var pfirst = btn.dataset.pfirst;
-  var plast  = btn.dataset.plast;
-  var pemail = btn.dataset.pemail;
+  var pid      = btn.dataset.pid;
+  var pfirst   = btn.dataset.pfirst;
+  var plast    = btn.dataset.plast;
+  var pemail   = btn.dataset.pemail;
+  var pusername = btn.dataset.pusername || '';
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML =
@@ -2543,6 +2544,7 @@ function editPlayer(btn) {
     '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">FIRST NAME</div><input id="epFirst" class="team-input" value="'+pfirst+'" style="width:100%;box-sizing:border-box;"></div>' +
     '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LAST NAME</div><input id="epLast" class="team-input" value="'+plast+'" style="width:100%;box-sizing:border-box;"></div>' +
     '</div>' +
+    '<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">USERNAME</div><input id="epUsername" class="team-input" value="'+pusername+'" style="width:100%;box-sizing:border-box;" placeholder="e.g. bweishaupt2"></div>' +
     '<div style="margin-bottom:16px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">EMAIL</div><input id="epEmail" class="team-input" type="email" value="'+pemail+'" style="width:100%;box-sizing:border-box;"></div>' +
     '<div style="display:flex;gap:10px;">' +
     '<button class="btn-save-roster" style="flex:1;" id="epSaveBtn">Save</button>' +
@@ -2553,13 +2555,14 @@ function editPlayer(btn) {
   document.body.appendChild(overlay);
   document.getElementById('epCancelBtn').onclick = function() { overlay.remove(); };
   document.getElementById('epSaveBtn').onclick = async function() {
-    var first = document.getElementById('epFirst').value.trim();
-    var last  = document.getElementById('epLast').value.trim();
-    var email = document.getElementById('epEmail').value.trim().toLowerCase();
+    var first    = document.getElementById('epFirst').value.trim();
+    var last     = document.getElementById('epLast').value.trim();
+    var email    = document.getElementById('epEmail').value.trim().toLowerCase();
+    var username = document.getElementById('epUsername').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
     if (!first || !last) { document.getElementById('epErr').textContent = 'Name required.'; return; }
     if (!email || !email.includes('@')) { document.getElementById('epErr').textContent = 'Valid email required.'; return; }
     try {
-      await api('PUT', '/api/admin/players/'+pid+'/info', {first_name: first, last_name: last, email: email});
+      await api('PUT', '/api/admin/players/'+pid+'/info', {first_name: first, last_name: last, email: email, username: username || undefined});
       overlay.remove();
       toast('Player updated');
       loadPlayersList();
