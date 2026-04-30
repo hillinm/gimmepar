@@ -900,7 +900,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
         <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
-        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);">
+        <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);" oninput="localStorage.setItem('gimmepar_week',this.value);">
         <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete Week</button>
       </div>
     </div>
@@ -2906,6 +2906,15 @@ let currentFilter = 'all';
 
 let subCounts = {}; // {teamId: count}
 let signedThisWeek = {}; // {teamId: weekNumber}
+
+// Restore persisted week number immediately
+(function() {
+  var saved = localStorage.getItem('gimmepar_week');
+  if (saved) {
+    var el = document.getElementById('scoringWeekNum');
+    if (el) el.value = saved;
+  }
+})();
 
 var _buildingScoringCards = false;
 async function buildScoringCards() {
