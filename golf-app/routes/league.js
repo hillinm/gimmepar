@@ -668,15 +668,25 @@ router.post('/email', requireAuth, async (req, res) => {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'Email not configured — add RESEND_API_KEY to Render environment variables' });
 
-    const { subject, body } = req.body || {};
+    const { subject, body, player_id } = req.body || {};
     if (!subject || !body) return res.status(400).json({ error: 'Subject and body required' });
 
-    // Get league name and all players with emails
+    // Get league name and players
     const league = await getOne('SELECT name, admin_email FROM leagues WHERE id=$1', [req.session.leagueId]);
-    const players = await getAll(
-      "SELECT email, first_name, last_name FROM users WHERE league_id=$1 AND email IS NOT NULL AND email != ''",
-      [req.session.leagueId]
-    );
+    let players;
+    if (player_id) {
+      // Individual email
+      players = await getAll(
+        "SELECT email, first_name, last_name FROM users WHERE id=$1 AND league_id=$2 AND email IS NOT NULL AND email != ''",
+        [player_id, req.session.leagueId]
+      );
+    } else {
+      // All players
+      players = await getAll(
+        "SELECT email, first_name, last_name FROM users WHERE league_id=$1 AND email IS NOT NULL AND email != '' AND role='player'",
+        [req.session.leagueId]
+      );
+    }
 
     if (!players.length) return res.status(400).json({ error: 'No players with email addresses found' });
 

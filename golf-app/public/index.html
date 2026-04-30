@@ -1083,6 +1083,50 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     </div>
 
     <!-- Calculated Handicaps -->
+    <!-- Email League -->
+    <div class="section-card" style="margin-top:20px;">
+      <div class="section-header">
+        <span style="font-size:24px;">📧</span>
+        <div>
+          <div class="section-title">Email League</div>
+          <div class="section-sub">Send a message to all players or an individual player</div>
+        </div>
+      </div>
+      <div class="section-body">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:6px;">SEND TO</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="emailTarget" id="emailAll" value="all" checked onchange="toggleEmailTarget()">
+              <span style="font-size:13px;">All Players</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="emailTarget" id="emailOne" value="one" onchange="toggleEmailTarget()">
+              <span style="font-size:13px;">Individual Player</span>
+            </label>
+          </div>
+          <div id="emailPlayerSelectWrap" style="display:none;margin-top:10px;">
+            <select class="week-inp" id="emailPlayerSelect" style="width:100%;padding:8px 10px;font-family:inherit;">
+              <option value="">Select player...</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">SUBJECT</div>
+          <input class="search-input" id="leagueEmailSubject" placeholder="Email subject..." style="width:100%;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">MESSAGE</div>
+          <textarea id="leagueEmailBody" placeholder="Write your message here..." style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--cream);padding:10px;font-family:inherit;font-size:13px;min-height:120px;resize:vertical;outline:none;"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="btn-save-roster" onclick="sendLeagueEmail()">📤 Send Email</button>
+          <span id="leagueEmailResult" style="font-size:13px;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calculated Handicaps -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
         <span style="font-size:24px;">📊</span>
@@ -2390,9 +2434,52 @@ async function sendWelcomeEmails(retryOnly) {
   }
 }
 
+function toggleEmailTarget() {
+  var isOne = document.getElementById('emailOne').checked;
+  var wrap = document.getElementById('emailPlayerSelectWrap');
+  if (wrap) wrap.style.display = isOne ? '' : 'none';
+  // Populate player dropdown
+  if (isOne) {
+    var sel = document.getElementById('emailPlayerSelect');
+    if (sel && sel.options.length <= 1) {
+      cachedPlayers.forEach(function(p) {
+        if (!p.email) return;
+        var opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = (p.first_name||'') + ' ' + (p.last_name||'') + ' <' + p.email + '>';
+        sel.appendChild(opt);
+      });
+    }
+  }
+}
+
+async function sendLeagueEmail() {
+  var subject = (document.getElementById('leagueEmailSubject').value || '').trim();
+  var body    = (document.getElementById('leagueEmailBody').value || '').trim();
+  var result  = document.getElementById('leagueEmailResult');
+  var isOne   = document.getElementById('emailOne').checked;
+  var playerId = isOne ? document.getElementById('emailPlayerSelect').value : null;
+
+  if (!subject) { result.innerHTML = '<span style="color:#ff9999">Enter a subject.</span>'; return; }
+  if (!body)    { result.innerHTML = '<span style="color:#ff9999">Enter a message.</span>'; return; }
+  if (isOne && !playerId) { result.innerHTML = '<span style="color:#ff9999">Select a player.</span>'; return; }
+
+  result.innerHTML = '<span style="color:var(--muted)">Sending...</span>';
+  try {
+    var res = await api('POST', '/api/league/email', { subject, body, player_id: playerId || null });
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' recipient' + (res.sent !== 1 ? 's' : '') + '.</span>';
+    document.getElementById('leagueEmailSubject').value = '';
+    document.getElementById('leagueEmailBody').value = '';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+var cachedPlayers = [];
 async function loadPlayersList() {
   try {
     var players = await api('GET', '/api/admin/players');
+    cachedPlayers = players; // cache for email dropdown
     var teams = rosterTeams;
     var el = document.getElementById('playersList');
     if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
