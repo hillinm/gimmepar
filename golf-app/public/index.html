@@ -898,6 +898,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
+      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearCurrentWeekScores()">🗑 Clear Scores</button>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
         <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
         <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);" oninput="localStorage.setItem('gimmepar_week',this.value);">
@@ -3473,6 +3474,40 @@ async function clearAndRegenerateWeek() {
     await buildScoringCards();
     toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
   } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function clearCurrentWeekScores() {
+  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+  if (!confirm('Clear all entered scores for week ' + weekNum + '? Saved round history is NOT affected.')) return;
+
+  // Clear all hole inputs on screen
+  rosterTeams.forEach(function(t) {
+    var st = scoreTeams.find(function(s){ return s.id === t.id; });
+    var count = st ? (st.nine === 'all18' ? 18 : 9) : 9;
+    for (var i = 0; i < count; i++) {
+      var inp = document.getElementById('shole_' + t.id + '_' + i);
+      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
+    }
+    var gEl = document.getElementById('sgross_'+t.id);  if (gEl) gEl.textContent = '—';
+    var nEl = document.getElementById('snet_'+t.id);    if (nEl) nEl.textContent = '';
+    var g2  = document.getElementById('sgross2_'+t.id); if (g2)  g2.textContent = '—';
+    var tp  = document.getElementById('stopar_'+t.id);  if (tp)  tp.textContent = '—';
+    var n2  = document.getElementById('snet2_'+t.id);   if (n2)  n2.textContent = '—';
+    // Remove signed badge
+    var badge = document.querySelector('#sname_'+t.id+' .signed-badge');
+    if (badge) badge.remove();
+  });
+
+  // Delete draft signed scorecards for this week from DB
+  try {
+    await api('DELETE', '/api/league/scorecard/signed/drafts/' + weekNum);
+  } catch(e) {}
+
+  // Hide results
+  var ra = document.getElementById('resultsArea');
+  if (ra) ra.style.display = 'none';
+
+  toast('✓ Week ' + weekNum + ' scores cleared');
 }
 
 async function hardDeduplicateTeams() {

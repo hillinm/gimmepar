@@ -1234,3 +1234,14 @@ router.put('/scores/draft/:teamId', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── CLEAR DRAFT SCORES FOR A WEEK (keeps signed scorecards) ──
+router.delete('/scorecard/signed/drafts/:weekNum', requireAuth, async (req, res) => {
+  try {
+    await query(
+      "DELETE FROM signed_scorecards WHERE league_id=$1 AND week_number=$2 AND signed_by='draft'",
+      [req.session.leagueId, req.params.weekNum]
+    );
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
