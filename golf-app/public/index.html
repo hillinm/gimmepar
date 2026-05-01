@@ -3498,6 +3498,11 @@ async function clearCurrentWeekScores() {
     if (badge) badge.remove();
   });
 
+  // Update WK badges to current week
+  document.querySelectorAll('.wk-badge-num').forEach(function(el) {
+    el.textContent = weekNum;
+  });
+
   // Delete draft signed scorecards for this week from DB
   try {
     await api('DELETE', '/api/league/scorecard/signed/drafts/' + weekNum);
@@ -3522,7 +3527,7 @@ async function hardDeduplicateTeams() {
 
 function updateScoringWeek(val) {
   var weekNum = parseInt(val) || 1;
-  // Update all WK badges
+  if (leagueSettings) leagueSettings.currentWeek = weekNum;
   document.querySelectorAll('.wk-badge-num').forEach(function(el) {
     el.textContent = weekNum;
   });
