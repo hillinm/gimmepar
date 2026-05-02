@@ -1840,6 +1840,14 @@ async function loadPlayerView(data) {
     var oppCard = buildReadOnlyCard(opponent, oppSt);
     oppCard.id = 'oppCard_' + opponent.id;
     container.appendChild(oppCard);
+    // Clear all opponent holes first — polling will fill in only if scores exist this week
+    var oppCount = matchupNine === 'all18' ? 18 : 9;
+    for (var oi = 0; oi < oppCount; oi++) {
+      var oc = document.getElementById('opphole_' + opponent.id + '_' + oi);
+      if (oc) { oc.textContent = '—'; oc.style.color = 'var(--muted)'; }
+    }
+    var oppTot = document.getElementById('oppTotal_' + opponent.id);
+    if (oppTot) oppTot.textContent = 'Opponent scores will appear here when entered.';
     startOpponentPolling(opponent.id);
   } else {
     var noOpp = document.createElement('div');
@@ -2061,6 +2069,16 @@ function startOpponentPolling(oppTeamId) {
 async function fetchOpponentScore(oppTeamId) {
   try {
     var data = await api('GET', '/api/league/scores/latest/' + oppTeamId);
+    // Always clear cells first
+    for (var i = 0; i < 18; i++) {
+      var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
+      if (cell) { cell.textContent = '—'; cell.style.color = 'var(--muted)'; }
+    }
+    var totalEl = document.getElementById('oppTotal_' + oppTeamId);
+    if (totalEl) { totalEl.innerHTML = 'Opponent scores will appear here when entered.'; totalEl.style.color = 'var(--muted)'; }
+    var tag = document.getElementById('oppLiveTag_' + oppTeamId);
+    if (tag) { tag.textContent = ''; }
+
     if (!data.found) return;
     var scores = data.hole_scores || [];
     scores.forEach(function(score, i) {
@@ -2071,13 +2089,11 @@ async function fetchOpponentScore(oppTeamId) {
         cell.style.color = 'var(--cream)';
       }
     });
-    var totalEl = document.getElementById('oppTotal_' + oppTeamId);
     if (totalEl && data.gross) {
       totalEl.innerHTML = 'Gross: <strong>' + data.gross + '</strong>' +
         (data.net !== null ? ' &nbsp;|&nbsp; Net: <strong>' + data.net + '</strong>' : '');
       totalEl.style.color = 'var(--cream)';
     }
-    var tag = document.getElementById('oppLiveTag_' + oppTeamId);
     if (tag) { tag.textContent = '● live'; tag.style.color = 'var(--green2)'; }
   } catch(e) {}
 }
