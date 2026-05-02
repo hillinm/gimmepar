@@ -1315,3 +1315,14 @@ router.delete('/rounds/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── DEBUG STANDINGS ──
+router.get('/standings/debug', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    const rounds = await getAll('SELECT id, played_on FROM rounds WHERE league_id=$1 ORDER BY id ASC', [leagueId]);
+    const schedWeeks = await getAll('SELECT week_number FROM schedule_weeks WHERE league_id=$1 ORDER BY week_number', [leagueId]);
+    const scores = await getAll('SELECT round_id, team_id, net FROM round_scores WHERE round_id IN (SELECT id FROM rounds WHERE league_id=$1) LIMIT 10', [leagueId]);
+    res.json({ rounds, schedWeeks, sampleScores: scores });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
