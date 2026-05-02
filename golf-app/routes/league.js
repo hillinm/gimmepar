@@ -965,12 +965,14 @@ router.put('/course/si', requireAuth, async (req, res) => {
 // ── WEEKLY CONFIRMATION ──
 router.post('/confirm-playing', requireAuth, async (req, res) => {
   try {
-    const { week_number, playing } = req.body;
+    const { week_number, playing, override_user_id } = req.body;
+    // Allow admin to confirm on behalf of a player (view as player mode)
+    const userId = (override_user_id && req.session.role === 'leagueadmin') ? override_user_id : req.session.userId;
     await query(
       `INSERT INTO weekly_confirmations (league_id, user_id, week_number, playing)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT (league_id, user_id, week_number) DO UPDATE SET playing=$4, confirmed_at=NOW()`,
-      [req.session.leagueId, req.session.userId, week_number, playing !== false]
+      [req.session.leagueId, userId, week_number, playing !== false]
     );
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -1243,5 +1245,16 @@ router.delete('/scorecard/signed/drafts/:weekNum', requireAuth, async (req, res)
       [req.session.leagueId, req.params.weekNum]
     );
     res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET PLAYERS FOR A TEAM ──
+router.get('/teams/:teamId/players', requireAuth, async (req, res) => {
+  try {
+    const players = await getAll(
+      'SELECT id, first_name, last_name, username FROM users WHERE team_id=$1 AND league_id=$2',
+      [req.params.teamId, req.session.leagueId]
+    );
+    res.json(players);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

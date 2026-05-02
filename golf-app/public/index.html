@@ -1633,10 +1633,19 @@ async function register() {
   }
 }
 
+var _viewAsPlayerUserId = null; // user ID of impersonated player
+
 async function viewAsPlayer(team) {
+  // Look up the player's user ID from the team
+  _viewAsPlayerUserId = null;
+  try {
+    var teamPlayers = await api('GET', '/api/league/teams/' + team.id + '/players');
+    if (teamPlayers && teamPlayers.length) _viewAsPlayerUserId = teamPlayers[0].id;
+  } catch(e) {}
+
   var playerData = {
     role: 'player',
-    userId: currentUser && currentUser.userId,
+    userId: _viewAsPlayerUserId || (currentUser && currentUser.userId),
     leagueId: currentUser && currentUser.leagueId,
     leagueName: currentUser && currentUser.leagueName,
     teamId: team.id,
@@ -1924,7 +1933,9 @@ function getConfirmDeadline() {
 
 async function confirmPlaying(weekNum, playing) {
   try {
-    await api('POST', '/api/league/confirm-playing', { week_number: weekNum, playing: playing });
+    var body = { week_number: weekNum, playing: playing };
+    if (_viewAsPlayerUserId) body.override_user_id = _viewAsPlayerUserId;
+    await api('POST', '/api/league/confirm-playing', body);
     var area = document.getElementById('weeklyConfirmArea');
     if (area) renderConfirmButton(area, weekNum, playing);
     toast(playing ? '✓ Confirmed for week ' + weekNum : '✓ Opted out of week ' + weekNum);
