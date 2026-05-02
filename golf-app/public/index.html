@@ -1851,12 +1851,14 @@ async function loadPlayerView(data) {
   signArea.id = 'signScorecardArea';
   signArea.style.cssText = 'margin-top:24px;';
 
-  // Check if already signed this week
+  // Check if already signed this week (exclude draft saves)
   var alreadySigned = false;
-  var activeWeek = curr && curr.currentWeek ? curr.currentWeek : 1;
+  var activeWeek = activeWeekForConfirm || (curr && curr.currentWeek) || 1;
   try {
     var signedList = await api('GET', '/api/league/scorecard/signed');
-    var mySig = signedList.find(function(s) { return s.team_id === team.id && s.week_number === activeWeek; });
+    var mySig = signedList.find(function(s) {
+      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft';
+    });
     if (mySig) alreadySigned = true;
   } catch(e) {}
 

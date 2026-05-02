@@ -779,11 +779,11 @@ router.get('/scores/latest/:teamId', requireAuth, async (req, res) => {
     const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
     const currentWeek = settings.currentWeek || null;
 
-    // First try signed scorecard for current week
+    // First try signed scorecard for current week (exclude drafts for opponent view)
     if (currentWeek) {
       const signed = await getOne(
         `SELECT hole_scores, gross, net, handicap_used, nine FROM signed_scorecards
-         WHERE league_id=$1 AND team_id=$2 AND week_number=$3`,
+         WHERE league_id=$1 AND team_id=$2 AND week_number=$3 AND signed_by != 'draft'`,
         [req.session.leagueId, req.params.teamId, currentWeek]
       );
       if (signed) return res.json({
