@@ -779,40 +779,39 @@ router.get('/scores/latest/:teamId', requireAuth, async (req, res) => {
     const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
     const currentWeek = settings.currentWeek || null;
 
-    // First try signed scorecard for current week (exclude drafts for opponent view)
-    if (currentWeek) {
-      const signed = await getOne(
-        `SELECT hole_scores, gross, net, handicap_used, nine FROM signed_scorecards
-         WHERE league_id=$1 AND team_id=$2 AND week_number=$3 AND signed_by != 'draft'`,
-        [req.session.leagueId, req.params.teamId, currentWeek]
-      );
-      if (signed) return res.json({
-        found: true,
-        hole_scores: JSON.parse(signed.hole_scores || '[]'),
-        gross: signed.gross, net: signed.net,
-        handicap_used: signed.handicap_used, nine: signed.nine
-      });
-    }
+    // If no current week set, return nothing — don't show old scores
+    if (!currentWeek) return res.json({ found: false });
 
-    // Then try round_scores for current week only
-    if (currentWeek) {
-      const rounds = await getAll(
-        'SELECT id FROM rounds WHERE league_id=$1 ORDER BY id ASC',
-        [req.session.leagueId]
+    // Try signed scorecard for current week only (exclude drafts)
+    const signed = await getOne(
+      `SELECT hole_scores, gross, net, handicap_used, nine FROM signed_scorecards
+       WHERE league_id=$1 AND team_id=$2 AND week_number=$3 AND signed_by != 'draft'`,
+      [req.session.leagueId, req.params.teamId, currentWeek]
+    );
+    if (signed) return res.json({
+      found: true,
+      hole_scores: JSON.parse(signed.hole_scores || '[]'),
+      gross: signed.gross, net: signed.net,
+      handicap_used: signed.handicap_used, nine: signed.nine
+    });
+
+    // Try round_scores for current week only
+    const rounds = await getAll(
+      'SELECT id FROM rounds WHERE league_id=$1 ORDER BY id ASC',
+      [req.session.leagueId]
+    );
+    const round = rounds[currentWeek - 1];
+    if (round) {
+      const row = await getOne(
+        'SELECT hole_scores, gross, net, handicap_used, nine FROM round_scores WHERE round_id=$1 AND team_id=$2',
+        [round.id, req.params.teamId]
       );
-      const round = rounds[currentWeek - 1];
-      if (round) {
-        const row = await getOne(
-          'SELECT hole_scores, gross, net, handicap_used, nine FROM round_scores WHERE round_id=$1 AND team_id=$2',
-          [round.id, req.params.teamId]
-        );
-        if (row) return res.json({
-          found: true,
-          hole_scores: JSON.parse(row.hole_scores || '[]'),
-          gross: row.gross, net: row.net,
-          handicap_used: row.handicap_used, nine: row.nine
-        });
-      }
+      if (row) return res.json({
+        found: true,
+        hole_scores: JSON.parse(row.hole_scores || '[]'),
+        gross: row.gross, net: row.net,
+        handicap_used: row.handicap_used, nine: row.nine
+      });
     }
 
     return res.json({ found: false });
@@ -1256,5 +1255,14 @@ router.get('/teams/:teamId/players', requireAuth, async (req, res) => {
       [req.params.teamId, req.session.leagueId]
     );
     res.json(players);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── DELETE A SINGLE SCHEDULE WEEK ──
+router.delete('/schedule/week/:weekNum', requireAuth, async (req, res) => {
+  try {
+    await query('DELETE FROM schedule_weeks WHERE league_id=$1 AND week_number=$2',
+      [req.session.leagueId, req.params.weekNum]);
+    res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

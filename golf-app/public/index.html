@@ -4351,7 +4351,9 @@ function renderSavedSchedule(weeks) {
     if (!rows) return;
     var section = document.createElement('div');
     section.className = 'schedule-week';
-    section.innerHTML = '<div class="schedule-week-title">Week ' + weekNum + '</div>' +
+    section.innerHTML = '<div class="schedule-week-title">Week ' + weekNum +
+      '<button onclick="deleteScheduleWeek(' + weekNum + ')" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:2px 10px;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:14px;letter-spacing:1px;margin-left:8px;" title="Delete week ' + weekNum + ' from schedule">✕ Delete</button>' +
+      '</div>' +
       '<div class="section-card"><div class="table-scroll-wrap" style="max-height:400px;">' +
       '<table class="sched-table">' +
       '<thead><tr><th style="position:sticky;top:0;background:var(--surface);z-index:5;">Hole</th>' +
@@ -4396,6 +4398,16 @@ async function markTeamBye(weekNum, matchupIdx, side) {
     else m.teamB = rosterTeams.find(function(t){ return t.id === (m.teamB||{}).id; }) || m.teamB;
     renderSavedSchedule(savedSchedule);
   }
+}
+
+async function deleteScheduleWeek(weekNum) {
+  if (!confirm('Permanently delete Week ' + weekNum + ' from the schedule?')) return;
+  try {
+    await api('DELETE', '/api/league/schedule/week/' + weekNum);
+    savedSchedule = savedSchedule.filter(function(w){ return w.week !== weekNum; });
+    renderSavedSchedule(savedSchedule);
+    toast('✓ Week ' + weekNum + ' deleted from schedule');
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 async function clearSavedSchedule() {
