@@ -414,10 +414,14 @@ router.get('/standings', requireAuth, async (req, res) => {
     const teamMap = {};
     teams.forEach(t => { teamMap[t.id] = t; });
 
-    // Get SI for tiebreaker
-    const leagueRow = await getOne('SELECT front9si, back9si FROM leagues WHERE id=$1', [leagueId]);
-    const front9si = JSON.parse(leagueRow.front9si || '[1,2,3,4,5,6,7,8,9]');
-    const back9si  = JSON.parse(leagueRow.back9si  || '[10,11,12,13,14,15,16,17,18]');
+    // Get SI for tiebreaker — with fallback if columns don't exist yet
+    let front9si = [1,2,3,4,5,6,7,8,9];
+    let back9si   = [10,11,12,13,14,15,16,17,18];
+    try {
+      const leagueRow = await getOne('SELECT front9si, back9si FROM leagues WHERE id=$1', [leagueId]);
+      if (leagueRow && leagueRow.front9si) front9si = JSON.parse(leagueRow.front9si);
+      if (leagueRow && leagueRow.back9si)  back9si  = JSON.parse(leagueRow.back9si);
+    } catch(e) { /* use defaults */ }
     const allSI    = front9si.concat(back9si);
     // siOrder[0] = index of hardest hole, siOrder[1] = 2nd hardest, etc.
     const siOrder  = Array.from({length:18}, (_,i) => i).sort((i,j) => allSI[i] - allSI[j]);
@@ -490,13 +494,15 @@ router.get('/standings', requireAuth, async (req, res) => {
       });
 
       matchups.forEach(m => {
-        if (!m.teamAId || !m.teamBId) return;
-        const netA = netMap[m.teamAId];
-        const netB = netMap[m.teamBId];
+        const tAId = m.teamAId ? parseInt(m.teamAId) : null;
+        const tBId = m.teamBId ? parseInt(m.teamBId) : null;
+        if (!tAId || !tBId) return;
+        const netA = netMap[tAId] != null ? netMap[tAId] : netMap[String(tAId)];
+        const netB = netMap[tBId] != null ? netMap[tBId] : netMap[String(tBId)];
         if (netA == null || netB == null) return;
 
-        const sA = standings[m.teamAId];
-        const sB = standings[m.teamBId];
+        const sA = standings[tAId];
+        const sB = standings[tBId];
         if (!sA || !sB) return;
 
         sA.played++;
@@ -510,7 +516,7 @@ router.get('/standings', requireAuth, async (req, res) => {
           sA.losses++;
         } else {
           // Tied on net — use SI tiebreaker
-          const tb = siTiebreak(holesMap[m.teamAId], holesMap[m.teamBId]);
+          const tb = siTiebreak(holesMap[tAId] || holesMap[String(tAId)], holesMap[tBId] || holesMap[String(tBId)]);
           if (tb > 0) {
             sA.wins++; sA.points += 1; sB.losses++;
           } else if (tb < 0) {
