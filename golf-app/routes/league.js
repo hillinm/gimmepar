@@ -414,6 +414,25 @@ router.get('/standings', requireAuth, async (req, res) => {
     const teamMap = {};
     teams.forEach(t => { teamMap[t.id] = t; });
 
+    // Get SI for tiebreaker
+    const leagueRow = await getOne('SELECT front9si, back9si FROM leagues WHERE id=$1', [leagueId]);
+    const front9si = JSON.parse(leagueRow.front9si || '[1,2,3,4,5,6,7,8,9]');
+    const back9si  = JSON.parse(leagueRow.back9si  || '[10,11,12,13,14,15,16,17,18]');
+    const allSI    = front9si.concat(back9si);
+    // siOrder[0] = index of hardest hole, siOrder[1] = 2nd hardest, etc.
+    const siOrder  = Array.from({length:18}, (_,i) => i).sort((i,j) => allSI[i] - allSI[j]);
+
+    function siTiebreak(holesA, holesB) {
+      // Returns 1 if A wins, -1 if B wins, 0 if truly tied
+      for (const hIdx of siOrder) {
+        const a = holesA && holesA[hIdx] != null ? holesA[hIdx] : 99;
+        const b = holesB && holesB[hIdx] != null ? holesB[hIdx] : 99;
+        if (a < b) return 1;
+        if (b < a) return -1;
+      }
+      return 0;
+    }
+
     // Get all round scores (all-time for this league)
     const scores = await getAll(
       `SELECT rs.*, r.played_on
@@ -431,7 +450,6 @@ router.get('/standings', requireAuth, async (req, res) => {
     );
 
     // Build per-round score lookup: roundId -> [scores]
-    // Group scores by round
     const roundScores = {};
     scores.forEach(s => {
       if (!roundScores[s.round_id]) roundScores[s.round_id] = [];
@@ -463,15 +481,19 @@ router.get('/standings', requireAuth, async (req, res) => {
       const matchups = JSON.parse(schedRow.matchups);
       const roundScoreList = roundScores[round.id] || [];
 
-      // Build net score map for this round: teamId -> net
+      // Build net score map and hole scores for this round
       const netMap = {};
-      roundScoreList.forEach(s => { netMap[s.team_id] = s.net; });
+      const holesMap = {};
+      roundScoreList.forEach(s => {
+        netMap[s.team_id] = s.net;
+        try { holesMap[s.team_id] = JSON.parse(s.hole_scores || '[]'); } catch(e) { holesMap[s.team_id] = []; }
+      });
 
       matchups.forEach(m => {
         if (!m.teamAId || !m.teamBId) return;
         const netA = netMap[m.teamAId];
         const netB = netMap[m.teamBId];
-        if (netA == null || netB == null) return; // scores not entered
+        if (netA == null || netB == null) return;
 
         const sA = standings[m.teamAId];
         const sB = standings[m.teamBId];
@@ -487,14 +509,22 @@ router.get('/standings', requireAuth, async (req, res) => {
           sB.wins++; sB.points += 1;
           sA.losses++;
         } else {
-          sA.ties++; sA.points += 0.5;
-          sB.ties++; sB.points += 0.5;
+          // Tied on net — use SI tiebreaker
+          const tb = siTiebreak(holesMap[m.teamAId], holesMap[m.teamBId]);
+          if (tb > 0) {
+            sA.wins++; sA.points += 1; sB.losses++;
+          } else if (tb < 0) {
+            sB.wins++; sB.points += 1; sA.losses++;
+          } else {
+            // Truly tied on every hole — record as tie (rare)
+            sA.ties++; sA.points += 0.5;
+            sB.ties++; sB.points += 0.5;
+          }
         }
       });
     });
 
     // Assign flights based on handicap (lower hdcp = A flight)
-    // Use the same high/low split logic: lower half = A, upper half = B
     const teamList = teams.slice().sort((a, b) => a.handicap - b.handicap);
     const mid = Math.ceil(teamList.length / 2);
     teamList.forEach((t, i) => {
