@@ -1159,7 +1159,8 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="week-selector">
           <label>Week</label>
           <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;">
-          <button class="btn-gen" onclick="generateAndSaveWeek()">📆 Generate &amp; Save Week</button>
+          <button class="btn-gen" onclick="generateWeekOnly()">🎲 Generate</button>
+          <button class="btn-gen" style="background:var(--green);border-color:var(--green);" onclick="saveGeneratedWeek()">💾 Save Week</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
           <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear All</button>
         </div>
@@ -4513,94 +4514,100 @@ function exportScheduleCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-async function generateAndSaveWeek() {
+var _lastGeneratedMatchups = null;
+var _lastGeneratedWeek = null;
+
+async function generateWeekOnly() {
   if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
   var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
   var resultEl = document.getElementById('weekGenResult');
-  var btn = document.querySelector('.btn-gen');
-  if (btn) { btn.textContent = '...'; btn.disabled = true; }
-  resultEl.innerHTML = '';
+  resultEl.innerHTML = '<span style="color:var(--muted)">Generating...</span>';
   try {
     var matchups;
     if (leagueSettings && leagueSettings.teamFormat === 'random') {
-      // Random draw — shuffle all players and pair them up
       var allPlayers = [];
       rosterTeams.forEach(function(t) {
         if (t.player1) allPlayers.push({ name: t.player1, handicap: t.handicap, nine: t.nine, id: t.id, origTeam: t });
         if (t.player2) allPlayers.push({ name: t.player2, handicap: t.handicap, nine: t.nine, id: t.id*1000, origTeam: t });
       });
-      // Fisher-Yates shuffle
       for (var i = allPlayers.length - 1; i > 0; i--) {
         var j = Math.floor(Math.random() * (i + 1));
         var tmp = allPlayers[i]; allPlayers[i] = allPlayers[j]; allPlayers[j] = tmp;
       }
       matchups = [];
       for (var k = 0; k < allPlayers.length - 1; k += 2) {
-        var pA = allPlayers[k];
-        var pB = allPlayers[k+1];
-        // Create synthetic team objects for display
-        matchups.push({
-          teamA: { id: pA.id, player1: pA.name, player2: '', handicap: pA.handicap, nine: pA.nine },
-          teamB: { id: pB.id, player1: pB.name, player2: '', handicap: pB.handicap, nine: pB.nine }
-        });
+        matchups.push({ teamA: { id: allPlayers[k].id, player1: allPlayers[k].name, player2: '', handicap: allPlayers[k].handicap, nine: allPlayers[k].nine }, teamB: { id: allPlayers[k+1].id, player1: allPlayers[k+1].name, player2: '', handicap: allPlayers[k+1].handicap, nine: allPlayers[k+1].nine } });
       }
-      // Handle odd player out as bye
       if (allPlayers.length % 2 !== 0) {
         var last = allPlayers[allPlayers.length - 1];
-        matchups.push({
-          teamA: { id: last.id, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine },
-          teamB: null
-        });
+        matchups.push({ teamA: { id: last.id, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine }, teamB: null });
       }
     } else {
-      // Static round robin
       var rounds = buildRoundRobin(rosterTeams);
       var roundIdx = (weekNum - 1) % rounds.length;
       var round = rounds[roundIdx];
       matchups = round.map(function(pair) {
-        return {
-          teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
-          teamB: pair[1] !== null ? rosterTeams[pair[1]] : null
-        };
+        return { teamA: pair[0] !== null ? rosterTeams[pair[0]] : null, teamB: pair[1] !== null ? rosterTeams[pair[1]] : null };
       });
     }
     var withHoles = assignHoles(matchups, weekNum);
-    // Slim for DB
-    var slim = [{
-      week: weekNum,
-      matchups: withHoles.map(function(m) {
-        return {
-          hole: m.hole,
-          nine: m.nine || 'front',
-          teamAId: m.teamA ? m.teamA.id : null,
-          teamBId: m.teamB ? m.teamB.id : null
-        };
-      })
-    }];
-    var res = await api('POST', '/api/league/schedule/save', { weeks: slim });
-    // Save as current week in settings
-    await api('PUT', '/api/league/settings', { currentWeek: weekNum });
-    if (leagueSettings) leagueSettings.currentWeek = weekNum;
-    // Update savedSchedule state and re-render
-    var existing = savedSchedule.findIndex(function(w) { return w.week === weekNum; });
-    var weekData = { week: weekNum, matchups: withHoles };
-    if (existing >= 0) savedSchedule[existing] = weekData;
-    else savedSchedule.push(weekData);
-    savedSchedule.sort(function(a,b) { return a.week - b.week; });
-    renderSavedSchedule(savedSchedule);
-    // Advance week input to next week
-    document.getElementById('startWeek').value = weekNum + 1;
-    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved. ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click Generate &amp; Save Week to add week ' + (weekNum+1) + '.</span>';
-    // Scroll to the week just saved
-    var allTitles = document.querySelectorAll('.schedule-week-title');
-    var lastTitle = allTitles[allTitles.length - 1];
-    if (lastTitle) lastTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    _lastGeneratedMatchups = withHoles;
+    _lastGeneratedWeek = weekNum;
+    // Preview in schedule output
+    var previewWeek = { week: weekNum, matchups: withHoles };
+    var existing = savedSchedule.findIndex(function(w){ return w.week === weekNum; });
+    var tempSchedule = savedSchedule.slice();
+    if (existing >= 0) tempSchedule[existing] = previewWeek;
+    else tempSchedule.push(previewWeek);
+    tempSchedule.sort(function(a,b){ return a.week-b.week; });
+    renderSavedSchedule(tempSchedule);
+    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click 💾 Save Week to save.</span>';
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
-  if (btn) { btn.textContent = '📆 Generate & Save Week'; btn.disabled = false; }
 }
 
+async function saveGeneratedWeek() {
+  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
+  var resultEl = document.getElementById('weekGenResult');
+  // Use last generated matchups OR current saved schedule for this week
+  var matchupsToSave = _lastGeneratedMatchups;
+  var weekToSave = _lastGeneratedWeek || weekNum;
+  if (!matchupsToSave) {
+    // No generated matchups — save whatever is currently displayed for this week
+    var existing = savedSchedule.find(function(w){ return w.week === weekNum; });
+    if (!existing) { toast('Generate a schedule first or use Manual Matchups'); return; }
+    matchupsToSave = existing.matchups;
+    weekToSave = weekNum;
+  }
+  try {
+    var slim = [{ week: weekToSave, matchups: matchupsToSave.map(function(m) {
+      return { hole: m.hole, nine: m.nine||'front', teamAId: m.teamA?m.teamA.id:null, teamBId: m.teamB?m.teamB.id:null };
+    })}];
+    await api('POST', '/api/league/schedule/save', { weeks: slim });
+    await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekToSave }));
+    if (leagueSettings) leagueSettings.currentWeek = weekToSave;
+    var existing = savedSchedule.findIndex(function(w){ return w.week === weekToSave; });
+    var weekData = { week: weekToSave, matchups: matchupsToSave };
+    if (existing >= 0) savedSchedule[existing] = weekData;
+    else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b){ return a.week-b.week; });
+    renderSavedSchedule(savedSchedule);
+    _lastGeneratedMatchups = null;
+    _lastGeneratedWeek = null;
+    document.getElementById('startWeek').value = weekToSave + 1;
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekToSave + ' saved. ' + matchupsToSave.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups.</span>';
+    toast('Week ' + weekToSave + ' saved');
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+// Keep old function for backward compat
+async function generateAndSaveWeek() {
+  await generateWeekOnly();
+  await saveGeneratedWeek();
+}
 
 function setFlightMode(mode, btn) {
   flightMode = mode;
