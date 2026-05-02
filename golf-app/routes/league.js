@@ -774,10 +774,10 @@ router.get('/draw/history', requireAuth, async (req, res) => {
 // Returns the most recent round score for a team (for opponent live updates)
 router.get('/scores/latest/:teamId', requireAuth, async (req, res) => {
   try {
-    // Get current week from league settings
+    // Get current week — prefer query param override (from player view), then settings
     const league = await getOne('SELECT settings FROM leagues WHERE id=$1', [req.session.leagueId]);
     const settings = league.settings ? (typeof league.settings === 'string' ? JSON.parse(league.settings) : league.settings) : {};
-    const currentWeek = settings.currentWeek || null;
+    const currentWeek = parseInt(req.query.week) || settings.currentWeek || null;
 
     // If no current week set, return nothing — don't show old scores
     if (!currentWeek) return res.json({ found: false });

@@ -1848,7 +1848,7 @@ async function loadPlayerView(data) {
     }
     var oppTot = document.getElementById('oppTotal_' + opponent.id);
     if (oppTot) oppTot.textContent = 'Opponent scores will appear here when entered.';
-    startOpponentPolling(opponent.id);
+    startOpponentPolling(opponent.id, activeWeekForConfirm);
   } else {
     var noOpp = document.createElement('div');
     noOpp.style.cssText = 'color:var(--muted);font-size:13px;font-style:italic;margin-top:16px;';
@@ -2060,15 +2060,17 @@ function buildReadOnlyCard(team, st) {
 
 var _oppPollTimer = null;
 
-function startOpponentPolling(oppTeamId) {
+function startOpponentPolling(oppTeamId, weekNum) {
   if (_oppPollTimer) clearInterval(_oppPollTimer);
-  fetchOpponentScore(oppTeamId);
-  _oppPollTimer = setInterval(function() { fetchOpponentScore(oppTeamId); }, 30000);
+  fetchOpponentScore(oppTeamId, weekNum);
+  _oppPollTimer = setInterval(function() { fetchOpponentScore(oppTeamId, weekNum); }, 30000);
 }
 
-async function fetchOpponentScore(oppTeamId) {
+async function fetchOpponentScore(oppTeamId, weekNum) {
   try {
-    var data = await api('GET', '/api/league/scores/latest/' + oppTeamId);
+    var url = '/api/league/scores/latest/' + oppTeamId;
+    if (weekNum) url += '?week=' + weekNum;
+    var data = await api('GET', url);
     // Always clear cells first
     for (var i = 0; i < 18; i++) {
       var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
