@@ -3917,7 +3917,7 @@ async function adminSignAndSave() {
       hole_scores: t.holes, gross: t.gross, net: t.net||0,
       is_sub: t.isSub || false, sub_name: t.subName || ''
     }));
-    await api('POST', '/api/league/rounds', { scores });
+    await api('POST', '/api/league/rounds', { scores, week_number: weekNum });
 
     // Sign each team's scorecard
     var signCount = 0;

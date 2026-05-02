@@ -95,8 +95,8 @@ router.get('/rounds', requireAuth, async (req, res) => {
 
 router.post('/rounds', requireAuth, async (req, res) => {
   try {
-    const { scores, notes } = req.body;
-    const roundRes = await query('INSERT INTO rounds (league_id, notes) VALUES ($1,$2) RETURNING id', [req.session.leagueId, notes||'']);
+    const { scores, notes, week_number } = req.body;
+    const roundRes = await query('INSERT INTO rounds (league_id, notes, week_number) VALUES ($1,$2,$3) RETURNING id', [req.session.leagueId, notes||'', week_number||null]);
     const roundId = roundRes.rows[0].id;
     await Promise.all(scores.map(s =>
       query('INSERT INTO round_scores (round_id, team_id, nine, handicap_used, hole_scores, gross, net, is_sub, sub_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
@@ -476,9 +476,10 @@ router.get('/standings', requireAuth, async (req, res) => {
       };
     });
 
-    // Match each round to a schedule week by position (round 1 = week 1, etc)
+    // Match each round to a schedule week by week_number (stored on round) or by position
     rounds.forEach((round, roundIdx) => {
-      const weekNum = roundIdx + 1;
+      // Use stored week_number if available, otherwise fall back to position
+      const weekNum = round.week_number || (roundIdx + 1);
       const schedRow = scheduleRows.find(s => s.week_number === weekNum);
       if (!schedRow) return;
 

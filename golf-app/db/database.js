@@ -67,6 +67,7 @@ async function init() {
     await client.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS nine TEXT NOT NULL DEFAULT 'front'");
     await client.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS front9si TEXT DEFAULT '[1,2,3,4,5,6,7,8,9]'");
+    await client.query("ALTER TABLE rounds ADD COLUMN IF NOT EXISTS week_number INTEGER");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS back9si TEXT DEFAULT '[10,11,12,13,14,15,16,17,18]'");
     await client.query("ALTER TABLE leagues ADD COLUMN IF NOT EXISTS saved_courses_si TEXT");
     await client.query(`
