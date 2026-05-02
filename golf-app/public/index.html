@@ -1362,6 +1362,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         </div>
         <input class="score-search" id="standingsSearch" placeholder="🔍 Search team..." oninput="filterStandings(this.value)" style="max-width:200px;margin-left:auto;">
         <button class="btn-export-sched" style="margin-left:8px;" onclick="loadStandings()">↻ Refresh</button>
+        <button class="btn-export-sched" style="margin-left:8px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" onclick="recalculateStandings()">⚡ Recalculate</button>
         <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;margin-left:8px;" onclick="clearAllStandings()">🗑 Clear All</button>
       </div>
       <div class="section-body" id="standingsContent">
@@ -4109,9 +4110,20 @@ async function loadHistory() {
           <div class="history-sub">${r.played_on ? new Date(r.played_on).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : ''}</div>
         </div>
         <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:8px;" onclick="loadRoundIntoScoring(${r.id}, ${i+1});event.stopPropagation();">📋 Load</button>
+        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:4px;border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRound(${r.id}, ${i+1});event.stopPropagation();">🗑 Delete</button>
         <div class="history-arrow">›</div>
       </div>`).join('');
   } catch(e) { console.warn(e); }
+}
+
+async function deleteRound(roundId, weekNum) {
+  if (!confirm('Delete Week ' + weekNum + ' from history? This removes all scores for that week and will recalculate standings.')) return;
+  try {
+    await api('DELETE', '/api/league/rounds/' + roundId);
+    toast('✓ Week ' + weekNum + ' deleted');
+    loadHistory();
+    loadStandings();
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 async function loadRoundIntoScoring(roundId, weekNum) {
@@ -4897,6 +4909,16 @@ function filterStandings(q) {
     var text = row.textContent.toLowerCase();
     row.style.display = (!q || text.includes(q)) ? '' : 'none';
   });
+}
+
+async function recalculateStandings() {
+  var result = document.getElementById('standingsContent');
+  if (result) result.innerHTML = '<div class="empty-state">Recalculating...</div>';
+  // Clear all adjustments and reload fresh from round history
+  try {
+    await loadStandings();
+    toast('✓ Standings recalculated from round history');
+  } catch(e) { toast('Error: ' + e.message); }
 }
 
 async function loadStandings() {

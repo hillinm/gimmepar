@@ -1302,3 +1302,16 @@ router.delete('/schedule/week/:weekNum', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── DELETE A ROUND BY ID ──
+router.delete('/rounds/:id', requireAuth, async (req, res) => {
+  try {
+    const leagueId = req.session.leagueId;
+    // Verify round belongs to this league
+    const round = await getOne('SELECT id FROM rounds WHERE id=$1 AND league_id=$2', [req.params.id, leagueId]);
+    if (!round) return res.status(404).json({ error: 'Round not found' });
+    await query('DELETE FROM round_scores WHERE round_id=$1', [req.params.id]);
+    await query('DELETE FROM rounds WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
