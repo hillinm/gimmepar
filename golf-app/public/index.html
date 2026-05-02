@@ -4912,13 +4912,29 @@ function filterStandings(q) {
 }
 
 async function recalculateStandings() {
-  var result = document.getElementById('standingsContent');
-  if (result) result.innerHTML = '<div class="empty-state">Recalculating...</div>';
-  // Clear all adjustments and reload fresh from round history
+  var el = document.getElementById('standingsContent');
+  if (el) el.innerHTML = '<div class="empty-state">Recalculating from round history...</div>';
   try {
+    // Check what we have
+    var rounds = await api('GET', '/api/league/rounds');
+    var data   = await api('GET', '/api/league/standings');
+    var played = data.filter(function(s){ return s.played > 0; });
+
+    if (!rounds.length) {
+      if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">No saved rounds found. Save scores from the Scoring tab first.</div>';
+      return;
+    }
+    if (!played.length) {
+      if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">'
+        + rounds.length + ' round(s) found but no matchups matched. '
+        + 'Make sure the Schedule tab has weeks saved that match your round history.</div>';
+      return;
+    }
+    toast('✓ Standings recalculated — ' + played.length + ' teams with results');
     await loadStandings();
-    toast('✓ Standings recalculated from round history');
-  } catch(e) { toast('Error: ' + e.message); }
+  } catch(e) {
+    if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
+  }
 }
 
 async function loadStandings() {
