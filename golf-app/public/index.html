@@ -5443,136 +5443,133 @@ async function loadSubTracker() {
   el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
 
   try {
-    // Fetch all rounds with scores to find subs
-    var rounds = await api('GET', '/api/league/rounds');
-    // Also fetch sub-counts for a quick summary
-    var subCounts = {};
-    try { subCounts = await api('GET', '/api/league/sub-counts'); } catch(e) {}
+    // 1. Try the dedicated subs endpoint (from Log Substitute form)
+    var loggedSubs = [];
+    try {
+      var res = await api('GET', '/api/league/subs');
+      if (res && Array.isArray(res)) loggedSubs = res;
+    } catch(e) {}
 
-    // Build sub records from rounds
-    // Each round score may have is_sub=true and sub_name
-    var subRecords = []; // {subName, teamName, week, replacedName, roundIdx}
-    rounds.forEach(function(r, roundIdx) {
-      var scores = [];
-      // Try to get detailed scores if embedded
-      if (r.scores && Array.isArray(r.scores)) {
-        scores = r.scores;
-      }
-      scores.forEach(function(s) {
-        if (s.is_sub) {
-          var team = rosterTeams.find(function(t){ return t.id === s.team_id; });
-          var teamName = team ? ((team.player1||'') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + s.team_id);
-          subRecords.push({
-            subName: s.sub_name || 'Unknown Sub',
-            teamName: teamName,
-            week: roundIdx + 1,
-            replacedName: s.replaced_name || '',
-            nine: s.nine || 'front'
-          });
+    // 2. Fetch round list, then each round detail for inline sub scores
+    var rounds = [];
+    try { rounds = await api('GET', '/api/league/rounds'); } catch(e) {}
+
+    var roundDetails = await Promise.all(rounds.map(function(r, idx) {
+      return api('GET', '/api/league/rounds/' + r.id)
+        .then(function(d) { return { week: idx + 1, data: d }; })
+        .catch(function() { return { week: idx + 1, data: null }; });
+    }));
+
+    // 3. Build unified sub records — keyed by subName (lowercase)
+    var subMap = {}; // { name: string, rounds: [{week, team, replaced, gross, nine}] }
+
+    function addSub(subName, week, teamId, replacedName, gross, nine) {
+      var name = (subName || '').trim();
+      if (!name) return;
+      var key = name.toLowerCase();
+      if (!subMap[key]) subMap[key] = { name: name, rounds: [] };
+      var team = rosterTeams.find(function(t) { return t.id == teamId; });
+      var teamName = team ? ((team.player1 || '') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + teamId);
+      subMap[key].rounds.push({
+        week: week,
+        teamName: teamName,
+        replaced: replacedName || '',
+        gross: gross != null ? gross : null,
+        nine: nine || ''
+      });
+    }
+
+    // From logged subs (form entries)
+    loggedSubs.forEach(function(s) {
+      addSub(s.sub_name, s.week_number || '?', s.team_id, s.replaced_name, null, null);
+    });
+
+    // From round detail scores
+    roundDetails.forEach(function(rd) {
+      if (!rd.data || !rd.data.scores) return;
+      rd.data.scores.forEach(function(s) {
+        if (s.is_sub && s.sub_name) {
+          var holeScores = [];
+          try { holeScores = JSON.parse(s.hole_scores || '[]'); } catch(e) {}
+          var gross = holeScores.filter(function(h){ return h != null; }).reduce(function(a,b){ return a+b; }, 0) || s.gross || null;
+          addSub(s.sub_name, rd.week, s.team_id, s.replaced_name, gross, s.nine);
         }
       });
     });
 
-    // Try dedicated subs endpoint if rounds didn't have embedded scores
-    if (!subRecords.length) {
-      try {
-        var subs = await api('GET', '/api/league/subs');
-        if (subs && subs.length) {
-          subs.forEach(function(s) {
-            var team = rosterTeams.find(function(t){ return t.id === s.team_id; });
-            var teamName = team ? ((team.player1||'') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + s.team_id);
-            subRecords.push({
-              subName: s.sub_name || 'Unknown Sub',
-              teamName: teamName,
-              week: s.week_number || '?',
-              replacedName: s.replaced_name || '',
-              nine: s.nine || ''
-            });
-          });
-        }
-      } catch(e) {}
+    var subPlayers = Object.values(subMap).sort(function(a, b) {
+      return b.rounds.length - a.rounds.length;
+    });
+
+    if (!subPlayers.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">No sub records found yet. Log subs below or mark SUB during scoring.</div>';
+      return;
     }
 
-    // Build per-team sub count summary from subCounts object
-    // subCounts = {teamId: count}
-    var teamSubSummary = [];
-    rosterTeams.forEach(function(t) {
-      var cnt = subCounts[t.id] || 0;
-      if (cnt > 0) {
-        teamSubSummary.push({
-          teamName: (t.player1||'') + (t.player2 ? ' / ' + t.player2 : ''),
-          count: cnt,
-          teamId: t.id
-        });
+    var html = '<div style="margin-bottom:6px;font-size:11px;color:var(--muted);letter-spacing:1px;">Rounds played as substitute — use gross scores to calculate handicap</div>';
+
+    subPlayers.forEach(function(sp) {
+      var totalRounds = sp.rounds.length;
+      var grossScores = sp.rounds.filter(function(r){ return r.gross > 0; }).map(function(r){ return r.gross; });
+      var avgGross = grossScores.length ? Math.round(grossScores.reduce(function(a,b){ return a+b;},0) / grossScores.length * 10) / 10 : null;
+
+      var hdcpNote = '';
+      if (totalRounds >= 3) {
+        hdcpNote = '<span style="color:var(--green2);font-size:11px;margin-left:8px;">✓ Enough rounds for handicap</span>';
+      } else {
+        hdcpNote = '<span style="color:var(--muted);font-size:11px;margin-left:8px;">' + (3 - totalRounds) + ' more round' + (3 - totalRounds !== 1 ? 's' : '') + ' needed for hdcp</span>';
       }
-    });
-    teamSubSummary.sort(function(a,b){ return b.count - a.count; });
 
-    // Aggregate sub player counts
-    var subPlayerMap = {};
-    subRecords.forEach(function(r) {
-      var key = r.subName.toLowerCase().trim();
-      if (!subPlayerMap[key]) subPlayerMap[key] = { name: r.subName, weeks: [] };
-      subPlayerMap[key].weeks.push({ week: r.week, team: r.teamName, replaced: r.replacedName });
-    });
-    var subPlayers = Object.values(subPlayerMap).sort(function(a,b){ return b.weeks.length - a.weeks.length; });
+      html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">';
 
-    var html = '';
+      // Header row
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
+      html += '<div>';
+      html += '<span style="font-size:16px;font-weight:700;">' + esc(sp.name) + '</span>';
+      html += hdcpNote;
+      html += '</div>';
+      html += '<div style="font-size:22px;font-weight:900;color:var(--gold);">' + totalRounds + ' <span style="font-size:12px;color:var(--muted);font-weight:400;">round' + (totalRounds !== 1 ? 's' : '') + '</span></div>';
+      html += '</div>';
 
-    // Team sub count summary
-    if (teamSubSummary.length) {
-      html += '<div style="margin-bottom:20px;">';
-      html += '<div style="font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold2);margin-bottom:10px;">SUBS USED BY TEAM</div>';
-      html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      // Rounds table
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
       html += '<thead><tr>';
-      html += '<th style="text-align:left;padding:6px 10px;font-family:"Bebas Neue",sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--gold2);border-bottom:1px solid var(--border);">TEAM</th>';
-      html += '<th style="text-align:center;padding:6px 10px;font-family:"Bebas Neue",sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--gold2);border-bottom:1px solid var(--border);">SUBS USED</th>';
-      html += '<th style="text-align:center;padding:6px 10px;font-family:"Bebas Neue",sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--gold2);border-bottom:1px solid var(--border);">STATUS</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">WK</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">TEAM</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">REPLACED</th>';
+      html += '<th style="text-align:center;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">NINE</th>';
+      html += '<th style="text-align:center;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">GROSS</th>';
       html += '</tr></thead><tbody>';
-      teamSubSummary.forEach(function(t) {
-        var statusColor = t.count >= 2 ? '#ff9999' : 'var(--gold)';
-        var statusText = t.count >= 2 ? '⚠ Full handicap if subbed again' : (t.count === 1 ? '1 more sub = full hdcp' : '');
+
+      sp.rounds.sort(function(a,b){ return (a.week||0) - (b.week||0); }).forEach(function(r) {
         html += '<tr>';
-        html += '<td style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);">' + esc(t.teamName) + '</td>';
-        html += '<td style="padding:8px 10px;text-align:center;font-weight:700;font-size:15px;border-bottom:1px solid rgba(255,255,255,.04);">' + t.count + '</td>';
-        html += '<td style="padding:8px 10px;text-align:center;font-size:11px;color:'+statusColor+';border-bottom:1px solid rgba(255,255,255,.04);">' + statusText + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--gold);">Wk ' + r.week + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);">' + esc(r.teamName) + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--muted);">' + esc(r.replaced || '—') + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center;color:var(--muted);">' + (r.nine ? r.nine.replace('front','F9').replace('back','B9').replace('all18','18') : '—') + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center;font-weight:700;">' + (r.gross > 0 ? r.gross : '—') + '</td>';
         html += '</tr>';
       });
-      html += '</tbody></table></div>';
-    }
 
-    // Sub player detail
-    if (subPlayers.length) {
-      html += '<div style="margin-bottom:10px;">';
-      html += '<div style="font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold2);margin-bottom:10px;">SUB PLAYERS</div>';
-      subPlayers.forEach(function(sp) {
-        html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
-        html += '<span style="font-weight:700;font-size:14px;">' + esc(sp.name) + '</span>';
-        html += '<span style="font-family:"Bebas Neue",sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;">' + sp.weeks.length + ' round' + (sp.weeks.length !== 1 ? 's' : '') + '</span>';
-        html += '</div>';
-        if (sp.weeks.length) {
-          html += '<div style="font-size:11px;color:var(--muted);">';
-          sp.weeks.forEach(function(w) {
-            html += '<span style="display:inline-block;margin-right:12px;margin-bottom:2px;">Wk ' + w.week + ' — ' + esc(w.team) + (w.replaced ? ' (for ' + esc(w.replaced) + ')' : '') + '</span>';
-          });
-          html += '</div>';
-        }
-        html += '</div>';
-      });
-      html += '</div>';
-    }
+      html += '</tbody>';
 
-    if (!teamSubSummary.length && !subPlayers.length) {
-      html = '<div class="empty-state" style="color:var(--muted);font-size:13px;">No sub records found. Log subs below after rounds are saved.</div>';
-    }
+      // Avg gross footer
+      if (grossScores.length) {
+        html += '<tfoot><tr>';
+        html += '<td colspan="4" style="padding:6px 8px;font-size:11px;color:var(--muted);">Avg Gross</td>';
+        html += '<td style="padding:6px 8px;text-align:center;font-size:13px;font-weight:700;color:var(--gold2);">' + avgGross + '</td>';
+        html += '</tr></tfoot>';
+      }
+
+      html += '</table></div>';
+    });
 
     el.innerHTML = html;
+
   } catch(e) {
-    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error loading subs: ' + e.message + '</div>';
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
   }
 }
-
 // ══ UTILS ══
 async function api(method, url, body) {
   const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
