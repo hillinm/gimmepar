@@ -3115,6 +3115,34 @@ async function buildScoringCards() {
       if (hdcpEl && signed.handicap_used != null) hdcpEl.value = signed.handicap_used;
       // Trigger score calculation display
       calcTeamScore(t.id);
+    } else {
+      // No signed scorecard — restore draft scores from localStorage
+      try {
+        var leagueId = league && league.id ? league.id : 'default';
+        var draftKey = 'gp_draft_' + leagueId + '_' + t.id + '_wk' + currentWeekNum;
+        var draftRaw = localStorage.getItem(draftKey);
+        if (draftRaw) {
+          var draft = JSON.parse(draftRaw);
+          var stDraft = scoreTeams.find(function(s){ return s.id === t.id; });
+          if (draft.nine && stDraft && stDraft.nine !== draft.nine) {
+            switchNine(t.id, draft.nine);
+          }
+          if (draft.holes && draft.holes.length) {
+            draft.holes.forEach(function(score, i) {
+              var inp = document.getElementById('shole_' + t.id + '_' + i);
+              if (inp && score != null) {
+                inp.value = score;
+                inp.dispatchEvent(new Event('input'));
+              }
+            });
+          }
+          if (draft.hdcp != null) {
+            var hdcpElD = document.getElementById('shdcp_' + t.id);
+            if (hdcpElD) hdcpElD.value = draft.hdcp;
+          }
+          recalcCard(t.id);
+        }
+      } catch(e) {}
     }
 
     // Apply signed badge only for current week
@@ -3742,6 +3770,12 @@ function recalcCard(teamId) {
   _autoSaveTimers[teamId] = setTimeout(function() {
     var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     var nine = st ? st.nine : 'front';
+    // Save to localStorage immediately as reliable backup
+    try {
+      var leagueId = league && league.id ? league.id : 'default';
+      var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
+      localStorage.setItem(draftKey, JSON.stringify({ holes: holes, nine: nine, hdcp: hdcp, week: weekNum, ts: Date.now() }));
+    } catch(e) {}
     api('PUT', '/api/league/scores/draft/' + teamId, {
       hole_scores: holes,
       nine: nine,
@@ -3944,6 +3978,13 @@ async function adminSignAndSave() {
     await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekNum }));
     leagueSettings.currentWeek = weekNum;
 
+    // Clear localStorage drafts for this week now that round is officially saved
+    try {
+      var leagueId = league && league.id ? league.id : 'default';
+      rosterTeams.forEach(function(t) {
+        localStorage.removeItem('gp_draft_' + leagueId + '_' + t.id + '_wk' + weekNum);
+      });
+    } catch(e) {}
     result.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved and signed for ' + signCount + ' teams.</span>';
     toast('✓ Week ' + weekNum + ' saved');
     loadHistory();
