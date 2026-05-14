@@ -29,6 +29,19 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 
 
+
+/* ── LIVE SCORING ── */
+.btn-live { background:transparent; border:1px solid var(--border); color:var(--muted); font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:1.5px; padding:6px 14px; border-radius:7px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:6px; }
+.btn-live.active { background:rgba(74,140,63,.2); border-color:var(--green); color:var(--green2); }
+.btn-live .live-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+.btn-live.active .live-dot { background:var(--green2); box-shadow:0 0 6px var(--green2); animation:pulse-dot 1.2s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+.live-banner { display:none; background:rgba(74,140,63,.12); border:1px solid rgba(74,140,63,.35); border-radius:8px; padding:8px 14px; margin-bottom:12px; font-size:12px; color:var(--green2); letter-spacing:1px; align-items:center; gap:10px; }
+.live-banner.visible { display:flex; }
+.live-team-pulse { box-shadow:0 0 0 2px rgba(74,140,63,.5) !important; transition:box-shadow .3s; }
+.live-score-updated { animation:flash-green .6s ease; }
+@keyframes flash-green { 0%{background:rgba(74,140,63,.4);} 100%{background:transparent;} }
+
 /* ── SUB TOGGLE ── */
 .btn-sub {
   background: transparent;
@@ -897,6 +910,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
+      <button id="btnLive" class="btn-live" onclick="toggleLiveScoring()" title="Poll live scores from players every 15 seconds">
+        <span class="live-dot"></span> LIVE
+      </button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearCurrentWeekScores()">🗑 Clear Scores</button>
@@ -905,6 +921,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);" oninput="localStorage.setItem('gimmepar_week',this.value);">
         <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete Week</button>
       </div>
+    </div>
+    <div id="liveBanner" class="live-banner">
+      <span class="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green2);box-shadow:0 0 6px var(--green2);animation:pulse-dot 1.2s ease-in-out infinite;flex-shrink:0;"></span>
+      <span>LIVE SCORING ACTIVE — updating every 15 seconds</span>
+      <span id="liveLastUpdate" style="margin-left:auto;color:var(--muted);"></span>
     </div>
     <div id="scoringTeams"></div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
@@ -3802,6 +3823,112 @@ function recalcCard(teamId) {
   }, 1500);
 }
 
+
+// ══ LIVE SCORING ══
+var _liveTimer = null;
+var _liveActive = false;
+var _liveLastScores = {}; // teamId -> {holes, gross}
+
+function toggleLiveScoring() {
+  _liveActive = !_liveActive;
+  var btn = document.getElementById('btnLive');
+  var banner = document.getElementById('liveBanner');
+  if (_liveActive) {
+    btn && btn.classList.add('active');
+    banner && banner.classList.add('visible');
+    pollLiveScores();
+    _liveTimer = setInterval(pollLiveScores, 15000);
+    toast('📡 Live scoring ON');
+  } else {
+    btn && btn.classList.remove('active');
+    banner && banner.classList.remove('visible');
+    clearInterval(_liveTimer);
+    _liveTimer = null;
+    toast('Live scoring OFF');
+  }
+}
+
+async function pollLiveScores() {
+  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+  var anyUpdate = false;
+
+  var fetches = rosterTeams.map(function(t) {
+    return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
+      .then(function(data) { return { teamId: t.id, data: data }; })
+      .catch(function() { return { teamId: t.id, data: null }; });
+  });
+
+  var results = await Promise.all(fetches);
+
+  results.forEach(function(r) {
+    if (!r.data || !r.data.found) return;
+    var teamId = r.teamId;
+    var incoming = r.data;
+    var holes = incoming.hole_scores || [];
+    var gross = incoming.gross || 0;
+    var nine = incoming.nine || 'front';
+    var hdcp = incoming.handicap_used;
+
+    // Switch nine if needed
+    var st = scoreTeams.find(function(s){ return s.id === teamId; });
+    if (st && nine && st.nine !== nine) {
+      switchNine(teamId, nine);
+    }
+
+    // Compare with last known — only update changed holes
+    var prev = _liveLastScores[teamId] || {};
+    var prevHoles = prev.holes || [];
+    var changed = false;
+
+    holes.forEach(function(score, i) {
+      if (score === null || score === undefined) return;
+      if (prevHoles[i] === score) return; // no change
+      var inp = document.getElementById('shole_' + teamId + '_' + i);
+      if (!inp) return;
+      inp.value = score;
+      inp.dispatchEvent(new Event('input'));
+      inp.classList.add('live-score-updated');
+      setTimeout(function(){ inp.classList.remove('live-score-updated'); }, 700);
+      changed = true;
+    });
+
+    // Update handicap if provided and field is empty
+    if (hdcp != null) {
+      var hdcpEl = document.getElementById('shdcp_' + teamId);
+      if (hdcpEl && !hdcpEl.value) hdcpEl.value = hdcp;
+    }
+
+    if (changed) {
+      anyUpdate = true;
+      // Pulse the card border briefly
+      var card = document.getElementById('scard_' + teamId);
+      if (card) {
+        card.classList.add('live-team-pulse');
+        setTimeout(function(){ card.classList.remove('live-team-pulse'); }, 1500);
+      }
+      // Auto-expand the card so admin can see it
+      var body = document.getElementById('sbody_' + teamId);
+      if (body && body.style.display === 'none') {
+        toggleCard(teamId);
+      }
+    }
+
+    _liveLastScores[teamId] = { holes: holes.slice(), gross: gross };
+  });
+
+  // Update last-updated timestamp
+  var lastEl = document.getElementById('liveLastUpdate');
+  if (lastEl) {
+    var now = new Date();
+    var t = now.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', second:'2-digit' });
+    lastEl.textContent = 'Last updated ' + t + (anyUpdate ? ' · scores updated' : '');
+  }
+}
+
+// Stop live polling when navigating away from scoring tab
+var _origShowTab = typeof showTab === 'function' ? showTab : null;
+
+
 // ══ CALCULATE ══
 function calculate() {
   const parFront = getParFront(), parBack = getParBack();
@@ -4241,6 +4368,7 @@ function showTab(tab) {
   if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); loadSubTracker(); }
   if (tab==='schedule') initSchedule();
   if (tab==='scoring') { loadConfirmSummary(); loadWeeklyConfirmations(); }
+  if (tab!=='scoring' && _liveActive) { toggleLiveScoring(); }
   if (tab==='standings') loadStandings();
   if (tab==='course') { loadSI(); if (league && league.course) loadCourseData(league.course); }
   if (tab==='playoffs') loadPlayoffs();
