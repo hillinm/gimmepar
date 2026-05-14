@@ -1433,6 +1433,21 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
     </div>
 
+    <!-- Sub Tracker -->
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">👥</span>
+        <div style="flex:1;">
+          <div class="section-title">Sub Tracker</div>
+          <div class="section-sub">All substitutes and how many times each has played</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadSubTracker()">↻ Refresh</button>
+      </div>
+      <div class="section-body">
+        <div id="subTrackerList"><div class="empty-state" style="color:var(--muted);font-size:13px;">Click Refresh to load.</div></div>
+      </div>
+    </div>
+
     <!-- Log Substitute -->
     <div class="section-card">
       <div class="section-header">
@@ -4223,7 +4238,7 @@ function showTab(tab) {
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
-  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); }
+  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); loadSubTracker(); }
   if (tab==='schedule') initSchedule();
   if (tab==='scoring') { loadConfirmSummary(); loadWeeklyConfirmations(); }
   if (tab==='standings') loadStandings();
@@ -5413,10 +5428,148 @@ async function logSubstitute() {
   try {
     await api('POST', '/api/league/rounds/'+roundId+'/sub', { team_id: teamId, sub_name: subName, replaced_name: replaced });
     result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
+    loadSubTracker();
     document.getElementById('subName').value = '';
     document.getElementById('subReplacedName').value = '';
   } catch(e) {
     result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+// ══ SUB TRACKER ══
+async function loadSubTracker() {
+  var el = document.getElementById('subTrackerList');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
+
+  try {
+    // Fetch all rounds with scores to find subs
+    var rounds = await api('GET', '/api/league/rounds');
+    // Also fetch sub-counts for a quick summary
+    var subCounts = {};
+    try { subCounts = await api('GET', '/api/league/sub-counts'); } catch(e) {}
+
+    // Build sub records from rounds
+    // Each round score may have is_sub=true and sub_name
+    var subRecords = []; // {subName, teamName, week, replacedName, roundIdx}
+    rounds.forEach(function(r, roundIdx) {
+      var scores = [];
+      // Try to get detailed scores if embedded
+      if (r.scores && Array.isArray(r.scores)) {
+        scores = r.scores;
+      }
+      scores.forEach(function(s) {
+        if (s.is_sub) {
+          var team = rosterTeams.find(function(t){ return t.id === s.team_id; });
+          var teamName = team ? ((team.player1||'') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + s.team_id);
+          subRecords.push({
+            subName: s.sub_name || 'Unknown Sub',
+            teamName: teamName,
+            week: roundIdx + 1,
+            replacedName: s.replaced_name || '',
+            nine: s.nine || 'front'
+          });
+        }
+      });
+    });
+
+    // Try dedicated subs endpoint if rounds didn't have embedded scores
+    if (!subRecords.length) {
+      try {
+        var subs = await api('GET', '/api/league/subs');
+        if (subs && subs.length) {
+          subs.forEach(function(s) {
+            var team = rosterTeams.find(function(t){ return t.id === s.team_id; });
+            var teamName = team ? ((team.player1||'') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + s.team_id);
+            subRecords.push({
+              subName: s.sub_name || 'Unknown Sub',
+              teamName: teamName,
+              week: s.week_number || '?',
+              replacedName: s.replaced_name || '',
+              nine: s.nine || ''
+            });
+          });
+        }
+      } catch(e) {}
+    }
+
+    // Build per-team sub count summary from subCounts object
+    // subCounts = {teamId: count}
+    var teamSubSummary = [];
+    rosterTeams.forEach(function(t) {
+      var cnt = subCounts[t.id] || 0;
+      if (cnt > 0) {
+        teamSubSummary.push({
+          teamName: (t.player1||'') + (t.player2 ? ' / ' + t.player2 : ''),
+          count: cnt,
+          teamId: t.id
+        });
+      }
+    });
+    teamSubSummary.sort(function(a,b){ return b.count - a.count; });
+
+    // Aggregate sub player counts
+    var subPlayerMap = {};
+    subRecords.forEach(function(r) {
+      var key = r.subName.toLowerCase().trim();
+      if (!subPlayerMap[key]) subPlayerMap[key] = { name: r.subName, weeks: [] };
+      subPlayerMap[key].weeks.push({ week: r.week, team: r.teamName, replaced: r.replacedName });
+    });
+    var subPlayers = Object.values(subPlayerMap).sort(function(a,b){ return b.weeks.length - a.weeks.length; });
+
+    var html = '';
+
+    // Team sub count summary
+    if (teamSubSummary.length) {
+      html += '<div style="margin-bottom:20px;">';
+      html += '<div style="font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold2);margin-bottom:10px;">SUBS USED BY TEAM</div>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      html += '<thead><tr>';
+      html += '<th style="text-align:left;padding:6px 10px;font-family:"Bebas Neue",sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--gold2);border-bottom:1px solid var(--border);">TEAM</th>';
+      html += '<th style="text-align:center;padding:6px 10px;font-family:"Bebas Neue",sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--gold2);border-bottom:1px solid var(--border);">SUBS USED</th>';
+      html += '<th style="text-align:center;padding:6px 10px;font-family:"Bebas Neue",sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--gold2);border-bottom:1px solid var(--border);">STATUS</th>';
+      html += '</tr></thead><tbody>';
+      teamSubSummary.forEach(function(t) {
+        var statusColor = t.count >= 2 ? '#ff9999' : 'var(--gold)';
+        var statusText = t.count >= 2 ? '⚠ Full handicap if subbed again' : (t.count === 1 ? '1 more sub = full hdcp' : '');
+        html += '<tr>';
+        html += '<td style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);">' + esc(t.teamName) + '</td>';
+        html += '<td style="padding:8px 10px;text-align:center;font-weight:700;font-size:15px;border-bottom:1px solid rgba(255,255,255,.04);">' + t.count + '</td>';
+        html += '<td style="padding:8px 10px;text-align:center;font-size:11px;color:'+statusColor+';border-bottom:1px solid rgba(255,255,255,.04);">' + statusText + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    // Sub player detail
+    if (subPlayers.length) {
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold2);margin-bottom:10px;">SUB PLAYERS</div>';
+      subPlayers.forEach(function(sp) {
+        html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+        html += '<span style="font-weight:700;font-size:14px;">' + esc(sp.name) + '</span>';
+        html += '<span style="font-family:"Bebas Neue",sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;">' + sp.weeks.length + ' round' + (sp.weeks.length !== 1 ? 's' : '') + '</span>';
+        html += '</div>';
+        if (sp.weeks.length) {
+          html += '<div style="font-size:11px;color:var(--muted);">';
+          sp.weeks.forEach(function(w) {
+            html += '<span style="display:inline-block;margin-right:12px;margin-bottom:2px;">Wk ' + w.week + ' — ' + esc(w.team) + (w.replaced ? ' (for ' + esc(w.replaced) + ')' : '') + '</span>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    if (!teamSubSummary.length && !subPlayers.length) {
+      html = '<div class="empty-state" style="color:var(--muted);font-size:13px;">No sub records found. Log subs below after rounds are saved.</div>';
+    }
+
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error loading subs: ' + e.message + '</div>';
   }
 }
 
