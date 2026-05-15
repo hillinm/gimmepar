@@ -1864,10 +1864,29 @@ async function loadPlayerView(data) {
     el.textContent = activeWeekForConfirm;
   });
 
-  // Build own editable scorecard
-  scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
+  // Build own editable scorecard — use the Schedule tab assignment as the source of truth.
+  var myScheduledNine = (typeof matchupNine !== 'undefined' && matchupNine) ? matchupNine : (team.nine || 'front');
+  myScheduledNine = normalizeScheduleNine(myScheduledNine, matchupHole);
+  scoreTeams = [{
+    id: team.id,
+    nine: myScheduledNine,
+    scheduledNine: myScheduledNine,
+    holes: Array(myScheduledNine === 'all18' ? 18 : 9).fill(null)
+  }];
   var myCard = buildScoreCard(team, scoreTeams[0], 0);
   container.appendChild(myCard);
+  // Restore this player's current live draft if they already entered scores for the active week.
+  try {
+    var mine = await api('GET', '/api/league/scores/latest/' + team.id + '?week=' + activeWeekForConfirm);
+    if (mine && mine.found && mine.hole_scores) {
+      mine.hole_scores.forEach(function(score, i) {
+        var inp = document.getElementById('shole_' + team.id + '_' + i);
+        if (inp && score !== null && score !== undefined) { inp.value = score; inp.dispatchEvent(new Event('input')); }
+      });
+      if (mine.handicap_used != null) { var hEl = document.getElementById('shdcp_' + team.id); if (hEl) hEl.value = mine.handicap_used; }
+      recalcCard(team.id);
+    }
+  } catch(e) {}
 
   // Build opponent read-only card if found
   if (opponent) {
@@ -3932,7 +3951,7 @@ function recalcCard(teamId) {
   // Auto-save after 1.5 seconds of inactivity
   if (_autoSaveTimers[teamId]) clearTimeout(_autoSaveTimers[teamId]);
   _autoSaveTimers[teamId] = setTimeout(function() {
-    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+    var weekNum = getActiveScoreWeek();
     var nine = st ? st.nine : 'front';
     // Save to localStorage immediately as reliable backup
     try {
@@ -3940,15 +3959,36 @@ function recalcCard(teamId) {
       var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
       localStorage.setItem(draftKey, JSON.stringify({ holes: holes, nine: nine, hdcp: hdcp, week: weekNum, ts: Date.now() }));
     } catch(e) {}
-    api('PUT', '/api/league/scores/draft/' + teamId, {
-      hole_scores: holes,
-      nine: nine,
-      handicap_used: hdcp,
-      gross: gross,
-      net: filled === count ? net : 0,
-      week_number: weekNum
-    }).catch(function(){});
+    saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, filled === count ? net : 0);
   }, 1500);
+}
+
+function getActiveScoreWeek() {
+  var wkEl = document.getElementById('scoringWeekNum');
+  var wk = wkEl ? parseInt(wkEl.value, 10) : NaN;
+  if (!isNaN(wk) && wk > 0) return wk;
+  if (_playerCurrentWeek) return _playerCurrentWeek;
+  if (leagueSettings && leagueSettings.currentWeek) return leagueSettings.currentWeek;
+  return 1;
+}
+
+function saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, net) {
+  var payload = {
+    hole_scores: holes,
+    nine: nine,
+    handicap_used: hdcp,
+    gross: gross,
+    net: net,
+    week_number: weekNum
+  };
+  // Local backup for this browser, plus server draft for live scoring on other devices.
+  try {
+    var leagueId = (league && league.id) || (currentUser && currentUser.leagueId) || 'default';
+    localStorage.setItem('gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum, JSON.stringify(Object.assign({}, payload, { holes: holes, hdcp: hdcp, week: weekNum, ts: Date.now() })));
+  } catch(e) {}
+  return api('PUT', '/api/league/scores/draft/' + teamId, payload).catch(function(e){
+    console.warn('Live draft save failed for team ' + teamId + ':', e);
+  });
 }
 
 // ══ CALCULATE ══
@@ -5602,7 +5642,10 @@ async function logSubstitute() {
 
 // ══ UTILS ══
 async function api(method, url, body) {
-  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
+  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include', cache:'no-store' };
+  if (method === 'GET') {
+    url += (url.indexOf('?') >= 0 ? '&' : '?') + '_ts=' + Date.now();
+  }
   if (body) opts.body = JSON.stringify(body);
   let res;
   try { res = await fetch(url, opts); }
@@ -5668,10 +5711,11 @@ async function pollLiveScores() {
   var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
   var anyUpdate = false;
 
-  var fetches = rosterTeams.map(function(t) {
+  var teamsToPoll = rosterTeams && rosterTeams.length ? rosterTeams : scoreTeams.map(function(s){ return {id:s.id}; });
+  var fetches = teamsToPoll.map(function(t) {
     return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
       .then(function(data) { return { teamId: t.id, data: data }; })
-      .catch(function() { return { teamId: t.id, data: null }; });
+      .catch(function(e) { console.warn('Live poll failed for team ' + t.id, e); return { teamId: t.id, data: null }; });
   });
 
   var results = await Promise.all(fetches);
@@ -5682,14 +5726,16 @@ async function pollLiveScores() {
     var nine = null;
     var hdcp = null;
 
-    // Primary: server response
+    // Primary: server live draft / signed response
     if (r.data && r.data.found) {
       holes = r.data.hole_scores || [];
       nine = r.data.nine || 'front';
       hdcp = r.data.handicap_used;
     }
 
-    // Fallback: localStorage draft for this week
+    // Fallback: localStorage draft for this week. This only helps when admin and player are on the same browser,
+    // but it keeps the scorer usable if the draft API is temporarily unavailable.
+
     if (!holes || !holes.some(function(h){ return h !== null && h !== undefined; })) {
       try {
         var leagueId = league && league.id ? league.id : 'default';
@@ -5754,7 +5800,7 @@ async function pollLiveScores() {
     var lsFound = 0;
     try {
       var lid = league && league.id ? league.id : 'default';
-      rosterTeams.forEach(function(t){
+      teamsToPoll.forEach(function(t){
         if (localStorage.getItem('gp_draft_'+lid+'_'+t.id+'_wk'+weekNum)) lsFound++;
       });
     } catch(e) {}
