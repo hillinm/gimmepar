@@ -1927,7 +1927,7 @@ async function loadPlayerView(data) {
   try {
     var signedList = await api('GET', '/api/league/scorecard/signed');
     var mySig = signedList.find(function(s) {
-      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft';
+      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft' && s.signed_by !== 'LIVE-DRAFT';
     });
     if (mySig) alreadySigned = true;
   } catch(e) {}
@@ -3468,6 +3468,7 @@ function buildScoreCard(team, st, idx) {
         ${st.scheduledNine ? '<span style="font-size:10px;color:var(--muted);font-family:Bebas Neue,sans-serif;letter-spacing:1px;">FROM SCHEDULE</span>' : ''}
       </div>
       <div id="sgrid_${team.id}">${buildHolesGrid(team.id, st.nine)}</div>
+      <div id="liveSaveWarn_${team.id}" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:14px;"></div>
       <div class="score-totals">
         <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross2_${team.id}">—</div></div>
         <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">—</div></div>
@@ -3972,6 +3973,24 @@ function getActiveScoreWeek() {
   return 1;
 }
 
+function liveFetch(method, url, body) {
+  var opts = { method: method, headers:{'Content-Type':'application/json'}, credentials:'include' };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url, opts).then(function(res){
+    return res.text().then(function(raw){
+      var data = null;
+      if (raw && raw.trim()) {
+        try { data = JSON.parse(raw); } catch(e) { data = { raw: raw }; }
+      }
+      if (!res.ok) {
+        var msg = (data && data.error) ? data.error : ('Request failed status ' + res.status);
+        throw new Error(msg);
+      }
+      return data || { ok:true, empty:true };
+    });
+  });
+}
+
 function saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, net) {
   var payload = {
     team_id: teamId,
@@ -3981,7 +4000,7 @@ function saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, net) {
     handicap_used: hdcp,
     gross: gross,
     net: net,
-    signed_by: 'draft'
+    signed_by: 'LIVE-DRAFT'
   };
 
   // Always save locally first so the player never loses scores on their own device.
@@ -3990,18 +4009,20 @@ function saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, net) {
     localStorage.setItem('gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum, JSON.stringify(Object.assign({}, payload, { holes: holes, hdcp: hdcp, week: weekNum, ts: Date.now() })));
   } catch(e) {}
 
-  // Live scoring needs a server save so the admin laptop can see another player's phone.
-  // Some deployments do NOT have /api/league/scores/draft, but they DO have the signed-scorecard API.
-  // Try draft endpoint first; if it is missing, fall back to saving a draft row in signed scorecards.
-  return api('PUT', '/api/league/scores/draft/' + teamId, payload).catch(function(e1){
-    console.warn('Live draft endpoint failed; falling back to scorecard/sign draft:', e1);
-    return api('POST', '/api/league/scorecard/sign', payload).catch(function(e2){
-      console.error('Live draft save failed completely for team ' + teamId + ':', e2);
+  // Try the live draft endpoint first. If that route is not present, fall back to the existing scorecard/sign route.
+  // liveFetch accepts empty 200/204 responses, which the normal api() helper treats as an error.
+  return liveFetch('PUT', '/api/league/scores/draft/' + teamId, payload)
+    .catch(function(e1){
+      return liveFetch('POST', '/api/league/scorecard/sign', payload).catch(function(e2){
+        var warn = document.getElementById('liveSaveWarn_' + teamId);
+        if (warn) warn.textContent = 'Live save failed: ' + e2.message;
+        throw e2;
+      });
+    })
+    .then(function(){
       var warn = document.getElementById('liveSaveWarn_' + teamId);
-      if (warn) warn.textContent = 'Live save failed: ' + e2.message;
-      throw e2;
+      if (warn) warn.textContent = 'Live saved ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
     });
-  });
 }
 
 async function getLiveScoreForTeam(teamId, weekNum) {
@@ -4013,7 +4034,7 @@ async function getLiveScoreForTeam(teamId, weekNum) {
     console.warn('scores/latest failed for team ' + teamId + ', trying signed scorecards:', e1);
   }
 
-  // 2) Fallback to existing signed-scorecard list, including draft rows
+  // 2) Fallback to existing signed-scorecard list. This can only work if the server returns LIVE-DRAFT/draft rows.
   try {
     var rows = await api('GET', '/api/league/scorecard/signed');
     if (Array.isArray(rows)) {
@@ -4027,9 +4048,11 @@ async function getLiveScoreForTeam(teamId, weekNum) {
           return bt - at;
         });
         var r = matches[0];
+        var hs = r.hole_scores || r.scores || [];
+        if (typeof hs === 'string') { try { hs = JSON.parse(hs); } catch(e) { hs = []; } }
         return {
           found: true,
-          hole_scores: r.hole_scores || r.scores || [],
+          hole_scores: hs,
           nine: r.nine || 'front',
           handicap_used: r.handicap_used,
           gross: r.gross,
@@ -5624,6 +5647,7 @@ async function loadSignedScorecards() {
   el.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
     var rows = await api('GET', '/api/league/scorecard/signed');
+    rows = rows.filter(function(r){ var by=String(r.signed_by||''); return by !== 'draft' && by !== 'LIVE-DRAFT'; });
     if (!rows.length) { el.innerHTML = '<div class="empty-state">No signed scorecards yet.</div>'; return; }
     var html = '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th></tr></thead><tbody>';
     rows.forEach(function(r) {
@@ -5860,7 +5884,9 @@ async function pollLiveScores() {
       });
     } catch(e) {}
     var debugStr = ' [found:'+serverFound+' local:'+lsFound+' fail:'+failedPolls+']';
-    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' · new scores' : '') + debugStr;
+    var msg = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' · new scores' : '') + debugStr;
+    if (serverFound === 0 && lsFound === 0) msg += ' — no live rows returned by server yet';
+    lastEl.textContent = msg;
   }
 }
 async function loadSubTracker() {
