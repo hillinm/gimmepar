@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- build: live-week-confirm-fix-v12 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GimmePar</title>
-<!-- build: live-week-fix-v11 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -713,7 +712,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
           </div>
         </div>
-        <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
+        <button class="btn-primary" id="loginBtn" onclick="var b=document.getElementById('loginBtn'); if(b)b.textContent='...'; window.login()">SIGN IN</button>
         <div class="login-toggle">Don't have a league? <a onclick="showRegister()">Create one</a></div>
       </div>
       <div id="registerForm" style="display:none">
@@ -1811,7 +1810,6 @@ async function loadPlayerView(data) {
   // Find current week matchup
   var opponent = null;
   var matchupHole = null;
-  var resolvedPlayerNine = normalizeScheduleNine(team.nine, null);
   var curr = null;
   // Always fetch fresh settings for current week — don't rely on cached leagueSettings
   var activeWeekForConfirm = 1;
@@ -1844,8 +1842,9 @@ async function loadPlayerView(data) {
         matchupHole = myMatchup.hole;
       }
     }
-    var matchupNine = normalizeScheduleNine((myMatchup && (myMatchup.nine || myMatchup.starting_nine || myMatchup.nine_label)), matchupHole || (myMatchup && (myMatchup.hole || myMatchup.starting_hole || myMatchup.startHole)));
-    resolvedPlayerNine = matchupNine;
+    var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
+      : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
+      : (team.nine || 'front');
     var nineLabel = matchupNine === 'back' ? 'BACK 9' : matchupNine === 'all18' ? 'ALL 18' : 'FRONT 9';
     container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
       + ' &nbsp;|&nbsp; ' + nineLabel
@@ -1866,9 +1865,9 @@ async function loadPlayerView(data) {
     el.textContent = activeWeekForConfirm;
   });
 
-  // Build own editable scorecard — use this week's scheduled F9/B9, not the roster default.
-  var ownCount = resolvedPlayerNine === 'all18' ? 18 : 9;
-  scoreTeams = [{ id: team.id, nine: resolvedPlayerNine, scheduledNine: resolvedPlayerNine, holes: Array(ownCount).fill(null) }];
+  // Build own editable scorecard from THIS WEEK'S scheduled F9/B9, not the old team default saved on the phone.
+  var playerNine = normalizeScheduleNine((typeof myMatchup !== 'undefined' && myMatchup && myMatchup.nine) ? myMatchup.nine : (matchupHole ? (matchupHole >= 10 ? 'back' : 'front') : (team.nine || 'front')), matchupHole);
+  scoreTeams = [{ id: team.id, nine: playerNine, scheduledNine: playerNine, holes: Array(playerNine === 'all18' ? 18 : 9).fill(null) }];
   var myCard = buildScoreCard(team, scoreTeams[0], 0);
   container.appendChild(myCard);
 
@@ -1911,7 +1910,7 @@ async function loadPlayerView(data) {
   try {
     var signedList = await api('GET', '/api/league/scorecard/signed');
     var mySig = signedList.find(function(s) {
-      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft';
+      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft' && s.signed_by !== 'LIVE-DRAFT';
     });
     if (mySig) alreadySigned = true;
   } catch(e) {}
@@ -2003,9 +2002,10 @@ async function loadWeeklyConfirmations() {
   if (!el) return;
   el.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
-    // Always fetch fresh settings
-    var freshSettings = await api('GET', '/api/league/settings');
-    var weekNum = freshSettings.currentWeek || (leagueSettings && leagueSettings.currentWeek) || 1;
+    // Use the week currently selected on the Scoring tab first. This keeps confirmations aligned with the admin's selected week.
+    var freshSettings = await api('GET', '/api/league/settings').catch(function(){ return {}; });
+    var wkEl = document.getElementById('scoringWeekNum');
+    var weekNum = parseInt(wkEl && wkEl.value, 10) || freshSettings.currentWeek || (leagueSettings && leagueSettings.currentWeek) || 1;
     var rows = await api('GET', '/api/league/confirm-playing/' + weekNum);
     if (!rows.length) { el.innerHTML = '<div class="empty-state">No confirmations yet for week ' + weekNum + '. Deadline is Sunday 9pm.</div>'; return; }
     var playing = rows.filter(function(r){return r.playing;});
@@ -2160,13 +2160,7 @@ async function fetchOpponentScore(oppTeamId, weekNum) {
     if (tag) { tag.textContent = ''; }
 
     if (!data.found) return;
-    var rowWeek = data.week_number || data.weekNum || data.week || data.currentWeek;
-    if (rowWeek !== undefined && rowWeek !== null) {
-      var rowWeekNum = parseInt(String(rowWeek).replace(/[^0-9]/g,''), 10);
-      if (!isNaN(rowWeekNum) && weekNum && rowWeekNum !== parseInt(weekNum, 10)) return;
-    }
-    var scores = data.hole_scores || data.scores || [];
-    if (typeof scores === 'string') { try { scores = JSON.parse(scores); } catch(e) { scores = []; } }
+    var scores = data.hole_scores || [];
     scores.forEach(function(score, i) {
       var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
       if (!cell) return;
@@ -3168,19 +3162,12 @@ async function buildScoringCards() {
   _buildingScoringCards = true;
   setTimeout(function(){ _buildingScoringCards = false; }, 3000);
   loadConfirmSummary();
-  // Always use the league's current week from the server as the default. Do not let old browser/localStorage
-  // values pull last week's scorecards back into the scoring tab.
+  // Set week input from settings or localStorage
   var wkEl = document.getElementById('scoringWeekNum');
-  try {
-    var freshSettings = await api('GET', '/api/league/settings');
-    if (freshSettings && freshSettings.currentWeek) {
-      leagueSettings = Object.assign({}, leagueSettings || {}, freshSettings);
-    }
-  } catch(e) {}
   if (wkEl) {
+    var savedWeek = localStorage.getItem('gimmepar_week');
     var settingsWeek = leagueSettings && leagueSettings.currentWeek;
-    wkEl.value = settingsWeek || 1;
-    try { localStorage.setItem('gimmepar_week', wkEl.value); } catch(e) {}
+    wkEl.value = settingsWeek || savedWeek || 1;
   }
   const container = document.getElementById('scoringTeams');
   if (!container) return;
@@ -3201,7 +3188,7 @@ async function buildScoringCards() {
     var currentWeekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     signedRows.forEach(function(r) {
       signedThisWeek[r.team_id] = r.week_number;
-      if (parseInt(String(r.week_number).replace(/[^0-9]/g,''), 10) === currentWeekNum) signedScoreData[r.team_id] = r;
+      if (parseInt(r.week_number) === currentWeekNum) signedScoreData[r.team_id] = r;
     });
   } catch(e) { signedThisWeek = {}; }
 
@@ -3304,7 +3291,7 @@ async function buildScoringCards() {
     }
 
     // Apply signed badge only for current week
-    if (signedThisWeek[t.id] && parseInt(String(signedThisWeek[t.id]).replace(/[^0-9]/g,''), 10) === currentWeekNum) {
+    if (signedThisWeek[t.id] && signedThisWeek[t.id] === currentWeekNum) {
       var nameEl = document.getElementById('sname_' + t.id);
       if (nameEl && !nameEl.querySelector('.signed-badge')) {
         var badge = document.createElement('span');
@@ -3536,8 +3523,10 @@ async function loadConfirmSummary() {
   var namesEl = document.getElementById('confirmSummaryNames');
   if (!textEl) return;
   try {
-    var settings = leagueSettings || await api('GET', '/api/league/settings');
-    var weekNum = settings.currentWeek || 1;
+    // Use the visible scoring week so the summary does not get stuck on an old settings week.
+    var settings = await api('GET', '/api/league/settings').catch(function(){ return leagueSettings || {}; });
+    var wkEl = document.getElementById('scoringWeekNum');
+    var weekNum = parseInt(wkEl && wkEl.value, 10) || settings.currentWeek || 1;
     var rows = await api('GET', '/api/league/confirm-playing/' + weekNum);
     var playing    = rows.filter(function(r){ return r.playing; });
     var notPlaying = rows.filter(function(r){ return !r.playing; });
@@ -3948,7 +3937,7 @@ function recalcCard(teamId) {
   // Auto-save after 1.5 seconds of inactivity
   if (_autoSaveTimers[teamId]) clearTimeout(_autoSaveTimers[teamId]);
   _autoSaveTimers[teamId] = setTimeout(function() {
-    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (typeof _playerCurrentWeek !== 'undefined' && _playerCurrentWeek) || (leagueSettings && leagueSettings.currentWeek) || 1;
+    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     var nine = st ? st.nine : 'front';
     // Save to localStorage immediately as reliable backup
     try {
@@ -3956,14 +3945,19 @@ function recalcCard(teamId) {
       var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
       localStorage.setItem(draftKey, JSON.stringify({ holes: holes, nine: nine, hdcp: hdcp, week: weekNum, ts: Date.now() }));
     } catch(e) {}
-    api('PUT', '/api/league/scores/draft/' + teamId, {
+    var payload = {
+      team_id: teamId,
       hole_scores: holes,
       nine: nine,
       handicap_used: hdcp,
       gross: gross,
       net: filled === count ? net : 0,
-      week_number: weekNum
-    }).catch(function(){});
+      week_number: weekNum,
+      signed_by: 'LIVE-DRAFT'
+    };
+    // Save to both endpoints. Some deployments only return one of these in the live feed.
+    api('PUT', '/api/league/scores/draft/' + teamId, payload).catch(function(){});
+    api('POST', '/api/league/scorecard/sign', payload).catch(function(){});
   }, 1500);
 }
 
@@ -5659,6 +5653,57 @@ var _liveTimer = null;
 var _liveActive = false;
 var _livePrev = {}; // last polled hole values per team
 
+
+function clearVisibleScoreInputsForLive() {
+  // When LIVE starts, do not display stale local/signed scores from an older week.
+  (scoreTeams || []).forEach(function(st) {
+    var teamId = st.id;
+    var count = st.nine === 'all18' ? 18 : 9;
+    for (var i = 0; i < count; i++) {
+      var inp = document.getElementById('shole_' + teamId + '_' + i);
+      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); inp.dispatchEvent(new Event('input')); }
+    }
+    var g = document.getElementById('sgross_' + teamId); if (g) g.textContent = '—';
+    var n = document.getElementById('snet_' + teamId); if (n) n.textContent = '';
+    var g2 = document.getElementById('sgross2_' + teamId); if (g2) g2.textContent = '—';
+    var tp = document.getElementById('stopar_' + teamId); if (tp) tp.textContent = '—';
+    var n2 = document.getElementById('snet2_' + teamId); if (n2) n2.textContent = '—';
+  });
+}
+
+async function fetchLiveScoreStrict(teamId, weekNum) {
+  // 1) Current draft endpoint. Backend may return nothing, or may include found/hole_scores.
+  try {
+    var d = await api('GET', '/api/league/scores/latest/' + teamId + '?week=' + weekNum + '&week_number=' + weekNum + '&_=' + Date.now());
+    if (d && d.found) {
+      var rw = d.week_number != null ? d.week_number : (d.weekNum != null ? d.weekNum : (d.week != null ? d.week : weekNum));
+      if (parseInt(rw, 10) === parseInt(weekNum, 10)) return d;
+    }
+  } catch(e) {}
+
+  // 2) Signed-scorecard fallback. Include LIVE-DRAFT rows, but require exact week.
+  try {
+    var rows = await api('GET', '/api/league/scorecard/signed?week=' + weekNum + '&_=' + Date.now());
+    if (rows && !Array.isArray(rows) && Array.isArray(rows.scorecards)) rows = rows.scorecards;
+    if (Array.isArray(rows)) {
+      var matches = rows.filter(function(r) {
+        var rid = r.team_id != null ? r.team_id : (r.teamId != null ? r.teamId : r.team);
+        var rw = r.week_number != null ? r.week_number : (r.weekNumber != null ? r.weekNumber : r.week);
+        return String(rid) === String(teamId) && parseInt(rw, 10) === parseInt(weekNum, 10);
+      });
+      matches.sort(function(a,b){
+        return new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || b.signed_at || b.signedAt || 0) -
+               new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || a.signed_at || a.signedAt || 0);
+      });
+      if (matches.length) {
+        var r = matches[0];
+        return { found:true, hole_scores:r.hole_scores || r.holeScores || r.scores || [], nine:r.nine, handicap_used:r.handicap_used || r.handicapUsed, week_number:weekNum, source:'signed' };
+      }
+    }
+  } catch(e) {}
+  return { found:false };
+}
+
 function toggleLiveScoring() {
   _liveActive = !_liveActive;
   var btn = document.getElementById('btnLive');
@@ -5667,6 +5712,7 @@ function toggleLiveScoring() {
     btn && btn.classList.add('active');
     banner && banner.classList.add('visible');
     _livePrev = {};
+    clearVisibleScoreInputsForLive();
     pollLiveScores();
     _liveTimer = setInterval(pollLiveScores, 15000);
     toast('📡 Live scoring ON');
@@ -5694,7 +5740,7 @@ async function pollLiveScores() {
     .filter(function(t){ return t && t.id; });
 
   var fetches = teamsToPoll.map(function(t) {
-    return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
+    return fetchLiveScoreStrict(t.id, weekNum)
       .then(function(data) { return { teamId: t.id, data: data }; })
       .catch(function() { failedPolls++; return { teamId: t.id, data: null }; });
   });
@@ -5710,9 +5756,8 @@ async function pollLiveScores() {
     // Primary: server response. IMPORTANT: the backend may ignore ?week= and return the latest
     // scorecard from a prior week. Do not apply it unless the row proves it belongs to this week.
     if (r.data && r.data.found) {
-      var rowWeek = r.data.week_number || r.data.weekNum || r.data.week || r.data.currentWeek || r.data.requested_week;
-      var rowWeekNum = rowWeek !== undefined && rowWeek !== null ? parseInt(String(rowWeek).replace(/[^0-9]/g,''), 10) : NaN;
-      if (!isNaN(rowWeekNum) && rowWeekNum === weekNum) {
+      var rowWeek = r.data.week_number || r.data.weekNum || r.data.week || r.data.currentWeek;
+      if (rowWeek !== undefined && rowWeek !== null && String(parseInt(rowWeek)) === String(weekNum)) {
         serverFound++;
         holes = r.data.hole_scores || r.data.scores || [];
         if (typeof holes === 'string') { try { holes = JSON.parse(holes); } catch(e) { holes = []; } }
@@ -5985,6 +6030,24 @@ async function downloadWeekXLSX() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('✓ Week ' + weekNum + ' spreadsheet downloaded');
+}
+
+
+// ── Inline handler safety exports ──
+// Some browsers/hosting setups do not expose function declarations reliably to inline onclick handlers
+// after heavy edits. These aliases keep the login/register buttons wired.
+try {
+  window.login = login;
+  window.register = register;
+  window.showLogin = showLogin;
+  window.showRegister = showRegister;
+  window.togglePassVis = togglePassVis;
+  window.logout = logout;
+  window.showTab = showTab;
+  window.toggleLiveScoring = toggleLiveScoring;
+  window.pollLiveScores = pollLiveScores;
+} catch(e) {
+  console.error('GimmePar handler export failed:', e);
 }
 
 
