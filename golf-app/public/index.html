@@ -5585,19 +5585,30 @@ async function pollLiveScores() {
       hdcp = r.data.handicap_used;
     }
 
-    // Fallback: localStorage draft (covers future weeks & admin-entered scores)
+    // Fallback: localStorage draft — try exact week first, then any recent draft for this team
     if (!holes || !holes.some(function(h){ return h !== null && h !== undefined; })) {
       try {
         var leagueId = league && league.id ? league.id : 'default';
-        var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
-        var raw = localStorage.getItem(draftKey);
-        if (raw) {
-          var draft = JSON.parse(raw);
-          if (draft.holes && draft.holes.some(function(h){ return h !== null; })) {
-            holes = draft.holes;
-            nine = draft.nine || nine || 'front';
-            hdcp = draft.hdcp != null ? draft.hdcp : hdcp;
+        var bestDraft = null;
+        // Scan all localStorage keys for this team's drafts (any week)
+        var prefix = 'gp_draft_' + leagueId + '_' + teamId + '_wk';
+        for (var key in localStorage) {
+          if (key.indexOf(prefix) === 0) {
+            try {
+              var d = JSON.parse(localStorage.getItem(key));
+              if (d && d.holes && d.holes.some(function(h){ return h !== null; })) {
+                // Prefer exact week match, otherwise take most recent
+                if (!bestDraft || d.week === weekNum || (d.ts && (!bestDraft.ts || d.ts > bestDraft.ts))) {
+                  bestDraft = d;
+                }
+              }
+            } catch(e2) {}
           }
+        }
+        if (bestDraft) {
+          holes = bestDraft.holes;
+          nine = bestDraft.nine || nine || 'front';
+          hdcp = bestDraft.hdcp != null ? bestDraft.hdcp : hdcp;
         }
       } catch(e) {}
     }
