@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GimmePar</title>
+<!-- build: live-week-fix-v11 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -711,7 +713,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
           </div>
         </div>
-        <button class="btn-primary" id="loginBtn" onclick="var b=document.getElementById('loginBtn'); if(b)b.textContent='...'; window.login()">SIGN IN</button>
+        <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
         <div class="login-toggle">Don't have a league? <a onclick="showRegister()">Create one</a></div>
       </div>
       <div id="registerForm" style="display:none">
@@ -1809,6 +1811,7 @@ async function loadPlayerView(data) {
   // Find current week matchup
   var opponent = null;
   var matchupHole = null;
+  var resolvedPlayerNine = normalizeScheduleNine(team.nine, null);
   var curr = null;
   // Always fetch fresh settings for current week — don't rely on cached leagueSettings
   var activeWeekForConfirm = 1;
@@ -1841,9 +1844,8 @@ async function loadPlayerView(data) {
         matchupHole = myMatchup.hole;
       }
     }
-    var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
-      : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
-      : (team.nine || 'front');
+    var matchupNine = normalizeScheduleNine((myMatchup && (myMatchup.nine || myMatchup.starting_nine || myMatchup.nine_label)), matchupHole || (myMatchup && (myMatchup.hole || myMatchup.starting_hole || myMatchup.startHole)));
+    resolvedPlayerNine = matchupNine;
     var nineLabel = matchupNine === 'back' ? 'BACK 9' : matchupNine === 'all18' ? 'ALL 18' : 'FRONT 9';
     container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
       + ' &nbsp;|&nbsp; ' + nineLabel
@@ -1864,8 +1866,9 @@ async function loadPlayerView(data) {
     el.textContent = activeWeekForConfirm;
   });
 
-  // Build own editable scorecard
-  scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
+  // Build own editable scorecard — use this week's scheduled F9/B9, not the roster default.
+  var ownCount = resolvedPlayerNine === 'all18' ? 18 : 9;
+  scoreTeams = [{ id: team.id, nine: resolvedPlayerNine, scheduledNine: resolvedPlayerNine, holes: Array(ownCount).fill(null) }];
   var myCard = buildScoreCard(team, scoreTeams[0], 0);
   container.appendChild(myCard);
 
@@ -2157,7 +2160,13 @@ async function fetchOpponentScore(oppTeamId, weekNum) {
     if (tag) { tag.textContent = ''; }
 
     if (!data.found) return;
-    var scores = data.hole_scores || [];
+    var rowWeek = data.week_number || data.weekNum || data.week || data.currentWeek;
+    if (rowWeek !== undefined && rowWeek !== null) {
+      var rowWeekNum = parseInt(String(rowWeek).replace(/[^0-9]/g,''), 10);
+      if (!isNaN(rowWeekNum) && weekNum && rowWeekNum !== parseInt(weekNum, 10)) return;
+    }
+    var scores = data.hole_scores || data.scores || [];
+    if (typeof scores === 'string') { try { scores = JSON.parse(scores); } catch(e) { scores = []; } }
     scores.forEach(function(score, i) {
       var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
       if (!cell) return;
@@ -3159,12 +3168,19 @@ async function buildScoringCards() {
   _buildingScoringCards = true;
   setTimeout(function(){ _buildingScoringCards = false; }, 3000);
   loadConfirmSummary();
-  // Set week input from settings or localStorage
+  // Always use the league's current week from the server as the default. Do not let old browser/localStorage
+  // values pull last week's scorecards back into the scoring tab.
   var wkEl = document.getElementById('scoringWeekNum');
+  try {
+    var freshSettings = await api('GET', '/api/league/settings');
+    if (freshSettings && freshSettings.currentWeek) {
+      leagueSettings = Object.assign({}, leagueSettings || {}, freshSettings);
+    }
+  } catch(e) {}
   if (wkEl) {
-    var savedWeek = localStorage.getItem('gimmepar_week');
     var settingsWeek = leagueSettings && leagueSettings.currentWeek;
-    wkEl.value = settingsWeek || savedWeek || 1;
+    wkEl.value = settingsWeek || 1;
+    try { localStorage.setItem('gimmepar_week', wkEl.value); } catch(e) {}
   }
   const container = document.getElementById('scoringTeams');
   if (!container) return;
@@ -3185,7 +3201,7 @@ async function buildScoringCards() {
     var currentWeekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     signedRows.forEach(function(r) {
       signedThisWeek[r.team_id] = r.week_number;
-      if (parseInt(r.week_number) === currentWeekNum) signedScoreData[r.team_id] = r;
+      if (parseInt(String(r.week_number).replace(/[^0-9]/g,''), 10) === currentWeekNum) signedScoreData[r.team_id] = r;
     });
   } catch(e) { signedThisWeek = {}; }
 
@@ -3288,7 +3304,7 @@ async function buildScoringCards() {
     }
 
     // Apply signed badge only for current week
-    if (signedThisWeek[t.id] && signedThisWeek[t.id] === currentWeekNum) {
+    if (signedThisWeek[t.id] && parseInt(String(signedThisWeek[t.id]).replace(/[^0-9]/g,''), 10) === currentWeekNum) {
       var nameEl = document.getElementById('sname_' + t.id);
       if (nameEl && !nameEl.querySelector('.signed-badge')) {
         var badge = document.createElement('span');
@@ -3932,7 +3948,7 @@ function recalcCard(teamId) {
   // Auto-save after 1.5 seconds of inactivity
   if (_autoSaveTimers[teamId]) clearTimeout(_autoSaveTimers[teamId]);
   _autoSaveTimers[teamId] = setTimeout(function() {
-    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (typeof _playerCurrentWeek !== 'undefined' && _playerCurrentWeek) || (leagueSettings && leagueSettings.currentWeek) || 1;
     var nine = st ? st.nine : 'front';
     // Save to localStorage immediately as reliable backup
     try {
@@ -5694,8 +5710,9 @@ async function pollLiveScores() {
     // Primary: server response. IMPORTANT: the backend may ignore ?week= and return the latest
     // scorecard from a prior week. Do not apply it unless the row proves it belongs to this week.
     if (r.data && r.data.found) {
-      var rowWeek = r.data.week_number || r.data.weekNum || r.data.week || r.data.currentWeek;
-      if (rowWeek !== undefined && rowWeek !== null && String(parseInt(rowWeek)) === String(weekNum)) {
+      var rowWeek = r.data.week_number || r.data.weekNum || r.data.week || r.data.currentWeek || r.data.requested_week;
+      var rowWeekNum = rowWeek !== undefined && rowWeek !== null ? parseInt(String(rowWeek).replace(/[^0-9]/g,''), 10) : NaN;
+      if (!isNaN(rowWeekNum) && rowWeekNum === weekNum) {
         serverFound++;
         holes = r.data.hole_scores || r.data.scores || [];
         if (typeof holes === 'string') { try { holes = JSON.parse(holes); } catch(e) { holes = []; } }
@@ -5968,24 +5985,6 @@ async function downloadWeekXLSX() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('✓ Week ' + weekNum + ' spreadsheet downloaded');
-}
-
-
-// ── Inline handler safety exports ──
-// Some browsers/hosting setups do not expose function declarations reliably to inline onclick handlers
-// after heavy edits. These aliases keep the login/register buttons wired.
-try {
-  window.login = login;
-  window.register = register;
-  window.showLogin = showLogin;
-  window.showRegister = showRegister;
-  window.togglePassVis = togglePassVis;
-  window.logout = logout;
-  window.showTab = showTab;
-  window.toggleLiveScoring = toggleLiveScoring;
-  window.pollLiveScores = pollLiveScores;
-} catch(e) {
-  console.error('GimmePar handler export failed:', e);
 }
 
 
