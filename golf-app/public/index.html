@@ -5537,14 +5537,13 @@ async function pollLiveScores() {
     var hdcp = r.data.handicap_used;
     var st = scoreTeams.find(function(s){ return s.id === teamId; });
     if (st && nine && st.nine !== nine) switchNine(teamId, nine);
-    var prev = _liveLastScores[teamId] || {};
-    var prevHoles = prev.holes || [];
     var changed = false;
     holes.forEach(function(score, i) {
       if (score === null || score === undefined) return;
-      if (prevHoles[i] === score) return;
       var inp = document.getElementById('shole_' + teamId + '_' + i);
       if (!inp) return;
+      // Compare against actual input value, not stored history
+      if (String(inp.value) === String(score) && inp.value !== '') return;
       inp.value = score;
       inp.dispatchEvent(new Event('input'));
       inp.style.transition = 'background .3s';
@@ -5563,7 +5562,6 @@ async function pollLiveScores() {
       var body = document.getElementById('sbody_' + teamId);
       if (body && body.style.display === 'none') toggleCard(teamId);
     }
-    _liveLastScores[teamId] = { holes: holes.slice() };
   });
   var lastEl = document.getElementById('liveLastUpdate');
   if (lastEl) {
