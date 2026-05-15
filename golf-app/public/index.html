@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -16,7 +16,7 @@
 <link rel="icon" type="image/svg+xml" href="/icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-/* ── LIVE SCORING ── */
+/* �� LIVE SCORING �� */
 .btn-live{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;padding:6px 14px;border-radius:7px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;}
 .btn-live.active{background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);}
 .btn-live .live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;}
@@ -38,7 +38,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 
 
-/* ΓöÇΓöÇ SUB TOGGLE ΓöÇΓöÇ */
+/* ── SUB TOGGLE ── */
 .btn-sub {
   background: transparent;
   border: 1px solid var(--border);
@@ -74,7 +74,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 
 
-/* ΓöÇΓöÇ STANDINGS ΓöÇΓöÇ */
+/* ── STANDINGS ── */
 .standings-flight { margin-bottom:28px; }
 .standings-flight-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; margin-bottom:12px; }
 .standings-flight-title.a { color:var(--green2); }
@@ -90,7 +90,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .standings-tbl .rank { color:var(--muted); font-size:12px; width:28px; }
 .playoff-note { font-size:12px; color:var(--muted); font-style:italic; margin-top:8px; }
 
-/* ΓöÇΓöÇ RESULT SETTINGS ΓöÇΓöÇ */
+/* ── RESULT SETTINGS ── */
 .result-settings { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; padding:12px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; }
 .result-settings label { font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); font-family:"Bebas Neue",sans-serif; }
 .setting-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
@@ -98,7 +98,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .setting-btn.active { background:var(--gold); color:var(--bg); }
 .setting-btn.active-off { background:rgba(192,57,43,.3); color:#ff9999; border-color:rgba(192,57,43,.4); }
 
-/* ΓöÇΓöÇ FORMAT TOGGLE ΓöÇΓöÇ */
+/* ── FORMAT TOGGLE ── */
 .format-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
 .format-btn { background:transparent; border:none; color:var(--muted); font-family:"Bebas Neue",sans-serif; font-size:12px; letter-spacing:1px; padding:5px 10px; cursor:pointer; transition:all .2s; white-space:nowrap; }
 .format-btn.active-2 { background:var(--green); color:#fff; }
@@ -111,13 +111,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .format-badge.two { background:rgba(74,140,63,.35); color:var(--green2); border:1px solid rgba(74,140,63,.5); }
 .format-badge.four { background:rgba(201,168,76,.25); color:var(--gold2); border:1px solid rgba(201,168,76,.4); }
 
-/* ΓöÇΓöÇ NINE TOGGLE ΓöÇΓöÇ */
+/* ── NINE TOGGLE ── */
 .nine-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .nine-toggle-btn{background:transparent;border:none;color:var(--muted);font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1px;padding:5px 10px;cursor:pointer;transition:all .2s;}
 .nine-toggle-btn.active-f{background:var(--green);color:#fff;}
 .nine-toggle-btn.active-b{background:rgba(201,168,76,.35);color:var(--gold2);}
 
-/* ΓöÇΓöÇ SCORING FILTERS ΓöÇΓöÇ */
+/* ── SCORING FILTERS ── */
 .score-filter-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
 .score-search{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:9px 14px;font-family:"Libre Baskerville",serif;font-size:14px;outline:none;}
 .score-search:focus{border-color:var(--gold);}
@@ -126,7 +126,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .filter-btn.active{border-color:var(--gold);color:var(--gold2);background:rgba(201,168,76,.1);}
 .score-count{font-size:12px;color:var(--muted);font-style:italic;white-space:nowrap;}
 
-/* ΓöÇΓöÇ COMPACT SCORE CARD ΓöÇΓöÇ */
+/* ── COMPACT SCORE CARD ── */
 .score-team-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
 .score-team-header{background:var(--surface2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
 .score-team-header:hover{background:rgba(255,255,255,.04);}
@@ -144,13 +144,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .quick-gross{font-family:"Bebas Neue",sans-serif;font-size:18px;color:var(--gold2);}
 .quick-net{font-family:"Bebas Neue",sans-serif;font-size:14px;color:var(--muted);}
 
-/* ΓöÇΓöÇ LAYOUT ΓöÇΓöÇ */
+/* ── LAYOUT ── */
 .page{display:none;position:relative;z-index:1;}
 .page.active{display:block;}
 #loginPage.active{display:flex;flex-direction:column;}
 .wrap{max-width:960px;margin:0 auto;padding:0 20px 80px;padding-bottom:calc(80px + env(safe-area-inset-bottom));}
 
-/* ΓöÇΓöÇ HEADER ΓöÇΓöÇ */
+/* ── HEADER ── */
 .app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;}
 .app-logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--gold);}
 .app-logo span{color:var(--white);}
@@ -162,7 +162,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .nav-tab:hover{color:var(--cream);border-color:var(--border);}
 .nav-tab.active{background:var(--surface2);border-color:var(--border);color:var(--gold);}
 
-/* ΓöÇΓöÇ LOGIN PAGE ΓöÇΓöÇ */
+/* ── LOGIN PAGE ── */
 .login-wrap{max-width:420px;margin:80px auto;padding:0 20px;}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;}
 .login-icon{font-size:52px;text-align:center;display:block;margin-bottom:12px;}
@@ -180,7 +180,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .login-toggle a{color:var(--gold2);cursor:pointer;text-decoration:underline;}
 .form-error{background:rgba(192,57,43,.2);border:1px solid rgba(192,57,43,.4);color:#ff9999;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none;}
 
-/* ΓöÇΓöÇ SECTION CARDS ΓöÇΓöÇ */
+/* ── SECTION CARDS ── */
 .section-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px;}
 .section-header{padding:16px 20px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
 .section-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--gold);}
@@ -188,7 +188,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .section-body{padding:20px;}
 
 
-/* ΓöÇΓöÇ SCHEDULE TAB ΓöÇΓöÇ */
+/* ── SCHEDULE TAB ── */
 .week-selector { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
 .week-selector label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
 .week-inp { background:var(--bg); border:1px solid var(--border); color:var(--cream); border-radius:8px; padding:9px 14px; font-family:"Libre Baskerville",serif; font-size:14px; outline:none; width:80px; text-align:center; }
@@ -217,7 +217,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   .sched-table th:nth-child(3), .sched-table td:nth-child(3) { display:none; }
 }
 
-/* ΓöÇΓöÇ COURSE SEARCH ΓöÇΓöÇ */
+/* ── COURSE SEARCH ── */
 .search-row{display:flex;gap:10px;margin-bottom:12px;}
 .search-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:10px 14px;font-family:'Libre Baskerville',serif;font-size:14px;outline:none;}
 .search-input:focus{border-color:var(--gold);}
@@ -242,7 +242,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-save-course{background:var(--gold);color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;border:none;border-radius:8px;padding:10px 24px;cursor:pointer;margin-top:14px;transition:all .2s;}
 .btn-save-course:hover{background:var(--gold2);}
 
-/* ΓöÇΓöÇ TEAMS ΓöÇΓöÇ */
+/* ── TEAMS ── */
 .teams-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
 .btn-add{background:var(--gold);color:var(--bg);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;transition:all .2s;}
 .btn-add:hover{background:var(--gold2);}
@@ -260,7 +260,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-del{background:transparent;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:4px;}
 .btn-del:hover{color:#e07070;}
 
-/* ΓöÇΓöÇ SCORING ΓöÇΓöÇ */
+/* ── SCORING ── */
 .scoring-controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
 .nine-select{background:var(--bg);border:1px solid var(--border);color:var(--cream);border-radius:8px;padding:9px 14px;font-family:'Libre Baskerville',serif;font-size:14px;outline:none;}
 .nine-select:focus{border-color:var(--gold);}
@@ -277,13 +277,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .par-lbl{font-size:11px;text-align:center;color:var(--muted);padding:2px 0;}
 .hole-inp{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--cream);text-align:center;border-radius:5px;padding:7px 2px;font-family:'Libre Baskerville',serif;font-size:15px;outline:none;}
 .hole-inp:focus{border-color:var(--gold);}
-/* Birdie ΓÇö circle */
+/* Birdie — circle */
 .hole-inp.birdie{background:rgba(109,190,95,.2);border-color:var(--green2);color:var(--green2);border-radius:50%;border-width:2px;}
-/* Eagle ΓÇö double circle */
+/* Eagle — double circle */
 .hole-inp.eagle{background:rgba(201,168,76,.25);border-color:var(--gold);color:var(--gold);border-radius:50%;border-width:2px;box-shadow:0 0 0 3px var(--gold);}
-/* Bogey ΓÇö square */
+/* Bogey — square */
 .hole-inp.bogey{background:rgba(180,80,80,.15);border-color:rgba(220,80,80,.6);border-radius:3px;border-width:2px;}
-/* Double bogey ΓÇö double square */
+/* Double bogey — double square */
 .hole-inp.double{background:rgba(180,80,80,.25);border-color:rgba(220,60,60,.8);color:#e07070;border-radius:3px;border-width:2px;box-shadow:0 0 0 3px rgba(200,60,60,.5);}
 .score-totals{display:flex;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
 .total-box{flex:1;background:var(--bg);border-radius:8px;padding:7px 10px;text-align:center;}
@@ -297,7 +297,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-calculate{display:block;width:100%;max-width:440px;margin:0 auto 48px;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;padding:18px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 8px 30px rgba(74,140,63,.4);transition:all .3s;}
 .btn-calculate:hover{transform:translateY(-3px);box-shadow:0 14px 40px rgba(74,140,63,.5);}
 
-/* ΓöÇΓöÇ RESULTS ΓöÇΓöÇ */
+/* ── RESULTS ── */
 .results-title{text-align:center;margin-bottom:32px;}
 .results-title h2{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:4px;color:var(--gold);}
 .results-title p{font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;}
@@ -351,7 +351,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .scroll-body::-webkit-scrollbar{width:4px;}
 .scroll-body::-webkit-scrollbar-thumb{background:rgba(201,168,76,.3);border-radius:2px;}
 
-/* ΓöÇΓöÇ HDCP OVERRIDE ΓöÇΓöÇ */
+/* ── HDCP OVERRIDE ── */
 .hdcp-override{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;}
 .hdcp-override-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--gold);margin-bottom:4px;}
 .hdcp-override-sub{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:14px;}
@@ -366,14 +366,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-update-hdcp{display:block;width:100%;max-width:360px;margin:0 auto 8px;background:rgba(74,140,63,.2);border:1px solid var(--green);color:var(--green2);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;padding:12px;border-radius:10px;cursor:pointer;transition:all .2s;}
 .btn-update-hdcp:hover{background:rgba(74,140,63,.35);}
 
-/* ΓöÇΓöÇ BOTTOM ACTIONS ΓöÇΓöÇ */
+/* ── BOTTOM ACTIONS ── */
 .result-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:28px;}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--gold2);font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;padding:10px 24px;border-radius:8px;cursor:pointer;transition:all .2s;}
 .btn-outline:hover{background:rgba(201,168,76,.1);border-color:var(--gold);}
 .btn-green-outline{background:transparent;border:1px solid var(--green);color:var(--green2);font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;padding:10px 24px;border-radius:8px;cursor:pointer;transition:all .2s;}
 .btn-green-outline:hover{background:rgba(74,140,63,.2);}
 
-/* ΓöÇΓöÇ HISTORY ΓöÇΓöÇ */
+/* ── HISTORY ── */
 .history-item{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .15s;}
 .history-item:hover{background:rgba(255,255,255,.03);}
 .history-item:last-child{border-bottom:none;}
@@ -383,11 +383,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .history-sub{font-size:11px;color:var(--muted);margin-top:2px;}
 .history-arrow{color:var(--muted);font-size:18px;}
 
-/* ΓöÇΓöÇ TOAST ΓöÇΓöÇ */
+/* ── TOAST ── */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;padding:12px 22px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.4);transform:translateY(60px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);z-index:999;pointer-events:none;}
 .toast.show{transform:translateY(0);opacity:1;}
 
-/* ΓöÇΓöÇ MISC ΓöÇΓöÇ */
+/* ── MISC ── */
 .page-hero{text-align:center;padding:48px 0 36px;border-bottom:1px solid var(--border);margin-bottom:36px;}
 .page-hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,7vw,66px);letter-spacing:5px;color:var(--white);line-height:1;}
 .page-hero h1 em{color:var(--gold);font-style:normal;}
@@ -395,17 +395,17 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .empty-state{text-align:center;padding:32px;color:var(--muted);font-style:italic;font-size:14px;}
 .status-text{font-size:12px;color:var(--muted);font-style:italic;padding:4px 0 8px;}
 
-/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
-   MOBILE RESPONSIVE ΓÇö Full overhaul
-   ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
+/* ══════════════════════════════════════════
+   MOBILE RESPONSIVE — Full overhaul
+   ══════════════════════════════════════════ */
 
-/* Touch targets ΓÇö all interactive elements min 44px */
+/* Touch targets — all interactive elements min 44px */
 button, input, select { touch-action: manipulation; }
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; }
 
-/* ΓöÇΓöÇ HEADER mobile ΓöÇΓöÇ */
+/* ── HEADER mobile ── */
 @media(max-width:600px) {
   .app-header {
     padding: 10px 14px;
@@ -418,7 +418,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .btn-logout { font-size: 11px; padding: 5px 10px; }
 }
 
-/* ΓöÇΓöÇ BOTTOM NAV (mobile only) ΓöÇΓöÇ */
+/* ── BOTTOM NAV (mobile only) ── */
 .bottom-nav {
   display: none;
   position: fixed;
@@ -455,7 +455,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .wrap { padding-bottom: 100px !important; }
 }
 
-/* ΓöÇΓöÇ LOGIN mobile ΓöÇΓöÇ */
+/* ── LOGIN mobile ── */
 @media(max-width:480px) {
   .login-wrap { margin: 24px auto; }
   .login-card { padding: 24px 20px; border-radius: 12px; }
@@ -463,12 +463,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .form-input { font-size: 16px; padding: 13px 14px; } /* 16px prevents iOS zoom */
 }
 
-/* ΓöÇΓöÇ WRAP padding mobile ΓöÇΓöÇ */
+/* ── WRAP padding mobile ── */
 @media(max-width:600px) {
   .wrap { padding-left: 12px; padding-right: 12px; padding-top: 16px !important; }
 }
 
-/* ΓöÇΓöÇ SCORING FILTER BAR mobile ΓöÇΓöÇ */
+/* ── SCORING FILTER BAR mobile ── */
 @media(max-width:600px) {
   .score-filter-bar { gap: 6px; }
   .score-search { font-size: 16px; padding: 10px 12px; }
@@ -476,7 +476,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .score-count { width: 100%; text-align: center; }
 }
 
-/* ΓöÇΓöÇ HOLES GRID ΓÇö key fix: min touch target size ΓöÇΓöÇ */
+/* ── HOLES GRID — key fix: min touch target size ── */
 .holes-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -496,7 +496,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .hole-inp { padding: 6px 0; font-size: 14px; }
 }
 
-/* ΓöÇΓöÇ SCORE CARD mobile ΓöÇΓöÇ */
+/* ── SCORE CARD mobile ── */
 @media(max-width:600px) {
   .score-team-header { padding: 10px 12px; gap: 8px; }
   .team-name-display { font-size: 12px; }
@@ -506,14 +506,14 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .total-val { font-size: 22px; }
 }
 
-/* ΓöÇΓöÇ HDCP OVERRIDE GRID mobile ΓöÇΓöÇ */
+/* ── HDCP OVERRIDE GRID mobile ── */
 @media(max-width:600px) {
   .hdcp-override-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
   .hdcp-override-row { padding: 6px 8px; }
   .hdcp-override-name { font-size: 11px; }
 }
 
-/* ΓöÇΓöÇ RESULTS GRID mobile ΓöÇΓöÇ */
+/* ── RESULTS GRID mobile ── */
 @media(max-width:600px) {
   .results-grid { grid-template-columns: 1fr; gap: 12px; }
   .results-title h2 { font-size: 28px; }
@@ -522,7 +522,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .res-body { padding: 12px 14px; }
 }
 
-/* ΓöÇΓöÇ ROSTER TABLE mobile ΓÇö stack into cards ΓöÇΓöÇ */
+/* ── ROSTER TABLE mobile — stack into cards ── */
 @media(max-width:600px) {
   .team-table thead { display: none; }
   .team-table, .team-table tbody, .team-table tr, .team-table td { display: block; width: 100%; }
@@ -544,21 +544,21 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .btn-del { position: absolute; top: 10px; right: 10px; font-size: 18px; }
 }
 
-/* ΓöÇΓöÇ PAR GRID mobile ΓöÇΓöÇ */
+/* ── PAR GRID mobile ── */
 @media(max-width:480px) {
   .par-grid { gap: 4px; }
   .par-hole-input { font-size: 16px; padding: 7px 1px; }
   .par-hole-lbl { font-size: 11px; }
 }
 
-/* ΓöÇΓöÇ COURSE SEARCH mobile ΓöÇΓöÇ */
+/* ── COURSE SEARCH mobile ── */
 @media(max-width:480px) {
   .search-row { flex-direction: column; }
   .btn-search { width: 100%; padding: 12px; font-size: 18px; }
   .search-input { font-size: 16px; }
 }
 
-/* ΓöÇΓöÇ BUTTONS mobile ΓÇö full width on small screens ΓöÇΓöÇ */
+/* ── BUTTONS mobile — full width on small screens ── */
 @media(max-width:480px) {
   .btn-calculate { font-size: 20px; padding: 16px; }
   .btn-recalc { font-size: 18px; padding: 14px; }
@@ -566,7 +566,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .btn-outline, .btn-green-outline { text-align: center; padding: 13px; font-size: 16px; }
 }
 
-/* ΓöÇΓöÇ SKINS TABLE mobile ΓöÇΓöÇ */
+/* ── SKINS TABLE mobile ── */
 @media(max-width:480px) {
   .skins-tbl, .sb-tbl { font-size: 12px; }
   .skins-tbl td, .skins-tbl th,
@@ -574,13 +574,13 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .h-num { font-size: 15px; }
 }
 
-/* ΓöÇΓöÇ NINE TOGGLE in score card mobile ΓöÇΓöÇ */
+/* ── NINE TOGGLE in score card mobile ── */
 @media(max-width:480px) {
   .nine-toggle-btn { font-size: 12px; padding: 7px 10px; }
 }
 
 
-/* ΓöÇΓöÇ 18-HOLE GRID ΓöÇΓöÇ */
+/* ── 18-HOLE GRID ── */
 .holes-grid-18 {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -606,11 +606,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   .player-extra.visible { display:block !important; width:100%; }
 }
 
-/* ΓöÇΓöÇ SAFE AREA bottom padding ΓöÇΓöÇ */
+/* ── SAFE AREA bottom padding ── */
 .btn-calculate { margin-bottom: 20px; }
 
 
-/* ΓöÇΓöÇ HIGH CONTRAST PLAYER SCORECARD ΓöÇΓöÇ */
+/* ── HIGH CONTRAST PLAYER SCORECARD ── */
 #playerPage {
   --bg: #ffffff;
   --surface: #f4f4f4;
@@ -635,13 +635,13 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 #playerPage .team-num { background: #1a2e1a; color: #c9a84c; border-color: #c9a84c; }
 #playerPage .hole-inp { background: #fff; border: 2px solid #555; color: #111; font-size: 20px; font-weight: 700; }
 #playerPage .hole-inp:focus { border-color: #1a6e12; background: #f0fff0; }
-/* Player birdie ΓÇö circle */
+/* Player birdie — circle */
 #playerPage .hole-inp.birdie { background:#d4f7d4;border-color:#1a6e12;color:#1a4e10;border-radius:50%;border-width:2px; }
-/* Player eagle ΓÇö double circle */
+/* Player eagle — double circle */
 #playerPage .hole-inp.eagle { background:#fff3b0;border-color:#a07800;color:#7a4f00;border-radius:50%;border-width:2px;box-shadow:0 0 0 3px #a07800; }
-/* Player bogey ΓÇö square */
+/* Player bogey — square */
 #playerPage .hole-inp.bogey { background:#ffe0e0;border-color:#cc0000;color:#900;border-radius:3px;border-width:2px; }
-/* Player double bogey ΓÇö double square */
+/* Player double bogey — double square */
 #playerPage .hole-inp.double { background:#ffb0b0;border-color:#900;color:#600;border-radius:3px;border-width:2px;box-shadow:0 0 0 3px #cc0000; }
 #playerPage .score-team-body { color: #111; }
 #playerPage .par-row { color: #333; background:#f0f0f0; }
@@ -667,7 +667,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 #playerPage .hdcp-inp { background:#fff;border:2px solid #555;color:#111; }
 
 
-/* ΓöÇΓöÇ STICKY TABLE HEADERS ΓöÇΓöÇ */
+/* ── STICKY TABLE HEADERS ── */
 .team-table, .standings-tbl, .sched-table, .skins-tbl, .sb-tbl {
   border-collapse: collapse;
   width: 100%;
@@ -691,7 +691,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 </head>
 <body>
 
-<!-- ΓòÉΓòÉ LOGIN PAGE ΓòÉΓòÉ -->
+<!-- ══ LOGIN PAGE ══ -->
 <div id="loginPage" class="page active">
   <div class="login-wrap">
     <div class="login-card">
@@ -708,7 +708,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <label>Password</label>
           <div style="position:relative;">
             <input class="form-input" type="password" id="loginPass" placeholder="Password" onkeydown="if(event.key==='Enter')login()" style="padding-right:48px;" autocomplete="new-password">
-            <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">≡ƒæü</button>
+            <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
           </div>
         </div>
         <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
@@ -743,7 +743,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <!-- CHANGE PASSWORD MODAL -->
   <div id="changePassModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:380px;width:90%;margin:20px;">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">≡ƒöÆ Change Password</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🔒 Change Password</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">You must set a new password before continuing.</div>
       <div class="form-group">
         <label>New Password</label>
@@ -777,7 +777,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     </div>
     <div id="playerTabStandings" class="wrap" style="padding-top:32px;display:none;">
       <div class="section-card">
-        <div class="section-header"><span style="font-size:24px;">≡ƒÅå</span><div><div class="section-title">Season Standings</div></div></div>
+        <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">Season Standings</div></div></div>
         <div class="section-body" id="playerStandingsContent"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
@@ -803,7 +803,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Leagues tab -->
     <div id="saTabLeagues" class="wrap" style="padding-top:32px;">
       <div class="section-card">
-        <div class="section-header"><span style="font-size:24px;">≡ƒÅå</span><div><div class="section-title">All Leagues</div></div></div>
+        <div class="section-header"><span style="font-size:24px;">🏆</span><div><div class="section-title">All Leagues</div></div></div>
         <div class="section-body" id="adminLeaguesList"><div class="empty-state">Loading...</div></div>
       </div>
     </div>
@@ -812,7 +812,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <div id="saTabUsers" class="wrap" style="padding-top:32px;display:none;">
       <div class="section-card">
         <div class="section-header">
-          <span style="font-size:24px;">≡ƒæñ</span>
+          <span style="font-size:24px;">👤</span>
           <div><div class="section-title">All Users</div></div>
           <input class="score-search" style="margin-left:auto;max-width:200px;" placeholder="Search..." oninput="filterAdminUsers(this.value)" id="adminUserSearch">
         </div>
@@ -824,7 +824,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <div id="saTabScorecard" class="wrap" style="padding-top:32px;display:none;">
       <div class="section-card" style="margin-bottom:20px;">
         <div class="section-header">
-          <span style="font-size:24px;">Γ¢│</span>
+          <span style="font-size:24px;">⛳</span>
           <div><div class="section-title">My Player Setup</div><div class="section-sub">Link your admin account to a league and team</div></div>
         </div>
         <div class="section-body">
@@ -851,7 +851,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Courses tab -->
     <div id="saTabCourses" class="wrap" style="padding-top:32px;display:none;">
       <div class="section-card">
-        <div class="section-header"><span style="font-size:24px;">≡ƒÅî∩╕Å</span><div><div class="section-title">Global Course Library</div><div class="section-sub">Search, manage and delete courses</div></div></div>
+        <div class="section-header"><span style="font-size:24px;">🏌️</span><div><div class="section-title">Global Course Library</div><div class="section-sub">Search, manage and delete courses</div></div></div>
         <div class="section-body">
           <div class="search-row" style="margin-bottom:10px;">
             <input class="search-input" id="adminCourseSearch" placeholder="Search by name or location..." oninput="adminCourseSearch(this.value)">
@@ -863,7 +863,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
   </div>
 
-<!-- ΓòÉΓòÉ APP (authenticated) ΓòÉΓòÉ -->
+<!-- ══ APP (authenticated) ══ -->
 <div id="appPage" class="page">
   <div class="app-header">
     <div class="app-logo" style="display:flex;align-items:center;gap:10px;">
@@ -882,22 +882,22 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button class="nav-tab" onclick="showTab('playoffs')" id="tab-playoffs">Playoffs</button>
       <button class="nav-tab" onclick="showTab('history')" id="tab-history">History</button>
     </nav>
-    <button id="btnBackToSuperAdmin" style="display:none;background:rgba(201,168,76,.2);border:1px solid var(--gold);color:var(--gold2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;" onclick="backToSuperAdmin()">ΓåÉ Super Admin</button>
-    <button id="btnViewAsPlayer" style="background:rgba(74,140,63,.2);border:1px solid var(--green);color:var(--green2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;" onclick="showViewAsPlayerPicker()">≡ƒæñ View as Player</button>
+    <button id="btnBackToSuperAdmin" style="display:none;background:rgba(201,168,76,.2);border:1px solid var(--gold);color:var(--gold2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;" onclick="backToSuperAdmin()">← Super Admin</button>
+    <button id="btnViewAsPlayer" style="background:rgba(74,140,63,.2);border:1px solid var(--green);color:var(--green2);font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;" onclick="showViewAsPlayerPicker()">👤 View as Player</button>
     <button class="btn-logout" onclick="logout()">Sign Out</button>
   </div>
 
   <!-- SCORING TAB -->
   <div id="tabScoring" class="wrap" style="padding-top:32px;">
     <div id="confirmSummaryBar" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold);">Γ£à WEEK CONFIRMATIONS</span>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--gold);">✅ WEEK CONFIRMATIONS</span>
       <span id="confirmSummaryText" style="font-size:13px;color:var(--muted);">Loading...</span>
       <div id="confirmSummaryNames" style="font-size:12px;flex:1;"></div>
-      <button onclick="loadConfirmSummary();loadWeeklyConfirmations();toggleConfirmDetail();" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;padding:3px 10px;border-radius:5px;cursor:pointer;">Γå╗ / Details</button>
+      <button onclick="loadConfirmSummary();loadWeeklyConfirmations();toggleConfirmDetail();" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;padding:3px 10px;border-radius:5px;cursor:pointer;">↻ / Details</button>
     </div>
     <div id="weeklyConfirmContent" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px;max-height:300px;overflow-y:auto;"></div>
     <div class="score-filter-bar">
-      <input class="score-search" id="scoreSearch" placeholder="≡ƒöì Search team..." oninput="filterScoringCards()">
+      <input class="score-search" id="scoreSearch" placeholder="🔍 Search team..." oninput="filterScoringCards()">
       <button class="filter-btn active" id="filterAll" onclick="setFilter('all',this)">ALL</button>
       <button class="filter-btn" id="filterFront" onclick="setFilter('front',this)">F9</button>
       <button class="filter-btn" id="filterAll18" onclick="setFilter('all18',this)">18</button>
@@ -908,14 +908,14 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <button id="btnLive" class="btn-live" onclick="toggleLiveScoring()" title="Poll live scores from players every 15s">
         <span class="live-dot"></span> LIVE
       </button>
-      <button class="filter-btn" onclick="collapseAll()">Γû▓ Collapse All</button>
-      <button class="filter-btn" onclick="expandAll()">Γû╝ Expand All</button>
-      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">≡ƒº╣ Remove Duplicates</button>
-      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearCurrentWeekScores()">≡ƒùæ Clear Scores</button>
+      <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
+      <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
+      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
+      <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearCurrentWeekScores()">🗑 Clear Scores</button>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
         <span style="font-size:11px;color:var(--muted);letter-spacing:1px;font-family:'Bebas Neue',sans-serif;">WEEK</span>
         <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);" oninput="localStorage.setItem('gimmepar_week',this.value);">
-        <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">≡ƒùæ Delete Week</button>
+        <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete Week</button>
       </div>
     </div>
     <div id="liveBanner" class="live-banner">
@@ -924,7 +924,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <span id="liveLastUpdate" style="margin-left:auto;color:var(--muted);"></span>
     </div>
     <div id="scoringTeams"></div>
-    <button class="btn-calculate" onclick="calculate()">Γ¢│ CALCULATE RESULTS</button>
+    <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:0;">
 
       <button class="btn-green-outline" onclick="downloadWeekXLSX()" style="white-space:nowrap;font-size:15px;padding:14px 18px;">⬇ Week Spreadsheet</button>
@@ -937,17 +937,17 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabRoster" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒæÑ</span>
+        <span style="font-size:24px;">👥</span>
         <div>
           <div class="section-title">Team Roster</div>
-          <div class="section-sub" id="rosterSubtitle">Names and handicaps saved per league ΓÇö updates carry forward each week</div>
+          <div class="section-sub" id="rosterSubtitle">Names and handicaps saved per league — updates carry forward each week</div>
         </div>
       </div>
       <div class="section-body">
         <div class="teams-toolbar">
           <button class="btn-add" onclick="addTeamRow()">+ Add Team</button>
-          <button class="btn-save-roster" onclick="saveRoster()">≡ƒÆ╛ Save Roster</button>
-          <button class="btn-save-roster" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deduplicateRoster()">≡ƒº╣ Remove Duplicates</button>
+          <button class="btn-save-roster" onclick="saveRoster()">💾 Save Roster</button>
+          <button class="btn-save-roster" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deduplicateRoster()">🧹 Remove Duplicates</button>
         </div>
         <div style="overflow-x:auto;">
           <table class="team-table">
@@ -964,7 +964,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabCourse" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒÅî∩╕Å</span>
+        <span style="font-size:24px;">🏌️</span>
         <div>
           <div class="section-title">Course Setup</div>
           <div class="section-sub">Search by name or enter par manually</div>
@@ -973,10 +973,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <div class="section-body">
 
         <!-- Global Course Search -->
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">≡ƒöì Search Course Library</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🔍 Search Course Library</div>
         <div class="search-row" style="margin-bottom:6px;">
           <input class="search-input" id="courseInput" placeholder="Search by course name or city..." oninput="globalCourseSearch(this.value)" onkeydown="if(event.key==='Enter')globalCourseSearch(this.value)">
-          <button class="btn-search" id="searchBtn" onclick="globalCourseSearch(document.getElementById('courseInput').value)">≡ƒöì</button>
+          <button class="btn-search" id="searchBtn" onclick="globalCourseSearch(document.getElementById('courseInput').value)">🔍</button>
         </div>
         <div id="globalCourseResults" style="margin-bottom:12px;"></div>
         <div class="status-text" id="courseStatus"></div>
@@ -985,7 +985,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
 
         <!-- Course Name + Location -->
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">Γ£Å∩╕Å Enter / Edit Course</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">✏️ Enter / Edit Course</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
           <div style="flex:2;min-width:180px;">
             <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">COURSE NAME</div>
@@ -997,25 +997,25 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           </div>
         </div>
 
-        <div class="par-section-label">Front 9 ΓÇö Holes 1ΓÇô9</div>
+        <div class="par-section-label">Front 9 — Holes 1–9</div>
         <div class="par-grid" id="parFrontGrid"></div>
-        <div class="par-section-label">Back 9 ΓÇö Holes 10ΓÇô18</div>
+        <div class="par-section-label">Back 9 — Holes 10–18</div>
         <div class="par-grid" id="parBackGrid"></div>
         <div class="par-totals" id="parTotalsDisplay"></div>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">≡ƒÅî∩╕Å Stroke Index (SI) ΓÇö Hole Difficulty Ranking</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Rate each hole 1ΓÇô18 from hardest (1) to easiest (18). Used to break ties ΓÇö winner is team that scored better on hardest hole.</div>
-        <div class="par-section-label">Front 9 SI ΓÇö Holes 1ΓÇô9</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">🏌️ Stroke Index (SI) — Hole Difficulty Ranking</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Rate each hole 1–18 from hardest (1) to easiest (18). Used to break ties — winner is team that scored better on hardest hole.</div>
+        <div class="par-section-label">Front 9 SI — Holes 1–9</div>
         <div class="par-grid" id="siFrontGrid"></div>
-        <div class="par-section-label" style="margin-top:8px;">Back 9 SI ΓÇö Holes 10ΓÇô18</div>
+        <div class="par-section-label" style="margin-top:8px;">Back 9 SI — Holes 10–18</div>
         <div class="par-grid" id="siBackGrid"></div>
-        <button class="btn-save-course" style="margin-top:12px;padding:8px 20px;font-size:15px;" onclick="saveSI()">≡ƒÆ╛ Save Stroke Index</button>
+        <button class="btn-save-course" style="margin-top:12px;padding:8px 20px;font-size:15px;" onclick="saveSI()">💾 Save Stroke Index</button>
         <div id="siSaveResult" style="margin-top:8px;font-size:13px;"></div>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
-          <button class="btn-save-course" onclick="saveCourse()">≡ƒÆ╛ Save as My Course</button>
-          <button class="btn-save-course" style="background:var(--green);color:#fff;" onclick="saveToGlobalLibrary()">≡ƒîÉ Save to Global Library</button>
+          <button class="btn-save-course" onclick="saveCourse()">💾 Save as My Course</button>
+          <button class="btn-save-course" style="background:var(--green);color:#fff;" onclick="saveToGlobalLibrary()">🌐 Save to Global Library</button>
         </div>
         <div id="courseSaveResult" style="margin-top:8px;font-size:13px;"></div>
       </div>
@@ -1026,7 +1026,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabPlayers" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒæñ</span>
+        <span style="font-size:24px;">👤</span>
         <div>
           <div class="section-title">Player Accounts</div>
           <div class="section-sub">Upload a CSV or manage individual players</div>
@@ -1036,26 +1036,26 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- CSV Upload -->
         <div style="margin-bottom:4px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">≡ƒôñ Upload Players (CSV)</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">📤 Upload Players (CSV)</div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
             CSV columns: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;">first_name, last_name, email</code>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
             <input type="file" id="playerCsvFile" accept=".csv" style="display:none" onchange="handlePlayerCSV(this)">
-            <button class="btn-add" onclick="document.getElementById('playerCsvFile').click()">≡ƒôé Choose CSV</button>
-            <button class="btn-export-sched" onclick="downloadPlayerTemplate()">Γ¼ç Download Template</button>
+            <button class="btn-add" onclick="document.getElementById('playerCsvFile').click()">📂 Choose CSV</button>
+            <button class="btn-export-sched" onclick="downloadPlayerTemplate()">⬇ Download Template</button>
             <span id="csvFileName" style="font-size:13px;color:var(--muted);font-style:italic;"></span>
           </div>
           <div id="csvPreview" style="margin-top:10px;overflow-x:auto;"></div>
           <div id="uploadResult" style="margin-top:10px;font-size:13px;"></div>
-          <button class="btn-save-roster" id="btnUploadPlayers" style="display:none;margin-top:10px;" onclick="uploadPlayers()">Γ¼å Upload Players</button>
+          <button class="btn-save-roster" id="btnUploadPlayers" style="display:none;margin-top:10px;" onclick="uploadPlayers()">⬆ Upload Players</button>
         </div>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
         <!-- Manual Add -->
         <div style="margin-bottom:4px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">Γ₧ò Add Player Manually</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">➕ Add Player Manually</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
             <div>
               <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;">FIRST NAME</div>
@@ -1078,8 +1078,8 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Player List -->
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);">≡ƒæÑ Player List</div>
-          <button class="btn-export-sched" style="font-size:12px;padding:5px 12px;" onclick="loadPlayersList()">Γå╗ Refresh</button>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);">👥 Player List</div>
+          <button class="btn-export-sched" style="font-size:12px;padding:5px 12px;" onclick="loadPlayersList()">↻ Refresh</button>
         </div>
         <div id="playersList"><div class="empty-state">No players yet.</div></div>
       </div>
@@ -1089,7 +1089,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Email League -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒôº</span>
+        <span style="font-size:24px;">📧</span>
         <div>
           <div class="section-title">Email League</div>
           <div class="section-sub">Send a message to all players or an individual player</div>
@@ -1123,7 +1123,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <textarea id="leagueEmailBody" placeholder="Write your message here..." style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--cream);padding:10px;font-family:inherit;font-size:13px;min-height:120px;resize:vertical;outline:none;"></textarea>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <button class="btn-save-roster" onclick="sendLeagueEmail()">≡ƒôñ Send Email</button>
+          <button class="btn-save-roster" onclick="sendLeagueEmail()">📤 Send Email</button>
           <span id="leagueEmailResult" style="font-size:13px;"></span>
         </div>
       </div>
@@ -1132,12 +1132,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Calculated Handicaps -->
     <div class="section-card" style="margin-top:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒôè</span>
+        <span style="font-size:24px;">📊</span>
         <div>
           <div class="section-title">Calculated Handicaps</div>
           <div class="section-sub">Based on round history and your handicap system setting</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadCalculatedHandicaps()">Γå╗ Refresh</button>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadCalculatedHandicaps()">↻ Refresh</button>
       </div>
       <div class="section-body" id="calcHdcpContent">
         <div class="empty-state">Click Refresh to calculate.</div>
@@ -1149,19 +1149,19 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabSchedule" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">Γ£Å∩╕Å</span>
+        <span style="font-size:24px;">✏️</span>
         <div>
           <div class="section-title">Manual Matchups</div>
           <div class="section-sub">Enter specific matchups when you already know who played who</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="toggleManualMatchups()">Γû╝ Show</button>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="toggleManualMatchups()">▼ Show</button>
       </div>
       <div id="manualMatchupSection" style="display:none;" class="section-body">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
           <label style="font-size:11px;color:var(--muted);letter-spacing:1px;">WEEK</label>
           <input class="week-inp" type="number" id="manualWeekNum" value="1" min="1" max="99" style="width:65px;">
           <button class="btn-save-roster" onclick="addManualMatchupRow()">+ Add Matchup</button>
-          <button class="btn-gen" style="font-size:14px;padding:8px 18px;" onclick="saveManualMatchups()">≡ƒÆ╛ Save Week</button>
+          <button class="btn-gen" style="font-size:14px;padding:8px 18px;" onclick="saveManualMatchups()">💾 Save Week</button>
         </div>
         <div id="manualMatchupRows"></div>
         <div id="manualMatchupResult" style="margin-top:10px;font-size:13px;"></div>
@@ -1170,7 +1170,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒôå</span>
+        <span style="font-size:24px;">📆</span>
         <div>
           <div class="section-title">Schedule Generator</div>
           <div class="section-sub">Round robin matchups with rotating starting holes</div>
@@ -1180,10 +1180,10 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <div class="week-selector">
           <label>Week</label>
           <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;">
-          <button class="btn-gen" onclick="generateWeekOnly()">≡ƒÄ▓ Generate</button>
-          <button class="btn-gen" style="background:var(--green);border-color:var(--green);" onclick="saveGeneratedWeek()">≡ƒÆ╛ Save Week</button>
-          <button class="btn-export-sched" onclick="exportScheduleCSV()">Γ¼ç CSV</button>
-          <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">≡ƒùæ Clear All</button>
+          <button class="btn-gen" onclick="generateWeekOnly()">🎲 Generate</button>
+          <button class="btn-gen" style="background:var(--green);border-color:var(--green);" onclick="saveGeneratedWeek()">💾 Save Week</button>
+          <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
+          <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear All</button>
         </div>
         <div id="weekGenResult" style="font-size:13px;margin-top:6px;"></div>
         <div class="sched-info" id="schedInfo"></div>
@@ -1196,7 +1196,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabSettings" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">ΓÜÖ∩╕Å</span>
+        <span style="font-size:24px;">⚙️</span>
         <div>
           <div class="section-title">League Settings</div>
           <div class="section-sub">Configure rules and scoring options for your league</div>
@@ -1206,7 +1206,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- League Name & Password -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">≡ƒÅî∩╕Å League Info</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🏌️ League Info</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
             <div style="flex:1;min-width:180px;">
               <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LEAGUE NAME</div>
@@ -1216,7 +1216,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
               <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">CURRENT WEEK</div>
               <div style="display:flex;gap:6px;align-items:center;">
                 <input class="week-inp" type="number" id="currentWeekInp" min="1" max="99" value="1" style="width:70px;text-align:center;">
-                <button class="btn-save-roster" onclick="saveCurrentWeek()" style="padding:6px 12px;font-size:12px;">≡ƒÆ╛ Save</button>
+                <button class="btn-save-roster" onclick="saveCurrentWeek()" style="padding:6px 12px;font-size:12px;">💾 Save</button>
               </div>
               <div id="currentWeekResult" style="font-size:11px;margin-top:4px;"></div>
             </div>
@@ -1226,7 +1226,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
               <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">NEW PASSWORD</div>
               <div style="position:relative;">
                 <input class="search-input" type="password" id="leaguePassInp" placeholder="Leave blank to keep current" style="width:100%;box-sizing:border-box;padding-right:44px;">
-                <button type="button" onclick="togglePassVis('leaguePassInp',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;">≡ƒæü</button>
+                <button type="button" onclick="togglePassVis('leaguePassInp',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;">👁</button>
               </div>
             </div>
             <div style="flex:1;min-width:180px;">
@@ -1234,7 +1234,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
               <input class="search-input" type="password" id="leaguePassConfInp" placeholder="Confirm new password" style="width:100%;box-sizing:border-box;">
             </div>
           </div>
-          <button class="btn-save-course" style="padding:8px 20px;font-size:15px;" onclick="saveLeagueInfo()">≡ƒÆ╛ Save League Info</button>
+          <button class="btn-save-course" style="padding:8px 20px;font-size:15px;" onclick="saveLeagueInfo()">💾 Save League Info</button>
           <div id="leagueInfoResult" style="margin-top:8px;font-size:13px;"></div>
         </div>
 
@@ -1242,7 +1242,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Sub Rule -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">≡ƒöä Substitute Player Rule</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔄 Substitute Player Rule</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">When a sub is used, the team normally plays scratch. After the team has used a sub a set number of times, they play with full handicap.</div>
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <label style="font-size:13px;color:var(--cream);">After</label>
@@ -1256,7 +1256,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Team Format -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">≡ƒæÑ Team Format</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">👥 Team Format</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Choose how teams are formed each week.</div>
           <div class="setting-toggle">
             <button class="setting-btn" id="settingTeamStatic" onclick="setSettingTeamFormat('static',this)">Static Partners</button>
@@ -1269,7 +1269,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Handicap System -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">≡ƒôè Handicap System</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">📊 Handicap System</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">How handicaps are calculated from round scores.</div>
           <div class="setting-toggle" style="margin-bottom:12px;">
             <button class="setting-btn" id="settingHdcpLive" onclick="setSettingHdcp('live',this)">Live (applies each week)</button>
@@ -1283,7 +1283,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
               <input class="week-inp" type="number" id="hdcpPct" value="80" min="1" max="100" style="width:65px;">
               <label style="font-size:13px;color:var(--cream);">% of handicap</label>
             </div>
-            <div style="font-size:12px;color:var(--muted);font-style:italic;">First N weeks: no handicap applied. After that: handicap = avg(gross - par) ├ù percentage.</div>
+            <div style="font-size:12px;color:var(--muted);font-style:italic;">First N weeks: no handicap applied. After that: handicap = avg(gross - par) × percentage.</div>
           </div>
           <div id="hdcpLiveDesc" style="font-size:12px;color:var(--muted);font-style:italic;margin-top:6px;">Handicap = average (gross - par) across all rounds, applied every week.</div>
           <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -1292,14 +1292,14 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <label style="font-size:13px;color:var(--cream);">strokes</label>
             <span style="font-size:11px;color:var(--muted);font-style:italic;">(max strokes worse per week)</span>
           </div>
-          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">Handicap can improve freely each week, but can only get worse by 1 stroke per week maximum ΓÇö bad weeks are filtered out.</div>
+          <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px;">Handicap can improve freely each week, but can only get worse by 1 stroke per week maximum — bad weeks are filtered out.</div>
         </div>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
 
         <!-- Flight Mode default -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">Γ£ê∩╕Å Default Flight Split</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">✈️ Default Flight Split</div>
           <div class="setting-toggle">
             <button class="setting-btn" id="settingFlightHL" onclick="setSettingFlight('hl',this)">High / Low</button>
             <button class="setting-btn" id="settingFlightPar" onclick="setSettingFlight('par',this)">+3 / +4</button>
@@ -1310,7 +1310,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Playoff Settings -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">≡ƒÅå Playoff Settings</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🏆 Playoff Settings</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">End-of-season playoff tournament configuration.</div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
             <label style="font-size:13px;color:var(--cream);">Number of brackets:</label>
@@ -1329,7 +1329,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Skins default -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">≡ƒÄ░ Skins</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px;">🎰 Skins</div>
           <div class="setting-toggle">
             <button class="setting-btn" id="settingSkinsOn" onclick="setSettingSkins(true,this)">Enabled</button>
             <button class="setting-btn" id="settingSkinsOff" onclick="setSettingSkins(false,this)">Disabled</button>
@@ -1340,7 +1340,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- League Day -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">≡ƒôà League Day</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">📅 League Day</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Which day does your league play? Used to set the weekly confirmation deadline (Sunday 9pm before league day).</div>
           <select class="week-inp" id="leagueDayInp" style="width:auto;padding:8px 14px;font-size:14px;">
             <option value="monday">Monday</option>
@@ -1357,16 +1357,16 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 
         <!-- Alternate Nines -->
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">≡ƒöÇ Alternate Nines (Schedule)</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;">🔀 Alternate Nines (Schedule)</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">When enabled, each team alternates between Front 9 and Back 9 every week. Teams stagger so roughly half play F9 and half play B9 each week.</div>
           <div class="setting-toggle">
             <button class="setting-btn" id="settingAltNinesOn" onclick="setSettingAltNines(true,this)">Enabled</button>
             <button class="setting-btn" id="settingAltNinesOff" onclick="setSettingAltNines(false,this)">Disabled</button>
           </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;">Teams alternate each week ΓÇö if a team plays F9 one week, they play B9 the next.</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;">Teams alternate each week — if a team plays F9 one week, they play B9 the next.</div>
         </div>
 
-        <button class="btn-save-course" onclick="saveLeagueSettings()">≡ƒÆ╛ Save Settings</button>
+        <button class="btn-save-course" onclick="saveLeagueSettings()">💾 Save Settings</button>
         <div id="settingsSaveResult" style="margin-top:10px;font-size:13px;"></div>
       </div>
     </div>
@@ -1376,15 +1376,15 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabStandings" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒÅå</span>
+        <span style="font-size:24px;">🏆</span>
         <div>
           <div class="section-title">Season Standings</div>
-          <div class="section-sub">Win/loss record by flight ΓÇö based on saved schedule matchups</div>
+          <div class="section-sub">Win/loss record by flight — based on saved schedule matchups</div>
         </div>
-        <input class="score-search" id="standingsSearch" placeholder="≡ƒöì Search team..." oninput="filterStandings(this.value)" style="max-width:200px;margin-left:auto;">
-        <button class="btn-export-sched" style="margin-left:8px;" onclick="loadStandings()">Γå╗ Refresh</button>
-        <button class="btn-export-sched" style="margin-left:8px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" onclick="recalculateStandings()">ΓÜí Recalculate</button>
-        <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;margin-left:8px;" onclick="clearAllStandings()">≡ƒùæ Clear All</button>
+        <input class="score-search" id="standingsSearch" placeholder="🔍 Search team..." oninput="filterStandings(this.value)" style="max-width:200px;margin-left:auto;">
+        <button class="btn-export-sched" style="margin-left:8px;" onclick="loadStandings()">↻ Refresh</button>
+        <button class="btn-export-sched" style="margin-left:8px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" onclick="recalculateStandings()">⚡ Recalculate</button>
+        <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;margin-left:8px;" onclick="clearAllStandings()">🗑 Clear All</button>
       </div>
       <div class="section-body" id="standingsContent">
         <div class="empty-state">Loading...</div>
@@ -1396,12 +1396,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabPlayoffs" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒÑè</span>
+        <span style="font-size:24px;">🥊</span>
         <div>
           <div class="section-title">Playoff Brackets</div>
           <div class="section-sub" id="playoffSubtitle">End-of-season tournament</div>
         </div>
-        <button class="btn-gen" style="margin-left:auto;font-size:14px;padding:8px 18px;" onclick="generatePlayoffs()">ΓÜí Generate Brackets</button>
+        <button class="btn-gen" style="margin-left:auto;font-size:14px;padding:8px 18px;" onclick="generatePlayoffs()">⚡ Generate Brackets</button>
       </div>
       <div class="section-body" id="playoffContent">
         <div class="empty-state">Click Generate Brackets to create the playoff draw from current standings.</div>
@@ -1413,7 +1413,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <div id="tabHistory" class="wrap" style="padding-top:32px;display:none;">
     <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒôà</span>
+        <span style="font-size:24px;">📅</span>
         <div>
           <div class="section-title">Round History</div>
           <div class="section-sub">Last 20 rounds</div>
@@ -1427,12 +1427,12 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Weekly Confirmations (admin view) -->
     <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">Γ£à</span>
+        <span style="font-size:24px;">✅</span>
         <div>
           <div class="section-title">Weekly Confirmations</div>
           <div class="section-sub">Players confirming they are playing this week</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadWeeklyConfirmations()">Γå╗ Refresh</button>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadWeeklyConfirmations()">↻ Refresh</button>
       </div>
       <div class="section-body" id="weeklyConfirmContent">
         <div class="empty-state">Click Refresh to load.</div>
@@ -1442,15 +1442,15 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Signed Scorecards -->
     <div class="section-card" style="margin-bottom:20px;">
       <div class="section-header">
-        <span style="font-size:24px;">Γ£ì</span>
+        <span style="font-size:24px;">✍</span>
         <div>
           <div class="section-title">Signed Scorecards</div>
           <div class="section-sub">Player-submitted and finalized scores</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadSignedScorecards()">Γå╗ Refresh</button>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadSignedScorecards()">↻ Refresh</button>
       </div>
       <div class="section-body" id="signedScorecardsContent">
-        <div class="empty-state">No signed scorecards yet ΓÇö players sign from their scorecard view.</div>
+        <div class="empty-state">No signed scorecards yet — players sign from their scorecard view.</div>
       </div>
     </div>
 
@@ -1472,7 +1472,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     <!-- Log Substitute -->
     <div class="section-card">
       <div class="section-header">
-        <span style="font-size:24px;">≡ƒöä</span>
+        <span style="font-size:24px;">🔄</span>
         <div>
           <div class="section-title">Log Substitute</div>
           <div class="section-sub">Record a sub who played for a team in a past week</div>
@@ -1503,7 +1503,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <input class="search-input" id="subReplacedName" placeholder="e.g. TJ Atwood" style="width:100%;box-sizing:border-box;">
           </div>
         </div>
-        <button class="btn-save-roster" onclick="logSubstitute()">≡ƒÆ╛ Save Sub Record</button>
+        <button class="btn-save-roster" onclick="logSubstitute()">💾 Save Sub Record</button>
         <div id="subLogResult" style="margin-top:10px;font-size:13px;"></div>
       </div>
     </div>
@@ -1515,39 +1515,39 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
   <nav class="bottom-nav">
     <div class="bottom-nav-inner">
       <button class="bnav-btn active" id="bnav-scoring" onclick="showTab('scoring')">
-        <span class="bnav-icon">Γ¢│</span>
+        <span class="bnav-icon">⛳</span>
         <span class="bnav-label">Scoring</span>
       </button>
       <button class="bnav-btn" id="bnav-roster" onclick="showTab('roster')">
-        <span class="bnav-icon">≡ƒæÑ</span>
+        <span class="bnav-icon">👥</span>
         <span class="bnav-label">Roster</span>
       </button>
       <button class="bnav-btn" id="bnav-course" onclick="showTab('course')">
-        <span class="bnav-icon">≡ƒÅî∩╕Å</span>
+        <span class="bnav-icon">🏌️</span>
         <span class="bnav-label">Course</span>
       </button>
       <button class="bnav-btn" id="bnav-players" onclick="showTab('players')">
-        <span class="bnav-icon">≡ƒæñ</span>
+        <span class="bnav-icon">👤</span>
         <span class="bnav-label">Players</span>
       </button>
       <button class="bnav-btn" id="bnav-schedule" onclick="showTab('schedule')">
-        <span class="bnav-icon">≡ƒôå</span>
+        <span class="bnav-icon">📆</span>
         <span class="bnav-label">Schedule</span>
       </button>
       <button class="bnav-btn" id="bnav-settings" onclick="showTab('settings')">
-        <span class="bnav-icon">ΓÜÖ∩╕Å</span>
+        <span class="bnav-icon">⚙️</span>
         <span class="bnav-label">Settings</span>
       </button>
       <button class="bnav-btn" id="bnav-playoffs" onclick="showTab('playoffs')">
-        <span class="bnav-icon">≡ƒÑè</span>
+        <span class="bnav-icon">🥊</span>
         <span class="bnav-label">Playoffs</span>
       </button>
       <button class="bnav-btn" id="bnav-standings" onclick="showTab('standings')">
-        <span class="bnav-icon">≡ƒÅå</span>
+        <span class="bnav-icon">🏆</span>
         <span class="bnav-label">Standings</span>
       </button>
       <button class="bnav-btn" id="bnav-history" onclick="showTab('history')">
-        <span class="bnav-icon">≡ƒôà</span>
+        <span class="bnav-icon">📅</span>
         <span class="bnav-label">History</span>
       </button>
     </div>
@@ -1556,7 +1556,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
 <div class="toast" id="toast"></div>
 
 <script>
-// ΓòÉΓòÉ STATE ΓòÉΓòÉ
+// ══ STATE ══
 let league = null;
 let currentUser = null;  // {role, userId, leagueId, leagueName, teamId, ...}
 let rosterTeams = [];
@@ -1570,7 +1570,7 @@ let csvPlayers = [];
 
 const DEFAULT_PAR = [4,3,4,4,4,5,3,4,5];
 
-// ΓòÉΓòÉ INIT ΓòÉΓòÉ
+// ══ INIT ══
 async function init() {
   buildParGrids();
   // Restore saved login name before API call
@@ -1629,7 +1629,7 @@ async function onLogin(data) {
   }
 }
 
-// ΓòÉΓòÉ AUTH ΓòÉΓòÉ
+// ══ AUTH ══
 async function login() {
   const name = document.getElementById('loginName').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -1645,7 +1645,7 @@ async function login() {
     try { localStorage.setItem('gp_last_login', name); } catch(e) {}
     await onLogin(res);
   } catch(e) {
-    showError(e.message || 'Login failed ΓÇö check your credentials.');
+    showError(e.message || 'Login failed — check your credentials.');
     if (btn) { btn.textContent = 'SIGN IN'; btn.disabled = false; }
   }
 }
@@ -1703,10 +1703,10 @@ async function viewAsPlayer(team) {
     var backBtn = document.createElement('button');
     backBtn.id = 'btnBackToAdmin';
     backBtn.style.cssText = 'background:rgba(201,168,76,.2);border:1px solid var(--gold);color:var(--gold2);font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1px;padding:6px 14px;border-radius:6px;cursor:pointer;margin-right:6px;';
-    backBtn.textContent = 'ΓåÉ Back to Admin';
+    backBtn.textContent = '← Back to Admin';
     backBtn.onclick = function() {
       backBtn.remove();
-      // Just go back to the league admin app page ΓÇö no session change needed
+      // Just go back to the league admin app page — no session change needed
       showPage('app');
       showTab('scoring');
     };
@@ -1732,7 +1732,7 @@ function showViewAsPlayerPicker() {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;';
   var inner = document.createElement('div');
   inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:420px;width:90%;margin:20px;max-height:80vh;overflow-y:auto;';
-  inner.innerHTML = '<div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:6px;">≡ƒæñ View as Player</div>'
+  inner.innerHTML = '<div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:6px;">👤 View as Player</div>'
     + '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Select a team to view the player scorecard:</div>'
     + '<div id="playerPickerList">Loading teams...</div>'
     + '<div style="text-align:center;margin-top:14px;"><button onclick="document.getElementById(\'viewAsPlayerOverlay\').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;text-decoration:underline;">Cancel</button></div>';
@@ -1761,7 +1761,7 @@ async function logout() {
   showPage('login');
 }
 
-// ΓòÉΓòÉ CHANGE PASSWORD ΓòÉΓòÉ
+// ══ CHANGE PASSWORD ══
 function showChangePasswordModal() {
   var m = document.getElementById('changePassModal');
   if (m) { m.style.display = 'flex'; }
@@ -1785,7 +1785,7 @@ async function submitChangePassword() {
   }
 }
 
-// ΓòÉΓòÉ PLAYER VIEW ΓòÉΓòÉ
+// ══ PLAYER VIEW ══
 async function loadPlayerView(data) {
   var container = document.getElementById('playerScoreCard');
   if (!container) return;
@@ -1808,7 +1808,7 @@ async function loadPlayerView(data) {
   var opponent = null;
   var matchupHole = null;
   var curr = null;
-  // Always fetch fresh settings for current week ΓÇö don't rely on cached leagueSettings
+  // Always fetch fresh settings for current week — don't rely on cached leagueSettings
   var activeWeekForConfirm = 1;
   var myConfStatus = null;
   try {
@@ -1877,11 +1877,11 @@ async function loadPlayerView(data) {
     var oppCard = buildReadOnlyCard(opponent, oppSt);
     oppCard.id = 'oppCard_' + opponent.id;
     container.appendChild(oppCard);
-    // Clear all opponent holes first ΓÇö polling will fill in only if scores exist this week
+    // Clear all opponent holes first — polling will fill in only if scores exist this week
     var oppCount = matchupNine === 'all18' ? 18 : 9;
     for (var oi = 0; oi < oppCount; oi++) {
       var oc = document.getElementById('opphole_' + opponent.id + '_' + oi);
-      if (oc) { oc.textContent = 'ΓÇö'; oc.style.color = 'var(--muted)'; }
+      if (oc) { oc.textContent = '—'; oc.style.color = 'var(--muted)'; }
     }
     var oppTot = document.getElementById('oppTotal_' + opponent.id);
     if (oppTot) oppTot.textContent = 'Opponent scores will appear here when entered.';
@@ -1893,7 +1893,7 @@ async function loadPlayerView(data) {
     container.appendChild(noOpp);
   }
 
-  // Sign Scorecard button ΓÇö always shown regardless of schedule
+  // Sign Scorecard button — always shown regardless of schedule
   var signArea = document.createElement('div');
   signArea.id = 'signScorecardArea';
   signArea.style.cssText = 'margin-top:24px;';
@@ -1910,12 +1910,12 @@ async function loadPlayerView(data) {
   } catch(e) {}
 
   if (alreadySigned) {
-    signArea.innerHTML = '<div style="background:#d4f7d4;border:2px solid #1a6e12;border-radius:10px;padding:16px 20px;text-align:center;font-weight:700;color:#1a4e10;font-size:18px;">Γ£à Scorecard Signed & Submitted</div>';
+    signArea.innerHTML = '<div style="background:#d4f7d4;border:2px solid #1a6e12;border-radius:10px;padding:16px 20px;text-align:center;font-weight:700;color:#1a4e10;font-size:18px;">✅ Scorecard Signed & Submitted</div>';
   } else {
     var signBtn = document.createElement('button');
     signBtn.id = 'signScorecardBtn';
     signBtn.style.cssText = 'width:100%;background:#1a2e1a;color:#fff;font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:3px;padding:16px;border:none;border-radius:12px;cursor:pointer;margin-bottom:8px;box-shadow:0 6px 20px rgba(0,0,0,.3);';
-    signBtn.textContent = 'Γ£ì SIGN SCORECARD';
+    signBtn.textContent = '✍ SIGN SCORECARD';
     signBtn.onclick = function() { signScorecard(team, scoreTeams[0], activeWeek); };
     var signNote = document.createElement('div');
     signNote.style.cssText = 'text-align:center;font-size:12px;color:#555;margin-top:4px;';
@@ -1937,7 +1937,7 @@ function renderConfirmButton(area, weekNum, currentStatus) {
 
   var html = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:4px;">'
     + '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">WEEK ' + weekNum + ' CONFIRMATION'
-    + (past ? ' <span style="color:#ff9999;">(deadline passed)</span>' : ' ΓÇö deadline ' + deadlineStr) + '</div>'
+    + (past ? ' <span style="color:#ff9999;">(deadline passed)</span>' : ' — deadline ' + deadlineStr) + '</div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
 
   var playingStyle = currentStatus === true
@@ -1949,13 +1949,13 @@ function renderConfirmButton(area, weekNum, currentStatus) {
 
   html += '<button id="btnConfirmPlaying" onclick="confirmPlaying(' + weekNum + ', true)" '
     + 'style="flex:1;padding:12px;border-radius:8px;font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;' + playingStyle + '">'
-    + 'Γ£à PLAYING WEEK ' + weekNum + '</button>';
+    + '✅ PLAYING WEEK ' + weekNum + '</button>';
   html += '<button id="btnConfirmNotPlaying" onclick="confirmPlaying(' + weekNum + ', false)" '
     + 'style="flex:1;padding:12px;border-radius:8px;font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;' + notPlayingStyle + '">'
-    + 'Γ¥î NOT PLAYING</button>';
+    + '❌ NOT PLAYING</button>';
   html += '</div>';
-  if (currentStatus === true) html += '<div style="font-size:12px;color:#6dbe5f;margin-top:8px;">Γ£ô You are confirmed for week ' + weekNum + '. Tap again to change.</div>';
-  if (currentStatus === false) html += '<div style="font-size:12px;color:#ff9999;margin-top:8px;">Γ£ù You have opted out of week ' + weekNum + '. Tap Playing to change.</div>';
+  if (currentStatus === true) html += '<div style="font-size:12px;color:#6dbe5f;margin-top:8px;">✓ You are confirmed for week ' + weekNum + '. Tap again to change.</div>';
+  if (currentStatus === false) html += '<div style="font-size:12px;color:#ff9999;margin-top:8px;">✗ You have opted out of week ' + weekNum + '. Tap Playing to change.</div>';
   html += '</div>';
   area.innerHTML = html;
 }
@@ -1987,7 +1987,7 @@ async function confirmPlaying(weekNum, playing) {
     await api('POST', '/api/league/confirm-playing', body);
     var area = document.getElementById('weeklyConfirmArea');
     if (area) renderConfirmButton(area, weekNum, playing);
-    toast(playing ? 'Γ£ô Confirmed for week ' + weekNum : 'Γ£ô Opted out of week ' + weekNum);
+    toast(playing ? '✓ Confirmed for week ' + weekNum : '✓ Opted out of week ' + weekNum);
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -2003,15 +2003,15 @@ async function loadWeeklyConfirmations() {
     if (!rows.length) { el.innerHTML = '<div class="empty-state">No confirmations yet for week ' + weekNum + '. Deadline is Sunday 9pm.</div>'; return; }
     var playing = rows.filter(function(r){return r.playing;});
     var notPlaying = rows.filter(function(r){return !r.playing;});
-    var html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted);">Week ' + weekNum + ' ΓÇö '
-      + '<span style="color:var(--green2)">Γ£à ' + playing.length + ' playing</span>'
-      + ' &nbsp;|&nbsp; <span style="color:#ff9999">Γ¥î ' + notPlaying.length + ' not playing</span></div>';
+    var html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted);">Week ' + weekNum + ' — '
+      + '<span style="color:var(--green2)">✅ ' + playing.length + ' playing</span>'
+      + ' &nbsp;|&nbsp; <span style="color:#ff9999">❌ ' + notPlaying.length + ' not playing</span></div>';
     html += '<table class="team-table" style="width:100%"><thead><tr><th>Player</th><th>Status</th><th>Confirmed</th></tr></thead><tbody>';
     rows.forEach(function(r) {
       var name = esc((r.first_name||'') + ' ' + (r.last_name||''));
       var status = r.playing
-        ? '<span style="color:var(--green2)">Γ£à Playing</span>'
-        : '<span style="color:#ff9999">Γ¥î Not Playing</span>';
+        ? '<span style="color:var(--green2)">✅ Playing</span>'
+        : '<span style="color:#ff9999">❌ Not Playing</span>';
       var date = new Date(r.confirmed_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
       html += '<tr><td style="font-weight:700">'+name+'</td><td>'+status+'</td><td style="font-size:12px;color:var(--muted)">'+date+'</td></tr>';
     });
@@ -2060,9 +2060,9 @@ async function signScorecard(team, st, weekNum) {
       signed_by: (currentUser && currentUser.firstName ? currentUser.firstName + ' ' + currentUser.lastName : 'Player')
     });
     var area = document.getElementById('signScorecardArea');
-    if (area) area.innerHTML = '<div style="background:#d4f7d4;border:2px solid #1a6e12;border-radius:10px;padding:16px 20px;text-align:center;font-weight:700;color:#1a4e10;font-size:18px;">Γ£à Scorecard Signed & Submitted</div>';
+    if (area) area.innerHTML = '<div style="background:#d4f7d4;border:2px solid #1a6e12;border-radius:10px;padding:16px 20px;text-align:center;font-weight:700;color:#1a4e10;font-size:18px;">✅ Scorecard Signed & Submitted</div>';
   } catch(e) {
-    if (btn) { btn.textContent = 'Γ£ì SIGN SCORECARD'; btn.disabled = false; }
+    if (btn) { btn.textContent = '✍ SIGN SCORECARD'; btn.disabled = false; }
     alert('Error: ' + e.message);
   }
 }
@@ -2078,7 +2078,7 @@ function buildReadOnlyCard(team, st) {
   for (var i = 0; i < holesCount; i++) {
     holeCells += '<div style="text-align:center;">'
       + '<div style="font-size:10px;color:var(--muted);margin-bottom:3px;">H'+(i+1)+'</div>'
-      + '<div id="opphole_'+team.id+'_'+i+'" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">ΓÇö</div>'
+      + '<div id="opphole_'+team.id+'_'+i+'" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 4px;font-size:16px;color:var(--muted);min-width:36px;text-align:center;">—</div>'
       + '</div>';
   }
   card.innerHTML = '<div class="score-team-header">'
@@ -2111,7 +2111,7 @@ async function fetchOpponentScore(oppTeamId, weekNum) {
     // Always clear cells first
     for (var i = 0; i < 18; i++) {
       var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
-      if (cell) { cell.textContent = 'ΓÇö'; cell.style.color = 'var(--muted)'; }
+      if (cell) { cell.textContent = '—'; cell.style.color = 'var(--muted)'; }
     }
     var totalEl = document.getElementById('oppTotal_' + oppTeamId);
     if (totalEl) { totalEl.innerHTML = 'Opponent scores will appear here when entered.'; totalEl.style.color = 'var(--muted)'; }
@@ -2133,11 +2133,11 @@ async function fetchOpponentScore(oppTeamId, weekNum) {
         (data.net !== null ? ' &nbsp;|&nbsp; Net: <strong>' + data.net + '</strong>' : '');
       totalEl.style.color = 'var(--cream)';
     }
-    if (tag) { tag.textContent = 'ΓùÅ live'; tag.style.color = 'var(--green2)'; }
+    if (tag) { tag.textContent = '● live'; tag.style.color = 'var(--green2)'; }
   } catch(e) {}
 }
 
-// ΓòÉΓòÉ SUPER ADMIN ΓòÉΓòÉ
+// ══ SUPER ADMIN ══
 function showAdminTab(tab) {
   ['leagues','users','courses','scorecard'].forEach(function(t) {
     var panel = document.getElementById('saTab'+t.charAt(0).toUpperCase()+t.slice(1));
@@ -2223,7 +2223,7 @@ function renderAdminCourses(courses, el) {
     var bp = JSON.parse(c.back9par||'[]').reduce(function(a,b){return a+b;},0);
     html += '<tr>';
     html += '<td style="font-weight:700">'+esc(c.name)+'</td>';
-    html += '<td style="color:var(--muted);font-size:12px">'+esc(c.location||'ΓÇö')+'</td>';
+    html += '<td style="color:var(--muted);font-size:12px">'+esc(c.location||'—')+'</td>';
     html += '<td style="color:var(--muted)">'+fp+'</td>';
     html += '<td style="color:var(--muted)">'+bp+'</td>';
     html += '<td><button class="btn-del" data-cid="'+c.id+'" data-cname="'+esc(c.name)+'" onclick="deleteGlobalCourse(this.dataset.cid,this.dataset.cname)">Delete</button></td>';
@@ -2239,7 +2239,7 @@ async function loadSuperAdmin() {
     var sess = await api('GET', '/api/admin/session-check');
     console.log('Admin session:', sess);
     if (sess.role !== 'superadmin') {
-      document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state" style="color:#ff9999">Session role is "' + sess.role + '" ΓÇö not superadmin. Try logging out and back in.</div>';
+      document.getElementById('adminLeaguesList').innerHTML = '<div class="empty-state" style="color:#ff9999">Session role is "' + sess.role + '" — not superadmin. Try logging out and back in.</div>';
       return;
     }
   } catch(e) {
@@ -2262,7 +2262,7 @@ async function loadSuperAdmin() {
         html += '<td style="color:var(--muted);font-size:12px">' + new Date(l.created_at).toLocaleDateString() + '</td>';
         html += '<td style="white-space:nowrap">';
         html += '<td style="white-space:nowrap">';
-        html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="superAdminEnterLeague(this.dataset.lid,this.dataset.lname)">Γû╢ Enter</button>';
+        html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="superAdminEnterLeague(this.dataset.lid,this.dataset.lname)">▶ Enter</button>';
         html += '<button class="btn-del" style="margin-right:6px;background:rgba(74,140,63,.2);border-color:var(--green);color:var(--green2);" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="adminResetLeaguePassword(this.dataset.lid,this.dataset.lname)">Reset PW</button>';
         html += '<button class="btn-del" data-lid="'+l.id+'" data-lname="'+safeLName+'" onclick="adminDeleteLeague(this.dataset.lid,this.dataset.lname)">Delete</button>';
       });
@@ -2341,7 +2341,7 @@ async function adminDeleteLeague(leagueId, leagueName) {
   } catch(e) { toast('Error: '+e.message); }
 }
 
-// ΓòÉΓòÉ PLAYERS TAB (league admin) ΓòÉΓòÉ
+// ══ PLAYERS TAB (league admin) ══
 function downloadPlayerTemplate() {
   var csv = 'first_name,last_name,email\nJohn,Smith,john.smith@email.com\nJane,Doe,jane.doe@email.com';
   var blob = new Blob([csv], {type:'text/csv'});
@@ -2367,7 +2367,7 @@ function handlePlayerCSV(input) {
       document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">Empty file.</p>';
       return;
     }
-    // Parse header ΓÇö handle both comma and semicolon delimiters
+    // Parse header — handle both comma and semicolon delimiters
     var delim = lines[0].indexOf(';') > -1 ? ';' : ',';
     var header = lines[0].split(delim).map(function(h) { return h.trim().toLowerCase().replace(/[" \r]/g,''); });
     console.log('CSV headers detected:', header);
@@ -2393,7 +2393,7 @@ function handlePlayerCSV(input) {
       document.getElementById('csvPreview').innerHTML = '<p style="color:#ff9999">No valid rows found. Make sure emails are present.</p>';
       return;
     }
-    var html = '<div style="color:var(--green2);font-size:13px;margin-bottom:8px;">Γ£ô Found '+csvPlayers.length+' players</div>';
+    var html = '<div style="color:var(--green2);font-size:13px;margin-bottom:8px;">✓ Found '+csvPlayers.length+' players</div>';
     html += '<div style="overflow-x:auto;"><table class="team-table"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Email</th></tr></thead><tbody>';
     csvPlayers.slice(0,8).forEach(function(p,i) {
       html += '<tr><td style="color:var(--muted)">'+(i+1)+'</td><td>'+esc(p.first_name)+'</td><td>'+esc(p.last_name)+'</td><td style="color:var(--muted);font-size:12px">'+esc(p.email)+'</td></tr>';
@@ -2415,7 +2415,7 @@ async function addPlayerManually() {
   if (!email || !email.includes('@')) { result.innerHTML = '<span style="color:#ff9999">Please enter a valid email.</span>'; return; }
   try {
     var res = await api('POST', '/api/admin/players/upload', {players:[{first_name:first, last_name:last, email:email}]});
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô ' + first + ' ' + last + ' added. Default password: ' + last.charAt(0).toUpperCase()+last.slice(1).toLowerCase() + '2026</span>';
+    result.innerHTML = '<span style="color:var(--green2)">✓ ' + first + ' ' + last + ' added. Default password: ' + last.charAt(0).toUpperCase()+last.slice(1).toLowerCase() + '2026</span>';
     document.getElementById('manualFirst').value = '';
     document.getElementById('manualLast').value = '';
     document.getElementById('manualEmail').value = '';
@@ -2431,7 +2431,7 @@ async function uploadPlayers() {
   btn.disabled = true; btn.textContent = 'Uploading...';
   try {
     var res = await api('POST', '/api/admin/players/upload', {players: csvPlayers});
-    var html = '<div style="color:var(--green2)">Γ£ô '+res.created+' created, '+res.updated+' updated</div>';
+    var html = '<div style="color:var(--green2)">✓ '+res.created+' created, '+res.updated+' updated</div>';
     if (res.errors && res.errors.length) html += '<div style="color:#ff9999;font-size:12px">Errors: '+res.errors.join(', ')+'</div>';
     html += '<div style="color:var(--muted);font-size:12px;margin-top:4px">'+res.defaultPasswordNote+'</div>';
     document.getElementById('uploadResult').innerHTML = html;
@@ -2454,7 +2454,7 @@ async function loadWelcomeEmailStatus() {
     var res = await api('GET', '/api/league/email/welcome/status');
     var sentCount = res.sentIds ? res.sentIds.length : 0;
     if (sentCount > 0) {
-      statusEl.innerHTML = '<span style="color:var(--green2)">Γ£ô ' + sentCount + ' players have received the welcome email.</span>';
+      statusEl.innerHTML = '<span style="color:var(--green2)">✓ ' + sentCount + ' players have received the welcome email.</span>';
       if (retryBtn) retryBtn.style.display = '';
     } else {
       statusEl.innerHTML = 'No welcome emails sent yet.';
@@ -2471,10 +2471,10 @@ async function sendWelcomeEmails(retryOnly) {
   try {
     var res = await api('POST', '/api/league/email/welcome', { retryOnly: retryOnly || false });
     if (res.message) {
-      result.innerHTML = '<span style="color:var(--green2)">Γ£ô ' + res.message + '</span>';
+      result.innerHTML = '<span style="color:var(--green2)">✓ ' + res.message + '</span>';
     } else {
-      var failMsg = res.errors && res.errors.length ? ' (' + res.errors.length + ' failed ΓÇö click Retry Failed tomorrow)' : '';
-      result.innerHTML = '<span style="color:var(--green2)">Γ£ô Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + failMsg + '.</span>';
+      var failMsg = res.errors && res.errors.length ? ' (' + res.errors.length + ' failed — click Retry Failed tomorrow)' : '';
+      result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' player' + (res.sent !== 1 ? 's' : '') + failMsg + '.</span>';
       if (res.errors && res.errors.length) {
         var retryBtn = document.getElementById('btnRetryWelcome');
         if (retryBtn) retryBtn.style.display = '';
@@ -2519,7 +2519,7 @@ async function sendLeagueEmail() {
   result.innerHTML = '<span style="color:var(--muted)">Sending...</span>';
   try {
     var res = await api('POST', '/api/league/email', { subject, body, player_id: playerId || null });
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô Sent to ' + res.sent + ' recipient' + (res.sent !== 1 ? 's' : '') + '.</span>';
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sent to ' + res.sent + ' recipient' + (res.sent !== 1 ? 's' : '') + '.</span>';
     document.getElementById('leagueEmailSubject').value = '';
     document.getElementById('leagueEmailBody').value = '';
   } catch(e) {
@@ -2539,7 +2539,7 @@ async function regenerateUsernames() {
   if (!confirm('Regenerate all usernames? This will reset any custom usernames.')) return;
   try {
     var res = await api('POST', '/api/admin/players/regenerate-usernames', {});
-    toast('Γ£ô Regenerated ' + res.updated + ' usernames');
+    toast('✓ Regenerated ' + res.updated + ' usernames');
     loadPlayersList();
   } catch(e) { toast('Error: ' + e.message); }
 }
@@ -2551,24 +2551,24 @@ async function loadPlayersList() {
     var teams = rosterTeams;
     var el = document.getElementById('playersList');
     if (!players.length) { el.innerHTML = '<div class="empty-state">No players yet. Upload a CSV above.</div>'; return; }
-    var html = '<div style="margin-bottom:10px;"><input class="score-search" id="playerSearchInp" placeholder="≡ƒöì Search player..." oninput="filterPlayersList(this.value)" style="width:100%;box-sizing:border-box;"></div>'
+    var html = '<div style="margin-bottom:10px;"><input class="score-search" id="playerSearchInp" placeholder="🔍 Search player..." oninput="filterPlayersList(this.value)" style="width:100%;box-sizing:border-box;"></div>'
       + '<table class="team-table" style="width:100%"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Team</th><th>Pw?</th><th></th></tr></thead><tbody>';
     players.forEach(function(p) {
-      var teamOpts = '<option value="">ΓÇö unassigned ΓÇö</option>';
+      var teamOpts = '<option value="">— unassigned —</option>';
       teams.forEach(function(t) {
         var sel = p.team_id===t.id ? ' selected' : '';
         teamOpts += '<option value="'+t.id+'"'+sel+'>'+esc(t.player1)+' / '+esc(t.player2)+'</option>';
       });
       html += '<tr>';
       html += '<td style="font-weight:700">'+esc(p.first_name+' '+p.last_name)+'</td>';
-      html += '<td style="color:var(--gold2);font-weight:700;font-size:13px;white-space:nowrap;">'+(p.username ? esc(p.username) : '<span style="color:var(--muted);font-style:italic;">ΓÇö</span>')+'</td>';
+      html += '<td style="color:var(--gold2);font-weight:700;font-size:13px;white-space:nowrap;">'+(p.username ? esc(p.username) : '<span style="color:var(--muted);font-style:italic;">—</span>')+'</td>';
       html += '<td style="color:var(--muted);font-size:12px;white-space:nowrap;">'+esc(p.email)+'</td>';
       html += '<td><select class="week-inp" style="width:auto;font-size:12px;padding:4px 8px;" onchange="assignTeam('+p.id+',this.value)">'+teamOpts+'</select></td>';
-      html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'ΓÇö')+'</td>';
+      html += '<td style="font-size:11px;color:var(--muted)">'+(p.must_change_password?'Yes':'—')+'</td>';
       html += '<td style="white-space:nowrap;display:flex;gap:5px;">';
       html += '<button class="btn-sc-load" style="font-size:11px;padding:4px 8px;" data-pid="'+p.id+'" data-pfirst="'+esc(p.first_name)+'" data-plast="'+esc(p.last_name)+'" data-pemail="'+esc(p.email)+'" data-pusername="'+esc(p.username||'')+'" onclick="editPlayer(this)">Edit</button>';
       html += '<button class="btn-del" data-uid="'+p.id+'" data-uemail="'+esc(p.email)+'" onclick="sendResetEmail(this.dataset.uid,this.dataset.uemail)">Reset PW</button>';
-      html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">Γ£ò</button>';
+      html += '<button class="btn-del" style="background:rgba(192,57,43,.25);border-color:rgba(220,80,80,.5);" data-uid="'+p.id+'" data-uname="'+esc(p.first_name+' '+p.last_name)+'" onclick="deletePlayer(this.dataset.uid,this.dataset.uname)">✕</button>';
       html += '</td>';
       html += '</tr>';
     });
@@ -2655,8 +2655,8 @@ function showRegister() {
 function togglePassVis(inputId, btn) {
   var inp = document.getElementById(inputId);
   if (!inp) return;
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '≡ƒÖê'; }
-  else { inp.type = 'password'; btn.textContent = '≡ƒæü'; }
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
 }
 
 function showError(msg) {
@@ -2665,7 +2665,7 @@ function showError(msg) {
   el.textContent = msg; el.style.display = 'block';
 }
 
-// ΓòÉΓòÉ ROSTER ΓòÉΓòÉ
+// ══ ROSTER ══
 async function loadRoster() {
   try {
     rosterTeams = await api('GET', '/api/league/teams');
@@ -2705,7 +2705,7 @@ function renderRosterTable() {
           <button class="nine-toggle-btn ${nine==='back'?'active-b':''}"   onclick="setRosterNine(${t.id},'back',this)">B9</button>
         </div>
       </td>
-      <td><button class="btn-del" onclick="deleteTeam(${t.id})">Γ£ò</button></td>`;
+      <td><button class="btn-del" onclick="deleteTeam(${t.id})">✕</button></td>`;
     tbody.appendChild(tr);
   });
   syncP34Headers();
@@ -2749,7 +2749,7 @@ async function deduplicateRoster() {
   if (!confirm('This will remove duplicate teams from your roster. Continue?')) return;
   try {
     var res = await api('POST', '/api/league/teams/deduplicate');
-    toast('Γ£ô Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+    toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
     await loadRoster();
     buildScoringCards();
   } catch(e) { toast('Error: ' + e.message); }
@@ -2778,10 +2778,10 @@ async function saveRoster() {
   const updates = rosterTeams.map(t => ({id: t.id, player1: t.player1, player2: t.player2, player3: t.player3||'', player4: t.player4||'', handicap: t.handicap, nine: t.nine||'front', format: t.format||'2man'}));
   await Promise.all(updates.map(u => api('PUT', `/api/league/teams/${u.id}`, u)));
   buildScoringCards();
-  toast('Γ£ô Roster saved');
+  toast('✓ Roster saved');
 }
 
-// ΓòÉΓòÉ COURSE ΓòÉΓòÉ
+// ══ COURSE ══
 function buildParGrids() {
   ['parFrontGrid','parBackGrid'].forEach((gid, gi) => {
     const el = document.getElementById(gid);
@@ -2839,14 +2839,14 @@ async function saveSI() {
   var unique = new Set(allSI);
   var result = document.getElementById('siSaveResult');
   if (unique.size !== 18 || allSI.some(function(v){return v<1||v>18;})) {
-    result.innerHTML = '<span style="color:#ff9999">ΓÜá Each hole must have a unique SI from 1ΓÇô18. Check for duplicates.</span>';
+    result.innerHTML = '<span style="color:#ff9999">⚠ Each hole must have a unique SI from 1–18. Check for duplicates.</span>';
     return;
   }
   try {
     await api('PUT', '/api/league/course/si', { front9si, back9si });
     _front9si = front9si;
     _back9si  = back9si;
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô Stroke index saved.</span>';
+    result.innerHTML = '<span style="color:var(--green2)">✓ Stroke index saved.</span>';
     toast('SI saved');
   } catch(e) {
     result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
@@ -2861,7 +2861,7 @@ function updateParTotals() {
   const f = getParFront().reduce((a,b)=>a+b,0);
   const b = getParBack().reduce((a,b)=>a+b,0);
   const el = document.getElementById('parTotalsDisplay');
-  if (el) el.textContent = `Front: ${f}  ΓÇó  Back: ${b}  ΓÇó  Total: ${f+b}`;
+  if (el) el.textContent = `Front: ${f}  •  Back: ${b}  •  Total: ${f+b}`;
   // Refresh par labels on scoring cards
   scoreTeams.forEach(st => refreshParLabels(st));
 }
@@ -2889,9 +2889,9 @@ async function searchCourse() {
     const parsed = await api('POST', '/api/league/course-search', { query });
     courseSearchResults = parsed.courses || [];
     if (!courseSearchResults.length) {
-      status.textContent = 'No courses found ΓÇö try a different name or enter par manually.';
+      status.textContent = 'No courses found — try a different name or enter par manually.';
     } else {
-      status.textContent = courseSearchResults.length + ' result(s) ΓÇö click to select:';
+      status.textContent = courseSearchResults.length + ' result(s) — click to select:';
       const el = document.getElementById('courseResults');
       el.innerHTML = courseSearchResults.map((c,i)=>`
         <div class="search-result-item" onclick="selectCourse(${i})">
@@ -2902,12 +2902,12 @@ async function searchCourse() {
     }
   } catch(e) {
     if (e.message && e.message.includes('ANTHROPIC_API_KEY')) {
-      status.textContent = 'ΓÜá API key not set on server ΓÇö see setup instructions below.';
+      status.textContent = '⚠ API key not set on server — see setup instructions below.';
     } else {
-      status.textContent = 'Search failed: ' + e.message + ' ΓÇö enter par manually.';
+      status.textContent = 'Search failed: ' + e.message + ' — enter par manually.';
     }
   }
-  btn.disabled=false; btn.textContent='≡ƒöì Search';
+  btn.disabled=false; btn.textContent='🔍 Search';
 }
 
 function selectCourse(idx) {
@@ -2919,7 +2919,7 @@ function selectCourse(idx) {
   document.getElementById('courseResults').style.display='none';
   document.getElementById('courseStatus').textContent='';
 
-  toast('Γ£ô '+c.name);
+  toast('✓ '+c.name);
 }
 
 function getCourseNameLoc() {
@@ -2935,7 +2935,7 @@ async function saveCourse() {
   try {
     await api('PUT', '/api/league/course', { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() });
     if (league) league.course = { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() };
-    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">Γ£ô Saved as your league course.</span>';
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Saved as your league course.</span>';
     toast('Course saved');
   } catch(e) {
     document.getElementById('courseSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
@@ -2953,7 +2953,7 @@ async function saveToGlobalLibrary() {
     // Also save as league course
     await api('PUT', '/api/league/course', { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() });
     if (league) league.course = { name: nl.name, location: nl.loc, front9par: getParFront(), back9par: getParBack() };
-    var msg = res.updated ? 'Γ£ô Course updated in global library.' : 'Γ£ô Course added to global library!';
+    var msg = res.updated ? '✓ Course updated in global library.' : '✓ Course added to global library!';
     document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">'+msg+' Any league can now search and find it.</span>';
     toast(nl.name + ' saved to library');
   } catch(e) {
@@ -2961,7 +2961,7 @@ async function saveToGlobalLibrary() {
   }
 }
 
-// ΓöÇΓöÇ Global course search ΓöÇΓöÇ
+// ── Global course search ──
 var _courseSearchTimer = null;
 function globalCourseSearch(q) {
   clearTimeout(_courseSearchTimer);
@@ -2972,14 +2972,14 @@ function globalCourseSearch(q) {
     try {
       var results = await api('GET', '/api/league/courses/global/search?q='+encodeURIComponent(q));
       if (!results.length) {
-        el.innerHTML = '<div style="color:var(--muted);font-size:13px;font-style:italic;">No courses found ΓÇö enter par below and save to library.</div>';
+        el.innerHTML = '<div style="color:var(--muted);font-size:13px;font-style:italic;">No courses found — enter par below and save to library.</div>';
         return;
       }
       var html = results.map(function(c) {
         var fp = JSON.parse(c.front9par||'[]').reduce(function(a,b){return a+b;},0);
         var bp = JSON.parse(c.back9par||'[]').reduce(function(a,b){return a+b;},0);
         var delBtn = (currentUser && currentUser.role === 'superadmin')
-          ? '<button class="btn-sc-del" data-cid="'+c.id+'" data-cname="'+esc(c.name)+'" onclick="deleteGlobalCourse(this.dataset.cid,this.dataset.cname);event.stopPropagation()">Γ£ò</button>'
+          ? '<button class="btn-sc-del" data-cid="'+c.id+'" data-cname="'+esc(c.name)+'" onclick="deleteGlobalCourse(this.dataset.cid,this.dataset.cname);event.stopPropagation()">✕</button>'
           : '';
         return '<div class="saved-course-item" onclick="loadGlobalCourse('+c.id+')" style="cursor:pointer;">'
           + '<div class="sc-info"><div class="sc-name">'+esc(c.name)+'</div>'
@@ -3009,11 +3009,11 @@ async function loadGlobalCourse(id) {
     var li = document.getElementById('courseLocInp');  if(li) li.value = c.location||'';
     document.getElementById('courseInput').value = c.name;
     document.getElementById('globalCourseResults').innerHTML = '';
-    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">Γ£ô '+esc(c.name)+' loaded.</span>';
+    document.getElementById('courseSaveResult').innerHTML = '<span style="color:var(--green2)">✓ '+esc(c.name)+' loaded.</span>';
     // Auto-save as league course
     await api('PUT', '/api/league/course', { name: c.name, location: c.location||'', front9par: fp, back9par: bp });
     if (league) league.course = { name: c.name, location: c.location||'', front9par: fp, back9par: bp };
-    toast('Γ£ô ' + c.name + ' loaded');
+    toast('✓ ' + c.name + ' loaded');
   } catch(e) { toast('Error: '+e.message); }
 }
 
@@ -3060,7 +3060,7 @@ async function deleteGlobalCourse(id, name) {
   } catch(e) { toast('Error: ' + e.message); }
 }
 
-// ΓòÉΓòÉ SCORING CARDS ΓòÉΓòÉ
+// ══ SCORING CARDS ══
 let currentFilter = 'all';
 
 let subCounts = {}; // {teamId: count}
@@ -3123,7 +3123,7 @@ async function buildScoringCards() {
     var count = subCounts[t.id] || 0;
     var btn = document.getElementById('ssub_'+t.id);
     if (btn && count > 0) {
-      btn.title = 'Subs used this season: ' + count + (count >= 2 ? ' ΓÇö Full handicap applies if sub used again' : ' ΓÇö 1 more sub gets full handicap');
+      btn.title = 'Subs used this season: ' + count + (count >= 2 ? ' — Full handicap applies if sub used again' : ' — 1 more sub gets full handicap');
       btn.innerHTML = 'SUB <span style="font-size:10px;opacity:.8;">('+count+')</span>';
     }
     var currentWeekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
@@ -3152,7 +3152,7 @@ async function buildScoringCards() {
       // Trigger score calculation display
       calcTeamScore(t.id);
     } else {
-      // No signed scorecard ΓÇö restore draft scores from localStorage
+      // No signed scorecard — restore draft scores from localStorage
       try {
         var leagueId = league && league.id ? league.id : 'default';
         var draftKey = 'gp_draft_' + leagueId + '_' + t.id + '_wk' + currentWeekNum;
@@ -3188,8 +3188,8 @@ async function buildScoringCards() {
         var badge = document.createElement('span');
         badge.className = 'signed-badge';
         badge.style.cssText = 'display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 8px;border-radius:4px;background:rgba(74,140,63,.35);color:var(--green2);border:1px solid rgba(74,140,63,.5);margin-left:8px;vertical-align:middle;cursor:pointer;';
-        badge.title = 'Scorecard signed by player ΓÇö click to reset';
-        badge.textContent = 'Γ£ì SIGNED';
+        badge.title = 'Scorecard signed by player — click to reset';
+        badge.textContent = '✍ SIGNED';
         badge.onclick = function(e) { e.stopPropagation(); resetSignedScorecard(t.id, signedThisWeek[t.id], nameEl); };
         nameEl.appendChild(badge);
       }
@@ -3309,14 +3309,14 @@ function buildScoreCard(team, st, idx) {
         <span style="font-size:11px;color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:1px;margin-left:4px;">WK <span class='wk-badge-num'>${leagueSettings&&leagueSettings.currentWeek||'?'}</span></span>
       </div>
       <div class="card-quick-totals">
-        <span class="quick-gross" id="sgross_${team.id}">ΓÇö</span>
+        <span class="quick-gross" id="sgross_${team.id}">—</span>
         <span class="quick-net" id="snet_${team.id}"></span>
       </div>
       <button id="snoshow_${team.id}" onclick="toggleNoShow(${team.id});event.stopPropagation();"
         style="background:transparent;border:1px solid rgba(192,57,43,.4);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-right:4px;"
         title="Mark team as no-show for this week">NO SHOW</button>
 
-      <span class="card-collapse-icon open" id="sicon_${team.id}">Γû╛</span>
+      <span class="card-collapse-icon open" id="sicon_${team.id}">▾</span>
     </div>
     <div class="score-team-body" id="sbody_${team.id}">
       <div class="hdcp-row" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -3341,9 +3341,9 @@ function buildScoreCard(team, st, idx) {
       </div>
       <div id="sgrid_${team.id}">${buildHolesGrid(team.id, st.nine)}</div>
       <div class="score-totals">
-        <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross2_${team.id}">ΓÇö</div></div>
-        <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">ΓÇö</div></div>
-        <div class="total-box"><div class="total-lbl">Net</div><div class="total-val" id="snet2_${team.id}">ΓÇö</div></div>
+        <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross2_${team.id}">—</div></div>
+        <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">—</div></div>
+        <div class="total-box"><div class="total-lbl">Net</div><div class="total-val" id="snet2_${team.id}">—</div></div>
       </div>
     </div>`;
   return card;
@@ -3363,9 +3363,9 @@ function toggleSub(teamId) {
   if (isActive) {
     hdcpInp.dataset.origHdcp = hdcpInp.value;
     if (useFullHdcp) {
-      // Keep full handicap ΓÇö don't zero out
+      // Keep full handicap — don't zero out
       hdcpInp.style.opacity = '0.7';
-      btn.title = 'Sub #' + (prevSubs+1) + ' ΓÇö Full handicap applies (used sub ' + prevSubs + ' times this season)';
+      btn.title = 'Sub #' + (prevSubs+1) + ' — Full handicap applies (used sub ' + prevSubs + ' times this season)';
     } else {
       hdcpInp.value = '0';
       hdcpInp.style.opacity = '0.5';
@@ -3381,7 +3381,7 @@ function toggleSub(teamId) {
       nameDisp.appendChild(badge);
     }
     // Show toast if full handicap applies
-    if (useFullHdcp) toast('Team has used ' + prevSubs + ' subs ΓÇö full handicap applies');
+    if (useFullHdcp) toast('Team has used ' + prevSubs + ' subs — full handicap applies');
   } else {
     hdcpInp.value = hdcpInp.dataset.origHdcp || '0';
     hdcpInp.style.opacity = '';
@@ -3417,9 +3417,9 @@ async function loadConfirmSummary() {
     var playing    = rows.filter(function(r){ return r.playing; });
     var notPlaying = rows.filter(function(r){ return !r.playing; });
     var total = rosterTeams.length || '?';
-    textEl.innerHTML = '<span style="color:var(--green2);font-weight:700;">Γ£à ' + playing.length + ' playing</span>'
-      + ' &nbsp;|&nbsp; <span style="color:#ff9999;">Γ¥î ' + notPlaying.length + ' not playing</span>'
-      + ' &nbsp;|&nbsp; <span style="color:var(--muted);">ΓÅ│ ' + (total - rows.length) + ' no response</span>'
+    textEl.innerHTML = '<span style="color:var(--green2);font-weight:700;">✅ ' + playing.length + ' playing</span>'
+      + ' &nbsp;|&nbsp; <span style="color:#ff9999;">❌ ' + notPlaying.length + ' not playing</span>'
+      + ' &nbsp;|&nbsp; <span style="color:var(--muted);">⏳ ' + (total - rows.length) + ' no response</span>'
       + ' <span style="color:var(--muted);font-size:11px;">(Week ' + weekNum + ')</span>';
     if (playing.length) {
       namesEl.innerHTML = playing.map(function(r){
@@ -3448,11 +3448,11 @@ async function clearAllScorecards() {
       if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
     }
     // Reset totals
-    var g = document.getElementById('sgross_' + t.id); if (g) g.textContent = 'ΓÇö';
+    var g = document.getElementById('sgross_' + t.id); if (g) g.textContent = '—';
     var n = document.getElementById('snet_' + t.id);   if (n) n.textContent = '';
-    var g2 = document.getElementById('sgross2_' + t.id); if (g2) g2.textContent = 'ΓÇö';
-    var tp = document.getElementById('stopar_' + t.id);  if (tp) tp.textContent = 'ΓÇö';
-    var n2 = document.getElementById('snet2_' + t.id);   if (n2) n2.textContent = 'ΓÇö';
+    var g2 = document.getElementById('sgross2_' + t.id); if (g2) g2.textContent = '—';
+    var tp = document.getElementById('stopar_' + t.id);  if (tp) tp.textContent = '—';
+    var n2 = document.getElementById('snet2_' + t.id);   if (n2) n2.textContent = '—';
     // Remove signed badge
     var badge = document.getElementById('signed_badge_' + t.id);
     if (badge) badge.remove();
@@ -3463,9 +3463,9 @@ async function clearAllScorecards() {
     var currSettings = leagueSettings || await api('GET', '/api/league/settings');
     var weekNum = currSettings.currentWeek || 1;
     await api('DELETE', '/api/league/scorecard/signed/all/' + weekNum);
-    toast('Γ£ô All scores cleared for week ' + weekNum);
+    toast('✓ All scores cleared for week ' + weekNum);
   } catch(e) {
-    toast('Scores cleared on screen ΓÇö DB error: ' + e.message);
+    toast('Scores cleared on screen — DB error: ' + e.message);
   }
 
   // Hide results area if visible
@@ -3489,10 +3489,10 @@ function calcTeamScore(teamId) {
   var hdcpEl = document.getElementById('shdcp_' + teamId);
   var hdcp = parseInt(hdcpEl ? hdcpEl.value : 0) || 0;
   var net = hasAll ? gross - hdcp : null;
-  var g1 = document.getElementById('sgross_'+teamId); if (g1) g1.textContent = gross || 'ΓÇö';
-  var g2 = document.getElementById('sgross2_'+teamId); if (g2) g2.textContent = gross || 'ΓÇö';
+  var g1 = document.getElementById('sgross_'+teamId); if (g1) g1.textContent = gross || '—';
+  var g2 = document.getElementById('sgross2_'+teamId); if (g2) g2.textContent = gross || '—';
   var n1 = document.getElementById('snet_'+teamId); if (n1) n1.textContent = net != null ? ('Net '+net) : '';
-  var n2 = document.getElementById('snet2_'+teamId); if (n2) n2.textContent = net != null ? net : 'ΓÇö';
+  var n2 = document.getElementById('snet2_'+teamId); if (n2) n2.textContent = net != null ? net : '—';
   // Color hole inputs
   var parArr = st.nine === 'back' ? getParBack() : getParFront();
   for (var j = 0; j < count; j++) {
@@ -3518,7 +3518,7 @@ async function deleteTeamCard(teamId) {
     rosterTeams = rosterTeams.filter(function(t){ return t.id !== teamId; });
     var card = document.getElementById('scard_' + teamId);
     if (card) card.remove();
-    toast('Γ£ô ' + name + ' deleted');
+    toast('✓ ' + name + ' deleted');
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -3534,7 +3534,7 @@ async function toggleNoShow(teamId) {
     nsStored[teamId] = isNoShow;
     localStorage.setItem(nsKey, JSON.stringify(nsStored));
   } catch(e) {}
-  toast(isNoShow ? 'Γ¢ö No-show ΓÇö excluded from results' : 'Γ£ô No-show removed');
+  toast(isNoShow ? '⛔ No-show — excluded from results' : '✓ No-show removed');
 }
 
 function applyNoShowState(teamId, isNoShow) {
@@ -3548,7 +3548,7 @@ function applyNoShowState(teamId, isNoShow) {
     btn.style.background   = 'rgba(192,57,43,.35)';
     btn.style.borderColor  = 'rgba(220,80,80,.6)';
     btn.style.color        = '#ff9999';
-    btn.textContent = 'Γ¢ö NO SHOW';
+    btn.textContent = '⛔ NO SHOW';
     var nameEl = document.getElementById('sname_' + teamId);
     if (nameEl && !document.getElementById('noshow_badge_' + teamId)) {
       var badge = document.createElement('span');
@@ -3577,7 +3577,7 @@ async function clearAndRegenerateWeek() {
     // Reload roster and rebuild scoring cards
     await loadRoster();
     await buildScoringCards();
-    toast('Γ£ô Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+    toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -3593,11 +3593,11 @@ async function clearCurrentWeekScores() {
       var inp = document.getElementById('shole_' + t.id + '_' + i);
       if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
     }
-    var gEl = document.getElementById('sgross_'+t.id);  if (gEl) gEl.textContent = 'ΓÇö';
+    var gEl = document.getElementById('sgross_'+t.id);  if (gEl) gEl.textContent = '—';
     var nEl = document.getElementById('snet_'+t.id);    if (nEl) nEl.textContent = '';
-    var g2  = document.getElementById('sgross2_'+t.id); if (g2)  g2.textContent = 'ΓÇö';
-    var tp  = document.getElementById('stopar_'+t.id);  if (tp)  tp.textContent = 'ΓÇö';
-    var n2  = document.getElementById('snet2_'+t.id);   if (n2)  n2.textContent = 'ΓÇö';
+    var g2  = document.getElementById('sgross2_'+t.id); if (g2)  g2.textContent = '—';
+    var tp  = document.getElementById('stopar_'+t.id);  if (tp)  tp.textContent = '—';
+    var n2  = document.getElementById('snet2_'+t.id);   if (n2)  n2.textContent = '—';
     // Remove signed badge
     var badge = document.querySelector('#sname_'+t.id+' .signed-badge');
     if (badge) badge.remove();
@@ -3617,14 +3617,14 @@ async function clearCurrentWeekScores() {
   var ra = document.getElementById('resultsArea');
   if (ra) ra.style.display = 'none';
 
-  toast('Γ£ô Week ' + weekNum + ' scores cleared');
+  toast('✓ Week ' + weekNum + ' scores cleared');
 }
 
 async function hardDeduplicateTeams() {
   if (!confirm('Remove all duplicate scorecards? This keeps one card per team and deletes the rest.')) return;
   try {
     var res = await api('POST', '/api/league/teams/hard-dedup');
-    toast('Γ£ô Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
+    toast('✓ Removed ' + res.deleted + ' duplicates. ' + res.remaining + ' teams remain.');
     await loadRoster();
     await buildScoringCards();
   } catch(e) { toast('Error: ' + e.message); }
@@ -3643,7 +3643,7 @@ async function deleteRoundWeek() {
   if (!confirm('Delete ALL saved scores and signed scorecards for week ' + weekNum + '? This cannot be undone.')) return;
   try {
     await api('DELETE', '/api/league/rounds/week/' + weekNum);
-    toast('Γ£ô Week ' + weekNum + ' deleted ΓÇö scorecards cleared');
+    toast('✓ Week ' + weekNum + ' deleted — scorecards cleared');
     // Clear all hole inputs on screen
     rosterTeams.forEach(function(t) {
       for (var i = 0; i < 18; i++) {
@@ -3652,7 +3652,7 @@ async function deleteRoundWeek() {
       }
       ['sgross_','snet_','sgross2_','stopar_','snet2_'].forEach(function(pre) {
         var el = document.getElementById(pre + t.id);
-        if (el) el.textContent = 'ΓÇö';
+        if (el) el.textContent = '—';
       });
       var badge = document.getElementById('signed_badge_' + t.id);
       if (badge) badge.remove();
@@ -3688,7 +3688,7 @@ function refreshParLabels(st) {
 }
 
 function setNine(teamId, nine, btn) {
-  // legacy ΓÇö use switchNine
+  // legacy — use switchNine
   switchNine(teamId, nine);
 }
 
@@ -3757,7 +3757,7 @@ async function switchNine(teamId, nine) {
   } catch(e) { console.warn('Could not save nine to roster', e); }
 }
 
-// syncAllNines removed ΓÇö nine is per-team in roster
+// syncAllNines removed — nine is per-team in roster
 
 function colorHole(input, teamId, holeIdx) {
   const st = scoreTeams.find(s=>s.id===teamId);
@@ -3790,16 +3790,16 @@ function recalcCard(teamId) {
 
   const gHdr = document.getElementById(`sgross_${teamId}`);
   const nHdr = document.getElementById(`snet_${teamId}`);
-  if (gHdr) gHdr.textContent = filled>0 ? gross : 'ΓÇö';
+  if (gHdr) gHdr.textContent = filled>0 ? gross : '—';
   if (nHdr) nHdr.textContent = filled===count ? 'Net '+net : '';
 
   const gEl = document.getElementById(`sgross2_${teamId}`);
   const tEl = document.getElementById(`stopar_${teamId}`);
   const nEl = document.getElementById(`snet2_${teamId}`);
-  if (filled===0) { if(gEl) gEl.textContent='ΓÇö'; if(tEl) tEl.textContent='ΓÇö'; if(nEl) nEl.textContent='ΓÇö'; return; }
+  if (filled===0) { if(gEl) gEl.textContent='—'; if(tEl) tEl.textContent='—'; if(nEl) nEl.textContent='—'; return; }
   if (gEl) gEl.textContent = gross;
   if (tEl) { tEl.textContent = diffStr; tEl.className='total-val '+(diff>0?'over':diff<0?'under':'even'); }
-  if (nEl) nEl.textContent = filled===count ? net : 'ΓÇö';
+  if (nEl) nEl.textContent = filled===count ? net : '—';
 
   // Auto-save after 1.5 seconds of inactivity
   if (_autoSaveTimers[teamId]) clearTimeout(_autoSaveTimers[teamId]);
@@ -3823,7 +3823,7 @@ function recalcCard(teamId) {
   }, 1500);
 }
 
-// ΓòÉΓòÉ CALCULATE ΓòÉΓòÉ
+// ══ CALCULATE ══
 function calculate() {
   const parFront = getParFront(), parBack = getParBack();
   // Filter out no-show teams
@@ -3853,7 +3853,7 @@ function calculate() {
 }
 
 function renderResults(data, parFront, parBack) {
-  // 4-flight split: F9A, F9B, B9A, B9B ΓÇö always split within each nine
+  // 4-flight split: F9A, F9B, B9A, B9B — always split within each nine
   const f9teams = data.filter(t => t.nine === 'front' || t.nine === 'all18');
   const b9teams = data.filter(t => t.nine === 'back'  || t.nine === 'all18');
 
@@ -3866,7 +3866,7 @@ function renderResults(data, parFront, parBack) {
   splitFlight(b9teams);
   // Any team not in f9 or b9 defaults to A
   data.forEach(function(t){ if (!t.flight) t.flight = 'A'; });
-  // SI tiebreaker sort ΓÇö if nets are tied, compare scores on hardest holes first
+  // SI tiebreaker sort — if nets are tied, compare scores on hardest holes first
   function siSort(a, b) {
     var netDiff = (a.net??999) - (b.net??999);
     if (netDiff !== 0) return netDiff;
@@ -3909,11 +3909,11 @@ function renderResults(data, parFront, parBack) {
 
   document.getElementById('resultsArea').innerHTML = `
     <div class="results-title">
-      <h2>≡ƒÅå Results</h2>
-      <p>${data.length} teams ΓÇó ${flightMode==='par'?'A: +3 &amp; under / B: +4 &amp; over':'High/Low split'} ΓÇó Front par ${pft} ΓÇó Back par ${pbt}</p>
+      <h2>🏆 Results</h2>
+      <p>${data.length} teams • ${flightMode==='par'?'A: +3 &amp; under / B: +4 &amp; over':'High/Low split'} • Front par ${pft} • Back par ${pbt}</p>
     </div>
     <div class="hdcp-override">
-      <div class="hdcp-override-title">Γ£Å∩╕Å Adjust Handicaps</div>
+      <div class="hdcp-override-title">✏️ Adjust Handicaps</div>
       <div class="hdcp-override-sub">Edit any team's handicap, then hit Recalculate.</div>
       <div class="hdcp-override-grid">
         ${data.map(t=>`<div class="hdcp-override-row">
@@ -3922,22 +3922,22 @@ function renderResults(data, parFront, parBack) {
         </div>`).join('')}
       </div>
     </div>
-    <button class="btn-recalc" onclick="recalculate()">Γƒ│ RECALCULATE</button>
-    <button class="btn-update-hdcp" onclick="saveUpdatedHandicaps()">≡ƒÆ╛ SAVE UPDATED HANDICAPS TO ROSTER</button>
+    <button class="btn-recalc" onclick="recalculate()">⟳ RECALCULATE</button>
+    <button class="btn-update-hdcp" onclick="saveUpdatedHandicaps()">💾 SAVE UPDATED HANDICAPS TO ROSTER</button>
     <div class="results-grid">
       ${flightHTML('F9 A Flight',fA,'a')} ${flightHTML('F9 B Flight',fB,'b')}
       ${flightHTML('B9 A Flight',bA,'a')} ${flightHTML('B9 B Flight',bB,'b')}
-      ${skinsEnabled ? skinsHTML(skinsFrontA,'F9 A Flight Skins','Holes 1ΓÇô9') : ''}
-      ${skinsEnabled ? skinsHTML(skinsFrontB,'F9 B Flight Skins','Holes 1ΓÇô9') : ''}
-      ${skinsEnabled ? skinsHTML(skinsBackA, 'B9 A Flight Skins','Holes 10ΓÇô18') : ''}
-      ${skinsEnabled ? skinsHTML(skinsBackB, 'B9 B Flight Skins','Holes 10ΓÇô18') : ''}
+      ${skinsEnabled ? skinsHTML(skinsFrontA,'F9 A Flight Skins','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsFrontB,'F9 B Flight Skins','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBackA, 'B9 A Flight Skins','Holes 10–18') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBackB, 'B9 B Flight Skins','Holes 10–18') : ''}
       ${scoreboardHTML(data)}
     </div>
     <div class="result-actions">
-      <button class="btn-calculate" style="font-size:18px;padding:14px 28px;margin-bottom:0;" onclick="adminSignAndSave()">Γ£ì SIGN & SAVE ROUND</button>
-      <button class="btn-green-outline" onclick="saveRound()">≡ƒôà Save to History Only</button>
-      <button class="btn-outline" onclick="downloadCSV()">Γ¼ç Download CSV</button>
-      <button class="btn-outline" onclick="document.getElementById('resultsArea').style.display='none'">Γå⌐ Back to Scores</button>
+      <button class="btn-calculate" style="font-size:18px;padding:14px 28px;margin-bottom:0;" onclick="adminSignAndSave()">✍ SIGN & SAVE ROUND</button>
+      <button class="btn-green-outline" onclick="saveRound()">📅 Save to History Only</button>
+      <button class="btn-outline" onclick="downloadCSV()">⬇ Download CSV</button>
+      <button class="btn-outline" onclick="document.getElementById('resultsArea').style.display='none'">↩ Back to Scores</button>
     </div>`;
 }
 
@@ -3958,7 +3958,7 @@ async function saveUpdatedHandicaps() {
   // Update local roster
   updates.forEach(u => { const t=rosterTeams.find(r=>r.id===u.id); if(t) t.handicap=u.handicap; });
   renderRosterTable();
-  toast('Γ£ô Handicaps saved to roster');
+  toast('✓ Handicaps saved to roster');
 }
 
 async function adminSignAndSave() {
@@ -4021,8 +4021,8 @@ async function adminSignAndSave() {
         localStorage.removeItem('gp_draft_' + leagueId + '_' + t.id + '_wk' + weekNum);
       });
     } catch(e) {}
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô Week ' + weekNum + ' saved and signed for ' + signCount + ' teams.</span>';
-    toast('Γ£ô Week ' + weekNum + ' saved');
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved and signed for ' + signCount + ' teams.</span>';
+    toast('✓ Week ' + weekNum + ' saved');
     loadHistory();
   } catch(e) {
     result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
@@ -4037,11 +4037,11 @@ async function saveRound() {
     sub_name: t.subName || ''
   }));
   await api('POST', '/api/league/rounds', { scores });
-  toast('Γ£ô Round saved to history');
+  toast('✓ Round saved to history');
   loadHistory();
 }
 
-// ΓòÉΓòÉ SKINS + RESULTS HTML ΓòÉΓòÉ
+// ══ SKINS + RESULTS HTML ══
 function computeSkins(teams, nine) {
   if (!teams.length) return [];
   const par = getParFor(nine);
@@ -4075,7 +4075,7 @@ function getTiebreakerHole(a, b) {
 
 function flightHTML(letter, teams, cls) {
   cls = cls || (letter.includes('A') ? 'a' : 'b');
-  const icon = letter.includes('A')?'≡ƒƒó':'ΓÜ¬';
+  const icon = letter.includes('A')?'🟢':'⚪';
   const rows = teams.length ? teams.slice(0,8).map((t,i)=>{
     const pc=i===0?'p1':i===1?'p2':i===2?'p3':'px';
     const prevNet = i>0 ? teams[i-1].net : null;
@@ -4083,7 +4083,7 @@ function flightHTML(letter, teams, cls) {
     var tbNote = '';
     if (netTied) {
       var tb = getTiebreakerHole(teams[i-1], t);
-      if (tb) tbNote = ' <span style="font-size:10px;color:var(--gold2);"> ΓÇó TB: H'+tb.hole+' ('+tb.winnerScore+' vs '+tb.loserScore+')</span>';
+      if (tb) tbNote = ' <span style="font-size:10px;color:var(--gold2);"> • TB: H'+tb.hole+' ('+tb.winnerScore+' vs '+tb.loserScore+')</span>';
     }
     const diff=t.gross-(t.parTotal||36);
     const ds=diff===0?'E':diff>0?'+'+diff:''+diff;
@@ -4091,24 +4091,24 @@ function flightHTML(letter, teams, cls) {
       <div class="place ${pc}">${i+1}</div>
       <div class="fr-info">
         <div class="fr-name">${esc(t.name)}</div>
-        <div class="fr-meta">Hdcp ${t.hdcp} ΓÇó ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} ΓÇó ${ds}${tbNote}</div>
+        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}${tbNote}</div>
       </div>
       <div class="fr-score">
-        <div class="fr-net">${t.net??'ΓÇö'}</div>
+        <div class="fr-net">${t.net??'—'}</div>
         <div class="fr-gross">Gross ${t.gross}</div>
       </div>
     </div>`;
   }).join('') : '<div class="empty-state">No teams in this flight.</div>';
   return `<div class="res-card"><div class="res-hdr ${cls}">
     <span class="res-icon">${icon}</span>
-    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play ΓÇó SI Tiebreaker</div></div>
+    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play • SI Tiebreaker</div></div>
   </div><div class="res-body">${rows}</div></div>`;
 }
 
 function skinsHTML(skins, title, sub) {
   if (!skins.length) return `<div class="res-card"><div class="res-hdr skins">
-    <span class="res-icon">≡ƒÆ░</span>
-    <div><div class="res-htitle">Skins ΓÇö ${title}</div><div class="res-hsub">${sub} ΓÇö No teams</div></div>
+    <span class="res-icon">💰</span>
+    <div><div class="res-htitle">Skins — ${title}</div><div class="res-hsub">${sub} — No teams</div></div>
   </div><div class="res-body"><div class="empty-state">No teams on this nine.</div></div></div>`;
   const won=skins.filter(s=>s.winner).length;
   const tally={};
@@ -4117,11 +4117,11 @@ function skinsHTML(skins, title, sub) {
     <div class="skin-tally"><div class="skin-count">${c}</div><div class="skin-name">${esc(n)}</div></div>`).join('');
   const rows=skins.map(s=>{
     if(s.winner) return `<tr class="won"><td class="h-num">${s.hole}</td><td>${s.score}</td><td>${esc(s.winner)}</td><td><span class="badge-skin">${s.value} skin${s.value>1?'s':''}</span></td></tr>`;
-    return `<tr><td class="h-num">${s.hole}</td><td>${s.score??'ΓÇö'}</td><td style="color:var(--muted);font-size:12px">${s.tied?s.tied.map(esc).join(' / '):'ΓÇö'}</td><td><span class="${s.tied?'badge-push':'badge-carry'}">${s.tied?'Tied':'ΓÇö'}</span></td></tr>`;
+    return `<tr><td class="h-num">${s.hole}</td><td>${s.score??'—'}</td><td style="color:var(--muted);font-size:12px">${s.tied?s.tied.map(esc).join(' / '):'—'}</td><td><span class="${s.tied?'badge-push':'badge-carry'}">${s.tied?'Tied':'—'}</span></td></tr>`;
   }).join('');
   return `<div class="res-card full"><div class="res-hdr skins">
-    <span class="res-icon">≡ƒÆ░</span>
-    <div><div class="res-htitle">Skins ΓÇö ${title}</div><div class="res-hsub">${sub} ΓÇó Gross ΓÇó Carryover ΓÇó ${won} skins won</div></div>
+    <span class="res-icon">💰</span>
+    <div><div class="res-htitle">Skins — ${title}</div><div class="res-hsub">${sub} • Gross • Carryover • ${won} skins won</div></div>
   </div><div class="res-body">
     ${tallyHTML?`<div class="skins-summary">${tallyHTML}</div>`:''}
     <div class="scroll-body"><table class="skins-tbl">
@@ -4136,10 +4136,10 @@ function scoreboardHTML(data) {
   const rows=sorted.map(t=>`<tr>
     <td>${esc(t.name)}<span class="ft ft-${t.flight.toLowerCase()}">${t.flight}</span></td>
     <td>${t.hdcp}</td><td style="color:var(--muted);font-size:11px">${t.nine==='all18'?'18':t.nine==='back'?'B9':'F9'}</td>
-    <td>${t.gross||'ΓÇö'}</td><td><strong style="color:var(--gold2)">${t.net??'ΓÇö'}</strong></td>
+    <td>${t.gross||'—'}</td><td><strong style="color:var(--gold2)">${t.net??'—'}</strong></td>
   </tr>`).join('');
   return `<div class="res-card full"><div class="res-hdr board">
-    <span class="res-icon">≡ƒôï</span>
+    <span class="res-icon">📋</span>
     <div><div class="res-htitle">Full Scoreboard</div><div class="res-hsub">All teams by net score</div></div>
   </div><div class="res-body"><div class="scroll-body"><table class="sb-tbl">
     <thead><tr><th>Team</th><th>Hdcp</th><th>Nine</th><th>Gross</th><th>Net</th></tr></thead>
@@ -4147,7 +4147,7 @@ function scoreboardHTML(data) {
   </table></div></div></div>`;
 }
 
-// ΓòÉΓòÉ CSV ΓòÉΓòÉ
+// ══ CSV ══
 function downloadCSV() {
   if (!lastCalcData.length) return;
   const rows = [['Team','Player 1','Player 2','Nine','Handicap','Gross','Net','To Par','Flight','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','H11','H12','H13','H14','H15','H16','H17','H18'].join(',')];
@@ -4163,7 +4163,7 @@ function downloadCSV() {
     if (!ts.length) return;
     rows.push(`"${sec.label}",,Hole,Score,Winner,Result`);
     computeSkins(ts, sec.nine).forEach(s => {
-      rows.push(`,,${s.hole},${s.score??''},"${s.winner?s.winner:s.tied?s.tied.join(' / '):''}","${s.winner?s.value+' skin(s)':s.tied?'Tied-Carry':'ΓÇö'}"`);
+      rows.push(`,,${s.hole},${s.score??''},"${s.winner?s.winner:s.tied?s.tied.join(' / '):''}","${s.winner?s.value+' skin(s)':s.tied?'Tied-Carry':'—'}"`);
     });
   });
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
@@ -4173,7 +4173,7 @@ function downloadCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-// ΓòÉΓòÉ HISTORY ΓòÉΓòÉ
+// ══ HISTORY ══
 async function loadHistory() {
   try {
     const rounds = await api('GET', '/api/league/rounds');
@@ -4183,12 +4183,12 @@ async function loadHistory() {
       <div class="history-item" style="cursor:pointer;">
         <div class="history-date">${(r.played_on||'').slice(0,10)}</div>
         <div class="history-info" style="flex:1;">
-          <div class="history-title">Week ${i+1}${r.notes?' ΓÇö '+r.notes:''}</div>
+          <div class="history-title">Week ${i+1}${r.notes?' — '+r.notes:''}</div>
           <div class="history-sub">${r.played_on ? new Date(r.played_on).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : ''}</div>
         </div>
-        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:8px;" onclick="loadRoundIntoScoring(${r.id}, ${i+1});event.stopPropagation();">≡ƒôï Load</button>
-        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:4px;border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRound(${r.id}, ${i+1});event.stopPropagation();">≡ƒùæ Delete</button>
-        <div class="history-arrow">ΓÇ║</div>
+        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:8px;" onclick="loadRoundIntoScoring(${r.id}, ${i+1});event.stopPropagation();">📋 Load</button>
+        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:4px;border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRound(${r.id}, ${i+1});event.stopPropagation();">🗑 Delete</button>
+        <div class="history-arrow">›</div>
       </div>`).join('');
   } catch(e) { console.warn(e); }
 }
@@ -4197,7 +4197,7 @@ async function deleteRound(roundId, weekNum) {
   if (!confirm('Delete Week ' + weekNum + ' from history? This removes all scores for that week and will recalculate standings.')) return;
   try {
     await api('DELETE', '/api/league/rounds/' + roundId);
-    toast('Γ£ô Week ' + weekNum + ' deleted');
+    toast('✓ Week ' + weekNum + ' deleted');
     loadHistory();
     loadStandings();
   } catch(e) { toast('Error: ' + e.message); }
@@ -4241,7 +4241,7 @@ async function loadRoundIntoScoring(roundId, weekNum) {
       calcTeamScore(s.team_id);
     });
 
-    toast('Γ£ô Week ' + weekNum + ' scores loaded into scoring tab');
+    toast('✓ Week ' + weekNum + ' scores loaded into scoring tab');
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -4252,7 +4252,7 @@ async function viewRound(id) {
   } catch {}
 }
 
-// ΓòÉΓòÉ NAV ΓòÉΓòÉ
+// ══ NAV ══
 function showTab(tab) {
   ['scoring','roster','course','players','schedule','settings','standings','playoffs','history'].forEach(t => {
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
@@ -4287,7 +4287,7 @@ function showPage(name) {
 }
 
 
-// ΓòÉΓòÉ SCHEDULE GENERATOR ΓòÉΓòÉ
+// ══ SCHEDULE GENERATOR ══
 let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
 
 function toggleManualMatchups() {
@@ -4295,7 +4295,7 @@ function toggleManualMatchups() {
   var btn = event.target;
   if (sec.style.display === 'none') {
     sec.style.display = '';
-    btn.textContent = 'Γû▓ Hide';
+    btn.textContent = '▲ Hide';
     // Build initial rows if empty
     if (!document.getElementById('manualMatchupRows').children.length) {
       // Add rows based on half the team count
@@ -4304,7 +4304,7 @@ function toggleManualMatchups() {
     }
   } else {
     sec.style.display = 'none';
-    btn.textContent = 'Γû╝ Show';
+    btn.textContent = '▼ Show';
   }
 }
 
@@ -4328,7 +4328,7 @@ function addManualMatchupRow() {
     '<span style="color:var(--muted);font-family:\'Bebas Neue\',sans-serif;font-size:14px;">VS</span>' +
     '<select class="week-inp" id="mteamB_'+idx+'" style="width:100%;padding:6px 8px;font-size:12px;">'+teamOpts+'</select>' +
     '<div style="display:flex;align-items:center;gap:4px;"><label style="font-size:11px;color:var(--muted);">HOLE</label><input class="week-inp" id="mhole_'+idx+'" type="number" min="1" max="18" style="width:55px;padding:6px;text-align:center;" placeholder="1"></div>' +
-    '<button onclick="document.getElementById(\'mrow_'+idx+'\').remove();" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:14px;">Γ£ò</button>';
+    '<button onclick="document.getElementById(\'mrow_'+idx+'\').remove();" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:14px;">✕</button>';
 
   container.appendChild(row);
 }
@@ -4378,7 +4378,7 @@ async function saveManualMatchups() {
     savedSchedule.sort(function(a,b){return a.week-b.week;});
     renderSavedSchedule(savedSchedule);
 
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô Week '+weekNum+' saved with '+matchups.length+' matchups.</span>';
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week '+weekNum+' saved with '+matchups.length+' matchups.</span>';
     document.getElementById('startWeek').value = weekNum + 1;
     toast('Week ' + weekNum + ' matchups saved');
   } catch(e) {
@@ -4399,7 +4399,7 @@ async function initSchedule() {
       return;
     }
   } catch(e) { /* no saved schedule yet */ }
-  // No saved schedule ΓÇö show info
+  // No saved schedule — show info
   var fullRR = roundRobinWeeks(rosterTeams.length);
   var seasonEl = document.getElementById('seasonWeeks');
   var season = seasonEl ? parseInt(seasonEl.value) || 29 : 29;
@@ -4423,7 +4423,7 @@ function renderSavedSchedule(weeks) {
       var nineDisplay = isBack ? 'Back 9' : 'Front 9';
       var nameA = tA ? esc(tA.player1||'') + ' / ' + esc(tA.player2||'') : 'BYE';
       if (!tB) {
-        rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">ΓÇö</span></td><td>ΓÇö</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>ΓÇö</td></tr>';
+        rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
       } else {
         var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
         var mIdx = w.matchups.indexOf(m);
@@ -4444,7 +4444,7 @@ function renderSavedSchedule(weeks) {
     var section = document.createElement('div');
     section.className = 'schedule-week';
     section.innerHTML = '<div class="schedule-week-title">Week ' + weekNum +
-      '<button onclick="deleteScheduleWeek(' + weekNum + ')" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:2px 10px;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:14px;letter-spacing:1px;margin-left:8px;" title="Delete week ' + weekNum + ' from schedule">Γ£ò Delete</button>' +
+      '<button onclick="deleteScheduleWeek(' + weekNum + ')" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:2px 10px;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:14px;letter-spacing:1px;margin-left:8px;" title="Delete week ' + weekNum + ' from schedule">✕ Delete</button>' +
       '</div>' +
       '<div class="section-card"><div class="table-scroll-wrap" style="max-height:400px;">' +
       '<table class="sched-table">' +
@@ -4482,7 +4482,7 @@ async function markTeamBye(weekNum, matchupIdx, side) {
     });
     await api('POST', '/api/league/schedule/save', { weeks: [{ week: weekNum, matchups: toSave }] });
     renderSavedSchedule(savedSchedule);
-    toast('Γ£ô ' + outTeam + ' marked as BYE for week ' + weekNum);
+    toast('✓ ' + outTeam + ' marked as BYE for week ' + weekNum);
   } catch(e) {
     toast('Error: ' + e.message);
     // Revert on failure
@@ -4498,7 +4498,7 @@ async function deleteScheduleWeek(weekNum) {
     await api('DELETE', '/api/league/schedule/week/' + weekNum);
     savedSchedule = savedSchedule.filter(function(w){ return w.week !== weekNum; });
     renderSavedSchedule(savedSchedule);
-    toast('Γ£ô Week ' + weekNum + ' deleted from schedule');
+    toast('✓ Week ' + weekNum + ' deleted from schedule');
   } catch(e) { toast('Error: ' + e.message); }
 }
 
@@ -4545,7 +4545,7 @@ function buildRoundRobin(teams) {
 }
 
 // Assign one matchup per hole across all 18 holes, rotating start each week
-// With >18 matchups some holes get 2 groups ΓÇö unavoidable, minimized by spread
+// With >18 matchups some holes get 2 groups — unavoidable, minimized by spread
 // Get which nine a team plays in a given week based on alternating schedule
 // Each team alternates F9/B9 every week based on their index in the roster
 // Even index teams: F9 on odd weeks, B9 on even weeks
@@ -4681,7 +4681,7 @@ async function generateWeekOnly() {
     else tempSchedule.push(previewWeek);
     tempSchedule.sort(function(a,b){ return a.week-b.week; });
     renderSavedSchedule(tempSchedule);
-    resultEl.innerHTML = '<span style="color:var(--gold)">ΓÜí Week ' + weekNum + ' generated ΓÇö ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click ≡ƒÆ╛ Save Week to save.</span>';
+    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click 💾 Save Week to save.</span>';
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
@@ -4694,7 +4694,7 @@ async function saveGeneratedWeek() {
   var matchupsToSave = _lastGeneratedMatchups;
   var weekToSave = _lastGeneratedWeek || weekNum;
   if (!matchupsToSave) {
-    // No generated matchups ΓÇö save whatever is currently displayed for this week
+    // No generated matchups — save whatever is currently displayed for this week
     var existing = savedSchedule.find(function(w){ return w.week === weekNum; });
     if (!existing) { toast('Generate a schedule first or use Manual Matchups'); return; }
     matchupsToSave = existing.matchups;
@@ -4716,7 +4716,7 @@ async function saveGeneratedWeek() {
     _lastGeneratedMatchups = null;
     _lastGeneratedWeek = null;
     document.getElementById('startWeek').value = weekToSave + 1;
-    resultEl.innerHTML = '<span style="color:var(--green2)">Γ£ô Week ' + weekToSave + ' saved. ' + matchupsToSave.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups.</span>';
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekToSave + ' saved. ' + matchupsToSave.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups.</span>';
     toast('Week ' + weekToSave + ' saved');
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
@@ -4745,7 +4745,7 @@ function setSkinsMode(on, btn) {
   }
 }
 
-// ΓòÉΓòÉ LEAGUE SETTINGS ΓòÉΓòÉ
+// ══ LEAGUE SETTINGS ══
 async function saveLeagueInfo() {
   var nameEl = document.getElementById('leagueNameInp');
   var passEl = document.getElementById('leaguePassInp');
@@ -4764,7 +4764,7 @@ async function saveLeagueInfo() {
     if (league) league.leagueName = name;
     var hl = document.getElementById('headerLeague');
     if (hl) hl.textContent = name + ' League';
-    resultEl.innerHTML = '<span style="color:var(--green2)">Γ£ô League info updated.</span>';
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ League info updated.</span>';
     if (passEl) passEl.value = '';
     if (confEl) confEl.value = '';
     toast('League info saved');
@@ -4854,8 +4854,8 @@ async function loadLeagueSettings() {
     var rst = document.getElementById('rosterSubtitle');
     if (rst) {
       rst.textContent = leagueSettings.teamFormat === 'random'
-        ? 'Random teams mode ΓÇö roster is a list of individual players drawn each week'
-        : 'Static partners ΓÇö same teams every week';
+        ? 'Random teams mode — roster is a list of individual players drawn each week'
+        : 'Static partners — same teams every week';
     }
   } catch(e) { console.warn('Could not load settings', e); }
 }
@@ -4932,7 +4932,7 @@ async function saveCurrentWeek() {
     // Update scoring week input too
     var swn = document.getElementById('scoringWeekNum');
     if (swn) swn.value = weekNum;
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô Week ' + weekNum + ' saved</span>';
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved</span>';
     toast('Current week set to ' + weekNum);
     setTimeout(function(){ result.innerHTML = ''; }, 3000);
   } catch(e) {
@@ -4962,20 +4962,20 @@ async function saveLeagueSettings() {
     leagueSettings = settings;
     flightMode = settings.flightMode;
     skinsEnabled = settings.skinsEnabled;
-    document.getElementById('settingsSaveResult').innerHTML = '<span style="color:var(--green2)">Γ£ô Settings saved.</span>';
+    document.getElementById('settingsSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Settings saved.</span>';
     toast('Settings saved');
   } catch(e) {
     document.getElementById('settingsSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
   }
 }
 
-// ΓòÉΓòÉ STANDINGS ΓòÉΓòÉ
+// ══ STANDINGS ══
 async function clearAllStandings() {
   if (!confirm('Clear ALL rounds, scores, and standings? This cannot be undone.')) return;
   if (!confirm('Are you absolutely sure? This deletes all round history and standings.')) return;
   try {
     await api('DELETE', '/api/league/standings/clear');
-    toast('Γ£ô All standings and round history cleared');
+    toast('✓ All standings and round history cleared');
     loadStandings();
     loadHistory();
   } catch(e) { toast('Error: ' + e.message); }
@@ -5008,7 +5008,7 @@ async function recalculateStandings() {
         + 'Make sure the Schedule tab has weeks saved that match your round history.</div>';
       return;
     }
-    toast('Γ£ô Standings recalculated ΓÇö ' + played.length + ' teams with results');
+    toast('✓ Standings recalculated — ' + played.length + ' teams with results');
     await loadStandings();
   } catch(e) {
     if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
@@ -5165,14 +5165,14 @@ async function editStandingsRow(btn) {
       });
       overlay.remove();
       loadStandings();
-      toast('Γ£ô Record updated to ' + w + '-' + l + (t2 ? '-'+t2 : ''));
+      toast('✓ Record updated to ' + w + '-' + l + (t2 ? '-'+t2 : ''));
     } catch(e) {
       document.getElementById('adjErr').textContent = 'Error: ' + e.message;
     }
   };
 }
 
-// ΓòÉΓòÉ CALCULATED HANDICAPS ΓòÉΓòÉ
+// ══ CALCULATED HANDICAPS ══
 async function loadCalculatedHandicaps() {
   var el = document.getElementById('calcHdcpContent');
   if (!el) return;
@@ -5189,14 +5189,14 @@ async function loadCalculatedHandicaps() {
       var name = esc(t.player1||'') + (t.player2 ? ' / ' + esc(t.player2) : '');
       var hdcpDisplay, statusBadge;
       if (h.status === 'establishing') {
-        hdcpDisplay = '<span style="color:var(--muted)">ΓÇö</span>';
+        hdcpDisplay = '<span style="color:var(--muted)">—</span>';
         statusBadge = '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,.15);padding:2px 7px;border-radius:4px;border:1px solid rgba(201,168,76,.3);">Week ' + h.roundsPlayed + ' of ' + h.hdcpEstWeeks + ' (establishing)</span>';
       } else if (h.status === 'no_rounds') {
-        hdcpDisplay = '<span style="color:var(--muted)">ΓÇö</span>';
+        hdcpDisplay = '<span style="color:var(--muted)">—</span>';
         statusBadge = '<span style="font-size:10px;color:var(--muted);font-style:italic;">No rounds played</span>';
       } else {
         var pct = h.hdcpSystem === 'establish' ? ' (' + h.hdcpPct + '%)' : '';
-        var cap = (h.hdcpMaxChange && h.hdcpMaxChange > 0) ? ' | cap ┬▒' + h.hdcpMaxChange : '';
+        var cap = (h.hdcpMaxChange && h.hdcpMaxChange > 0) ? ' | cap ±' + h.hdcpMaxChange : '';
         hdcpDisplay = '<strong style="color:var(--cream);font-size:15px;">' + (h.calculatedHdcp > 0 ? '+' : '') + h.calculatedHdcp + '</strong>';
         statusBadge = '<span style="font-size:11px;color:var(--muted);">avg diff: ' + (h.avgDiff > 0 ? '+' : '') + h.avgDiff + pct + ' over ' + h.roundsPlayed + ' rounds</span>';
       }
@@ -5228,7 +5228,7 @@ async function applyCalcHandicap(teamId, hdcp) {
   } catch(e) { toast('Error: ' + e.message); }
 }
 
-// ΓòÉΓòÉ PLAYOFFS ΓòÉΓòÉ
+// ══ PLAYOFFS ══
 var playoffBrackets = []; // stored bracket data
 
 async function loadPlayoffs() {
@@ -5278,7 +5278,7 @@ async function generatePlayoffs() {
 
     // Update subtitle
     var sub = document.getElementById('playoffSubtitle');
-    if (sub) sub.textContent = numBrackets + ' brackets ΓÇó ' + format + ' elimination ΓÇó ' + data.length + ' teams';
+    if (sub) sub.textContent = numBrackets + ' brackets • ' + format + ' elimination • ' + data.length + ' teams';
 
     renderAllBrackets();
   } catch(e) {
@@ -5287,13 +5287,13 @@ async function generatePlayoffs() {
 }
 
 function buildBracket(teams, format) {
-  // Seed teams ΓÇö next power of 2
+  // Seed teams — next power of 2
   var n = teams.length;
   var size = 1;
   while (size < n) size *= 2;
   var byes = size - n;
 
-  // Build first round matchups ΓÇö top seed vs bottom seed
+  // Build first round matchups — top seed vs bottom seed
   var seeded = teams.slice();
   var rounds = [];
   var firstRound = [];
@@ -5381,7 +5381,7 @@ function renderBracket(bracket, bi) {
   return html;
 }
 
-// ΓòÉΓòÉ SIGNED SCORECARDS ΓòÉΓòÉ
+// ══ SIGNED SCORECARDS ══
 async function loadSignedScorecards() {
   var el = document.getElementById('signedScorecardsContent');
   if (!el) return;
@@ -5401,7 +5401,7 @@ async function loadSignedScorecards() {
       html += '<td>' + r.gross + '</td>';
       html += '<td style="font-weight:700;color:var(--gold2)">' + r.net + '</td>';
       html += '<td style="color:var(--muted)">' + r.handicap_used + '</td>';
-      html += '<td style="font-size:11px;color:var(--green2)">Γ£ô ' + date + '</td>';
+      html += '<td style="font-size:11px;color:var(--green2)">✓ ' + date + '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -5411,7 +5411,7 @@ async function loadSignedScorecards() {
   }
 }
 
-// ΓòÉΓòÉ SUBSTITUTE LOGGING ΓòÉΓòÉ
+// ══ SUBSTITUTE LOGGING ══
 async function initSubLog() {
   var teamEl = document.getElementById('subTeamSelect');
   if (!teamEl) return;
@@ -5426,11 +5426,11 @@ async function initSubLog() {
     var rounds = await api('GET', '/api/league/rounds');
     if (rounds && rounds.length) {
       rounds.forEach(function(r, i) {
-        var label = 'Week ' + (i+1) + (r.notes ? ' ΓÇö ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
+        var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
         roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
       });
     } else {
-      // No rounds saved yet ΓÇö show week numbers
+      // No rounds saved yet — show week numbers
       for (var w = 1; w <= 10; w++) {
         roundEl.innerHTML += '<option value="week_'+w+'">Week ' + w + ' (not yet saved)</option>';
       }
@@ -5449,7 +5449,7 @@ async function logSubstitute() {
   if (!subName) { result.innerHTML = '<span style="color:#ff9999">Enter the substitute name.</span>'; return; }
   try {
     await api('POST', '/api/league/rounds/'+roundId+'/sub', { team_id: teamId, sub_name: subName, replaced_name: replaced });
-    result.innerHTML = '<span style="color:var(--green2)">Γ£ô Sub record saved ΓÇö '+esc(subName)+' logged for this round.</span>';
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
     loadSubTracker();
     document.getElementById('subName').value = '';
     document.getElementById('subReplacedName').value = '';
@@ -5458,7 +5458,7 @@ async function logSubstitute() {
   }
 }
 
-// ΓòÉΓòÉ UTILS ΓòÉΓòÉ
+// ══ UTILS ══
 async function api(method, url, body) {
   const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
   if (body) opts.body = JSON.stringify(body);
@@ -5496,7 +5496,7 @@ window.onunhandledrejection = function(e) {
 };
 init();
 
-// ══ LIVE SCORING ══
+// �� LIVE SCORING ��
 var _liveTimer = null;
 var _liveActive = false;
 var _liveLastScores = {};
@@ -5568,11 +5568,11 @@ async function pollLiveScores() {
   var lastEl = document.getElementById('liveLastUpdate');
   if (lastEl) {
     var now = new Date();
-    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' · updated' : '');
+    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' � updated' : '');
   }
 }
 
-// ══ SUB TRACKER ══
+// �� SUB TRACKER ��
 async function loadSubTracker() {
   var el = document.getElementById('subTrackerList');
   if (!el) return;
@@ -5666,7 +5666,7 @@ async function loadSubTracker() {
   }
 }
 
-// ══ WEEK SPREADSHEET DOWNLOAD ══
+// �� WEEK SPREADSHEET DOWNLOAD ��
 async function downloadWeekXLSX() {
   var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
   // Gather data — prefer lastCalcData if available, else read from DOM
