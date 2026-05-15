@@ -5499,7 +5499,7 @@ init();
 // �� LIVE SCORING ��
 var _liveTimer = null;
 var _liveActive = false;
-var _liveLastScores = {};
+var _liveSnapshot = {}; // hole values at the moment LIVE was turned on
 
 function toggleLiveScoring() {
   _liveActive = !_liveActive;
@@ -5508,6 +5508,16 @@ function toggleLiveScoring() {
   if (_liveActive) {
     btn && btn.classList.add('active');
     banner && banner.classList.add('visible');
+    // Snapshot current screen values so we only highlight genuinely NEW scores
+    _liveSnapshot = {};
+    rosterTeams.forEach(function(t) {
+      var snap = [];
+      for (var i = 0; i < 18; i++) {
+        var inp = document.getElementById('shole_' + t.id + '_' + i);
+        snap[i] = inp ? inp.value : '';
+      }
+      _liveSnapshot[t.id] = snap;
+    });
     pollLiveScores();
     _liveTimer = setInterval(pollLiveScores, 15000);
     toast('📡 Live scoring ON');
@@ -5516,6 +5526,7 @@ function toggleLiveScoring() {
     banner && banner.classList.remove('visible');
     clearInterval(_liveTimer);
     _liveTimer = null;
+    _liveSnapshot = {};
     toast('Live scoring OFF');
   }
 }
@@ -5523,27 +5534,48 @@ function toggleLiveScoring() {
 async function pollLiveScores() {
   var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
   var anyUpdate = false;
+
   var fetches = rosterTeams.map(function(t) {
     return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
       .then(function(data) { return { teamId: t.id, data: data }; })
       .catch(function() { return { teamId: t.id, data: null }; });
   });
+
   var results = await Promise.all(fetches);
+
   results.forEach(function(r) {
     if (!r.data || !r.data.found) return;
     var teamId = r.teamId;
     var holes = r.data.hole_scores || [];
     var nine = r.data.nine || 'front';
     var hdcp = r.data.handicap_used;
+    var snap = _liveSnapshot[teamId] || [];
+
     var st = scoreTeams.find(function(s){ return s.id === teamId; });
     if (st && nine && st.nine !== nine) switchNine(teamId, nine);
+
     var changed = false;
     holes.forEach(function(score, i) {
       if (score === null || score === undefined) return;
       var inp = document.getElementById('shole_' + teamId + '_' + i);
       if (!inp) return;
-      // Compare against actual input value, not stored history
-      if (String(inp.value) === String(score) && inp.value !== '') return;
+
+      var currentVal = inp.value;
+      var snapVal = snap[i] || '';
+      var scoreStr = String(score);
+
+      // Already showing this score — no change needed
+      if (currentVal === scoreStr) return;
+
+      // This score was already on screen when LIVE started — silently update,
+      // no flash (avoids flooding the view on first poll)
+      if (snapVal === scoreStr) {
+        inp.value = score;
+        inp.dispatchEvent(new Event('input'));
+        return;
+      }
+
+      // Genuinely new score since LIVE was enabled — update AND flash
       inp.value = score;
       inp.dispatchEvent(new Event('input'));
       inp.style.transition = 'background .3s';
@@ -5551,26 +5583,30 @@ async function pollLiveScores() {
       setTimeout(function(){ inp.style.background = ''; }, 700);
       changed = true;
     });
+
     if (hdcp != null) {
       var hdcpEl = document.getElementById('shdcp_' + teamId);
       if (hdcpEl && !hdcpEl.value) hdcpEl.value = hdcp;
     }
+
     if (changed) {
       anyUpdate = true;
       var card = document.getElementById('scard_' + teamId);
-      if (card) { card.style.boxShadow = '0 0 0 2px rgba(74,140,63,.5)'; setTimeout(function(){ card.style.boxShadow = ''; }, 1500); }
+      if (card) {
+        card.style.boxShadow = '0 0 0 2px rgba(74,140,63,.5)';
+        setTimeout(function(){ card.style.boxShadow = ''; }, 1500);
+      }
       var body = document.getElementById('sbody_' + teamId);
       if (body && body.style.display === 'none') toggleCard(teamId);
     }
   });
+
   var lastEl = document.getElementById('liveLastUpdate');
   if (lastEl) {
     var now = new Date();
-    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' � updated' : '');
+    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' · new scores' : '');
   }
 }
-
-// �� SUB TRACKER ��
 async function loadSubTracker() {
   var el = document.getElementById('subTrackerList');
   if (!el) return;
@@ -5681,53 +5717,66 @@ async function downloadWeekXLSX() {
     return {id:t.id, name:(t.player1||'')+(t.player2?' / '+t.player2:''), player1:t.player1||'', player2:t.player2||'', holes:holes, gross:gross, hdcp:hdcp, net:gross-hdcp, nine:nine, parTotal:cfg.par.reduce(function(a,b){return a+b;},0)};
   });
 
-  // Build CSV — always 18 hole columns, scores placed in correct position
+  // Build CSV — F9 and B9 in separate sections, each with their own 9 columns
   var parFront = getParFront();
-  var parBack = getParBack();
-  var allPar = parFront.concat(parBack); // par for holes 1-18
+  var parBack  = getParBack();
 
   var csvRows = [];
   var leagueName = (league && league.name) || 'GimmePar';
   csvRows.push([leagueName + ' — Week ' + weekNum + ' Results']);
   csvRows.push([]);
 
-  // Headers: fixed info columns + H1-H18 + totals
-  var hdrs = ['#','Team','Player 1','Player 2','Nine','Hdcp','Flight',
-    'H1','H2','H3','H4','H5','H6','H7','H8','H9',
-    'H10','H11','H12','H13','H14','H15','H16','H17','H18',
-    'Gross','Net','To Par'];
-  csvRows.push(hdrs);
+  var infoHdrs = ['#','Team','Player 1','Player 2','Hdcp','Flight'];
+  var holeHdrs = ['H1','H2','H3','H4','H5','H6','H7','H8','H9',
+                  'H10','H11','H12','H13','H14','H15','H16','H17','H18'];
+  csvRows.push(infoHdrs.concat(holeHdrs).concat(['Gross','Net','To Par']));
 
-  // Par row
-  var parRow = ['','','','','','',''].concat(allPar).concat(['','','']);
-  csvRows.push(parRow);
+  // Par row — blanks for info cols, then par for H1-H18, then blanks for totals
+  var allPar = parFront.concat(parBack);
+  csvRows.push(['','PAR','','','',''].concat(allPar).concat(['','','']));
+  csvRows.push([]);
 
-  teams.forEach(function(t, idx) {
+  // ── FRONT 9 SECTION ──
+  var f9teams = teams.filter(function(t){ return (t.nine||'front') === 'front'; });
+  var b9teams = teams.filter(function(t){ return (t.nine||'front') === 'back'; });
+  var a18teams = teams.filter(function(t){ return t.nine === 'all18'; });
+
+  function teamRow(t, idx) {
     var nine = t.nine || 'front';
-    var scores18 = new Array(18).fill(''); // 18 blank slots
+    var scores18 = [];
+    for (var h = 0; h < 18; h++) scores18.push('');
 
-    // Place this team's hole scores into the right columns
     if (nine === 'front') {
-      // holes array[0..8] → columns H1-H9 (indices 0-8)
-      (t.holes||[]).forEach(function(s,i){ if(s!=null && i<9) scores18[i]=s; });
+      (t.holes||[]).forEach(function(s,i){ if(i<9 && s!=null) scores18[i] = s; });
     } else if (nine === 'back') {
-      // holes array[0..8] → columns H10-H18 (indices 9-17)
-      (t.holes||[]).forEach(function(s,i){ if(s!=null && i<9) scores18[i+9]=s; });
+      (t.holes||[]).forEach(function(s,i){ if(i<9 && s!=null) scores18[i+9] = s; });
     } else {
-      // all18: holes array[0..17] → columns H1-H18
-      (t.holes||[]).forEach(function(s,i){ if(s!=null && i<18) scores18[i]=s; });
+      (t.holes||[]).forEach(function(s,i){ if(i<18 && s!=null) scores18[i] = s; });
     }
 
     var topar = (t.gross && t.parTotal) ? (t.gross - t.parTotal) : null;
     var toparStr = topar === null ? '' : (topar===0?'E':topar>0?'+'+topar:''+topar);
-    var nineLabel = nine.replace('front','F9').replace('back','B9').replace('all18','18');
-    var row = [idx+1, t.name, t.player1||'', t.player2||'', nineLabel, t.hdcp||0, t.flight||'']
+    return [idx+1, t.name, t.player1||'', t.player2||'', t.hdcp||0, t.flight||'']
       .concat(scores18)
       .concat([t.gross||'', (t.net!=null&&t.net!==undefined)?t.net:'', toparStr]);
-    csvRows.push(row);
-  });
+  }
 
-  csvRows.push([]);
+  if (f9teams.length) {
+    csvRows.push(['--- FRONT 9 ---']);
+    f9teams.forEach(function(t,i){ csvRows.push(teamRow(t,i+1)); });
+    csvRows.push([]);
+  }
+  if (b9teams.length) {
+    csvRows.push(['--- BACK 9 ---']);
+    b9teams.forEach(function(t,i){ csvRows.push(teamRow(t,i+1)); });
+    csvRows.push([]);
+  }
+  if (a18teams.length) {
+    csvRows.push(['--- ALL 18 ---']);
+    a18teams.forEach(function(t,i){ csvRows.push(teamRow(t,i+1)); });
+    csvRows.push([]);
+  }
+
   csvRows.push(['Generated by GimmePar on ' + new Date().toLocaleDateString()]);
 
   // Convert to CSV string
