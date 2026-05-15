@@ -5499,7 +5499,7 @@ init();
 // �� LIVE SCORING ��
 var _liveTimer = null;
 var _liveActive = false;
-var _liveSnapshot = {}; // hole values at the moment LIVE was turned on
+var _livePrev = {}; // last polled hole values per team
 
 function toggleLiveScoring() {
   _liveActive = !_liveActive;
@@ -5508,16 +5508,7 @@ function toggleLiveScoring() {
   if (_liveActive) {
     btn && btn.classList.add('active');
     banner && banner.classList.add('visible');
-    // Snapshot current screen values so we only highlight genuinely NEW scores
-    _liveSnapshot = {};
-    rosterTeams.forEach(function(t) {
-      var snap = [];
-      for (var i = 0; i < 18; i++) {
-        var inp = document.getElementById('shole_' + t.id + '_' + i);
-        snap[i] = inp ? inp.value : '';
-      }
-      _liveSnapshot[t.id] = snap;
-    });
+    _livePrev = {};
     pollLiveScores();
     _liveTimer = setInterval(pollLiveScores, 15000);
     toast('📡 Live scoring ON');
@@ -5526,7 +5517,7 @@ function toggleLiveScoring() {
     banner && banner.classList.remove('visible');
     clearInterval(_liveTimer);
     _liveTimer = null;
-    _liveSnapshot = {};
+    _livePrev = {};
     toast('Live scoring OFF');
   }
 }
@@ -5549,7 +5540,7 @@ async function pollLiveScores() {
     var holes = r.data.hole_scores || [];
     var nine = r.data.nine || 'front';
     var hdcp = r.data.handicap_used;
-    var snap = _liveSnapshot[teamId] || [];
+    var prevHoles = _livePrev[teamId] || [];
 
     var st = scoreTeams.find(function(s){ return s.id === teamId; });
     if (st && nine && st.nine !== nine) switchNine(teamId, nine);
@@ -5557,25 +5548,9 @@ async function pollLiveScores() {
     var changed = false;
     holes.forEach(function(score, i) {
       if (score === null || score === undefined) return;
+      if (prevHoles[i] === score) return; // no change since last poll
       var inp = document.getElementById('shole_' + teamId + '_' + i);
       if (!inp) return;
-
-      var currentVal = inp.value;
-      var snapVal = snap[i] || '';
-      var scoreStr = String(score);
-
-      // Already showing this score — no change needed
-      if (currentVal === scoreStr) return;
-
-      // This score was already on screen when LIVE started — silently update,
-      // no flash (avoids flooding the view on first poll)
-      if (snapVal === scoreStr) {
-        inp.value = score;
-        inp.dispatchEvent(new Event('input'));
-        return;
-      }
-
-      // Genuinely new score since LIVE was enabled — update AND flash
       inp.value = score;
       inp.dispatchEvent(new Event('input'));
       inp.style.transition = 'background .3s';
@@ -5588,6 +5563,9 @@ async function pollLiveScores() {
       var hdcpEl = document.getElementById('shdcp_' + teamId);
       if (hdcpEl && !hdcpEl.value) hdcpEl.value = hdcp;
     }
+
+    // Store this poll's values for next comparison
+    _livePrev[teamId] = holes.slice();
 
     if (changed) {
       anyUpdate = true;
