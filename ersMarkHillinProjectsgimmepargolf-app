@@ -1,0 +1,10 @@
+[33m3d7bb05[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fix: sub tracker uses league threshold, deduplicates by week
+[33mdfa0fba[m feat: live scoring admin monitor with 15s polling
+[33m6fa1a53[m feat: sub tracker shows player rounds and gross scores for handicap
+[33mebd6e33[m fix: syntax error in sub tracker font-family quotes
+[33m92cda8d[m fix standings
+[33md4f4c26[m fix standings - match rounds by week_number not position
+[33mfdd29f2[m add standings debug route
+[33m2ea6141[m fix recalculate standings with debug feedback
+[33md8e4348[m delete rounds from history, recalculate standings button
+[33m30be5b5[m fix standings type mismatch - parseInt teamIds for correct lookup
