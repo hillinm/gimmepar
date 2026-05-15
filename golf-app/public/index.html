@@ -5570,58 +5570,70 @@ async function loadSubTracker() {
   if (!el) return;
   el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
 
+  // Use league sub threshold setting (default 2)
+  var subThreshold = (leagueSettings && leagueSettings.subThreshold) || 2;
+
   try {
-    // 1. Try the dedicated subs endpoint (from Log Substitute form)
+    // Source 1: dedicated subs endpoint (from Log Substitute form)
     var loggedSubs = [];
     try {
       var res = await api('GET', '/api/league/subs');
       if (res && Array.isArray(res)) loggedSubs = res;
     } catch(e) {}
 
-    // 2. Fetch round list, then each round detail for inline sub scores
+    // Source 2: round details — fetch all rounds and scan for is_sub scores
     var rounds = [];
     try { rounds = await api('GET', '/api/league/rounds'); } catch(e) {}
 
     var roundDetails = await Promise.all(rounds.map(function(r, idx) {
       return api('GET', '/api/league/rounds/' + r.id)
-        .then(function(d) { return { week: idx + 1, data: d }; })
-        .catch(function() { return { week: idx + 1, data: null }; });
+        .then(function(d) { return { week: idx + 1, roundId: r.id, data: d }; })
+        .catch(function() { return { week: idx + 1, roundId: r.id, data: null }; });
     }));
 
-    // 3. Build unified sub records — keyed by subName (lowercase)
-    var subMap = {}; // { name: string, rounds: [{week, team, replaced, gross, nine}] }
+    // Build unified sub map — key: "subname_lower|week" to deduplicate across sources
+    var subMap = {};    // key: subName lower → { name, rounds: [] }
+    var seenKeys = {};  // key: "subnamelower|week" → true  (dedup)
 
     function addSub(subName, week, teamId, replacedName, gross, nine) {
       var name = (subName || '').trim();
-      if (!name) return;
-      var key = name.toLowerCase();
-      if (!subMap[key]) subMap[key] = { name: name, rounds: [] };
+      if (!name || name === '') return;
+      var nameKey = name.toLowerCase();
+      var dedupKey = nameKey + '|' + week;
+
+      // Skip duplicate (same sub, same week from two sources)
+      if (seenKeys[dedupKey]) return;
+      seenKeys[dedupKey] = true;
+
+      if (!subMap[nameKey]) subMap[nameKey] = { name: name, rounds: [] };
       var team = rosterTeams.find(function(t) { return t.id == teamId; });
       var teamName = team ? ((team.player1 || '') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + teamId);
-      subMap[key].rounds.push({
+      subMap[nameKey].rounds.push({
         week: week,
         teamName: teamName,
         replaced: replacedName || '',
-        gross: gross != null ? gross : null,
+        gross: (gross != null && gross > 0) ? gross : null,
         nine: nine || ''
       });
     }
 
-    // From logged subs (form entries)
+    // Add from logged subs (form entries) — these have week_number
     loggedSubs.forEach(function(s) {
       addSub(s.sub_name, s.week_number || '?', s.team_id, s.replaced_name, null, null);
     });
 
-    // From round detail scores
+    // Add from round detail scores
     roundDetails.forEach(function(rd) {
-      if (!rd.data || !rd.data.scores) return;
-      rd.data.scores.forEach(function(s) {
-        if (s.is_sub && s.sub_name) {
-          var holeScores = [];
-          try { holeScores = JSON.parse(s.hole_scores || '[]'); } catch(e) {}
-          var gross = holeScores.filter(function(h){ return h != null; }).reduce(function(a,b){ return a+b; }, 0) || s.gross || null;
-          addSub(s.sub_name, rd.week, s.team_id, s.replaced_name, gross, s.nine);
-        }
+      if (!rd.data) return;
+      var scores = rd.data.scores || rd.data || [];
+      if (!Array.isArray(scores)) return;
+      scores.forEach(function(s) {
+        if (!s.is_sub || !s.sub_name) return;
+        var holeScores = [];
+        try { holeScores = JSON.parse(s.hole_scores || '[]'); } catch(e) {}
+        var gross = holeScores.filter(function(h){ return h != null; }).reduce(function(a,b){ return a+b; }, 0);
+        if (!gross) gross = s.gross || null;
+        addSub(s.sub_name, rd.week, s.team_id, s.replaced_name, gross, s.nine);
       });
     });
 
@@ -5634,32 +5646,25 @@ async function loadSubTracker() {
       return;
     }
 
-    var html = '<div style="margin-bottom:6px;font-size:11px;color:var(--muted);letter-spacing:1px;">Rounds played as substitute — use gross scores to calculate handicap</div>';
+    var html = '<div style="margin-bottom:6px;font-size:11px;color:var(--muted);letter-spacing:1px;">Rounds played as substitute — ' + subThreshold + '+ rounds qualifies for handicap</div>';
 
     subPlayers.forEach(function(sp) {
       var totalRounds = sp.rounds.length;
       var grossScores = sp.rounds.filter(function(r){ return r.gross > 0; }).map(function(r){ return r.gross; });
       var avgGross = grossScores.length ? Math.round(grossScores.reduce(function(a,b){ return a+b;},0) / grossScores.length * 10) / 10 : null;
 
-      var hdcpNote = '';
-      if (totalRounds >= 3) {
-        hdcpNote = '<span style="color:var(--green2);font-size:11px;margin-left:8px;">✓ Enough rounds for handicap</span>';
-      } else {
-        hdcpNote = '<span style="color:var(--muted);font-size:11px;margin-left:8px;">' + (3 - totalRounds) + ' more round' + (3 - totalRounds !== 1 ? 's' : '') + ' needed for hdcp</span>';
-      }
+      var hdcpReady = totalRounds >= subThreshold;
+      var hdcpNote = hdcpReady
+        ? '<span style="color:var(--green2);font-size:11px;margin-left:8px;">✓ Qualifies for handicap (' + totalRounds + '/' + subThreshold + ')</span>'
+        : '<span style="color:var(--muted);font-size:11px;margin-left:8px;">' + (subThreshold - totalRounds) + ' more round' + (subThreshold - totalRounds !== 1 ? 's' : '') + ' needed for hdcp</span>';
 
-      html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">';
+      html += '<div style="background:var(--surface2);border:1px solid ' + (hdcpReady ? 'rgba(74,140,63,.5)' : 'var(--border)') + ';border-radius:10px;padding:14px 16px;margin-bottom:10px;">';
 
-      // Header row
       html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
-      html += '<div>';
-      html += '<span style="font-size:16px;font-weight:700;">' + esc(sp.name) + '</span>';
-      html += hdcpNote;
-      html += '</div>';
-      html += '<div style="font-size:22px;font-weight:900;color:var(--gold);">' + totalRounds + ' <span style="font-size:12px;color:var(--muted);font-weight:400;">round' + (totalRounds !== 1 ? 's' : '') + '</span></div>';
+      html += '<div><span style="font-size:16px;font-weight:700;">' + esc(sp.name) + '</span>' + hdcpNote + '</div>';
+      html += '<div style="font-size:24px;font-weight:900;color:' + (hdcpReady ? 'var(--green2)' : 'var(--gold)') + ';">' + totalRounds + ' <span style="font-size:12px;color:var(--muted);font-weight:400;">round' + (totalRounds !== 1 ? 's' : '') + '</span></div>';
       html += '</div>';
 
-      // Rounds table
       html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
       html += '<thead><tr>';
       html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">WK</th>';
@@ -5680,15 +5685,12 @@ async function loadSubTracker() {
       });
 
       html += '</tbody>';
-
-      // Avg gross footer
       if (grossScores.length) {
         html += '<tfoot><tr>';
         html += '<td colspan="4" style="padding:6px 8px;font-size:11px;color:var(--muted);">Avg Gross</td>';
         html += '<td style="padding:6px 8px;text-align:center;font-size:13px;font-weight:700;color:var(--gold2);">' + avgGross + '</td>';
         html += '</tr></tfoot>';
       }
-
       html += '</table></div>';
     });
 
@@ -5698,43 +5700,3 @@ async function loadSubTracker() {
     el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
   }
 }
-// ══ UTILS ══
-async function api(method, url, body) {
-  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
-  if (body) opts.body = JSON.stringify(body);
-  let res;
-  try { res = await fetch(url, opts); }
-  catch(e) { throw new Error('Network error: ' + e.message); }
-  const raw = await res.text();
-  if (!raw || raw.trim() === '') throw new Error('Server returned empty response (status ' + res.status + ')');
-  let data;
-  try { data = JSON.parse(raw); }
-  catch(e) { throw new Error('Server error (status ' + res.status + '): ' + raw.substring(0, 150)); }
-  if (!res.ok) throw new Error(data.error || 'Request failed (status ' + res.status + ')');
-  return data;
-}
-
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 2500);
-}
-
-// Catch any uncaught JS errors and show them on screen
-window.onerror = function(msg, src, line) {
-  var el = document.getElementById('loginError');
-  if (el) { el.textContent = 'JS Error: ' + msg + ' (line ' + line + ')'; el.style.display = 'block'; }
-  return false;
-};
-window.onunhandledrejection = function(e) {
-  var el = document.getElementById('loginError');
-  if (el) { el.textContent = 'Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)); el.style.display = 'block'; }
-};
-init();
-</script>
-</body>
-</html>
