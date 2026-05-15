@@ -924,7 +924,6 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <span>LIVE SCORING ACTIVE — updating every 15 seconds</span>
       <span id="liveLastUpdate" style="margin-left:auto;color:var(--muted);"></span>
     </div>
-    <div id="liveDebugPanel" style="display:none;background:rgba(201,168,76,.08);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--gold2);line-height:1.45;">Live scoring is on. Waiting for player scores...</div>
     <div id="scoringTeams"></div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:0;">
@@ -1865,29 +1864,10 @@ async function loadPlayerView(data) {
     el.textContent = activeWeekForConfirm;
   });
 
-  // Build own editable scorecard — use the Schedule tab assignment as the source of truth.
-  var myScheduledNine = (typeof matchupNine !== 'undefined' && matchupNine) ? matchupNine : (team.nine || 'front');
-  myScheduledNine = normalizeScheduleNine(myScheduledNine, matchupHole);
-  scoreTeams = [{
-    id: team.id,
-    nine: myScheduledNine,
-    scheduledNine: myScheduledNine,
-    holes: Array(myScheduledNine === 'all18' ? 18 : 9).fill(null)
-  }];
+  // Build own editable scorecard
+  scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
   var myCard = buildScoreCard(team, scoreTeams[0], 0);
   container.appendChild(myCard);
-  // Restore this player's current live draft if they already entered scores for the active week.
-  try {
-    var mine = await api('GET', '/api/league/scores/latest/' + team.id + '?week=' + activeWeekForConfirm);
-    if (mine && mine.found && mine.hole_scores) {
-      mine.hole_scores.forEach(function(score, i) {
-        var inp = document.getElementById('shole_' + team.id + '_' + i);
-        if (inp && score !== null && score !== undefined) { inp.value = score; inp.dispatchEvent(new Event('input')); }
-      });
-      if (mine.handicap_used != null) { var hEl = document.getElementById('shdcp_' + team.id); if (hEl) hEl.value = mine.handicap_used; }
-      recalcCard(team.id);
-    }
-  } catch(e) {}
 
   // Build opponent read-only card if found
   if (opponent) {
@@ -1928,7 +1908,7 @@ async function loadPlayerView(data) {
   try {
     var signedList = await api('GET', '/api/league/scorecard/signed');
     var mySig = signedList.find(function(s) {
-      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft' && s.signed_by !== 'LIVE-DRAFT';
+      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft';
     });
     if (mySig) alreadySigned = true;
   } catch(e) {}
@@ -2165,7 +2145,7 @@ async function fetchOpponentScore(oppTeamId, weekNum) {
   try {
     var url = '/api/league/scores/latest/' + oppTeamId;
     if (weekNum) url += '?week=' + weekNum;
-    var data = await getLiveScoreForTeam(oppTeamId, weekNum);
+    var data = await api('GET', url);
     // Always clear cells first
     for (var i = 0; i < 18; i++) {
       var cell = document.getElementById('opphole_' + oppTeamId + '_' + i);
@@ -3469,7 +3449,6 @@ function buildScoreCard(team, st, idx) {
         ${st.scheduledNine ? '<span style="font-size:10px;color:var(--muted);font-family:Bebas Neue,sans-serif;letter-spacing:1px;">FROM SCHEDULE</span>' : ''}
       </div>
       <div id="sgrid_${team.id}">${buildHolesGrid(team.id, st.nine)}</div>
-      <div id="liveSaveWarn_${team.id}" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:14px;"></div>
       <div class="score-totals">
         <div class="total-box"><div class="total-lbl">Gross</div><div class="total-val" id="sgross2_${team.id}">—</div></div>
         <div class="total-box"><div class="total-lbl">To Par</div><div class="total-val" id="stopar_${team.id}">—</div></div>
@@ -3953,7 +3932,7 @@ function recalcCard(teamId) {
   // Auto-save after 1.5 seconds of inactivity
   if (_autoSaveTimers[teamId]) clearTimeout(_autoSaveTimers[teamId]);
   _autoSaveTimers[teamId] = setTimeout(function() {
-    var weekNum = getActiveScoreWeek();
+    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     var nine = st ? st.nine : 'front';
     // Save to localStorage immediately as reliable backup
     try {
@@ -3961,190 +3940,1723 @@ function recalcCard(teamId) {
       var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
       localStorage.setItem(draftKey, JSON.stringify({ holes: holes, nine: nine, hdcp: hdcp, week: weekNum, ts: Date.now() }));
     } catch(e) {}
-    saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, filled === count ? net : 0);
+    api('PUT', '/api/league/scores/draft/' + teamId, {
+      hole_scores: holes,
+      nine: nine,
+      handicap_used: hdcp,
+      gross: gross,
+      net: filled === count ? net : 0,
+      week_number: weekNum
+    }).catch(function(){});
   }, 1500);
 }
 
-function getActiveScoreWeek() {
-  var wkEl = document.getElementById('scoringWeekNum');
-  var wk = wkEl ? parseInt(wkEl.value, 10) : NaN;
-  if (!isNaN(wk) && wk > 0) return wk;
-  if (_playerCurrentWeek) return _playerCurrentWeek;
-  if (leagueSettings && leagueSettings.currentWeek) return leagueSettings.currentWeek;
-  return 1;
+// ══ CALCULATE ══
+function calculate() {
+  const parFront = getParFront(), parBack = getParBack();
+  // Filter out no-show teams
+  const activeTeams = rosterTeams.filter(function(t) { return !_noShowState[t.id]; });
+  if (!activeTeams.length) { toast('No active teams to calculate'); return; }
+  const data = activeTeams.map(t => {
+    const st = scoreTeams.find(s=>s.id===t.id);
+    const nine = st?.nine || t.nine || 'front';
+    const { par, count } = getHoleConfig(nine);
+    const parTotal = par.reduce((a,b)=>a+b,0);
+    const hdcpEl = document.getElementById('shdcp_'+t.id);
+    const hdcp = parseInt(hdcpEl?.value)||0;
+    const subBtn = document.getElementById('ssub_'+t.id);
+    const isSub = subBtn ? subBtn.classList.contains('active') : false;
+    const subNameEl = document.getElementById('ssubname_'+t.id);
+    const subName = isSub && subNameEl ? subNameEl.value.trim() : '';
+    const holes = Array.from({length:count},(_,i)=>{ const v=parseInt(document.getElementById(`shole_${t.id}_${i}`)?.value); return isNaN(v)?null:v; });
+    const gross = holes.reduce((a,b)=>b!=null?a+b:a,0);
+    const hasAll = holes.every(h=>h!=null);
+    const teamName = [t.player1, t.player2].filter(Boolean).join(' / ') || 'Team';
+    return { id:t.id, name:teamName, player1:t.player1||'', player2:t.player2||'', hdcp, holes, gross, parTotal, net: hasAll?gross-hdcp:null, nine, holeCount:count, isSub, subName };
+  });
+  lastCalcData = data;
+  renderResults(data, parFront, parBack);
+  document.getElementById('resultsArea').style.display = 'block';
+  document.getElementById('resultsArea').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-function liveFetch(method, url, body) {
-  var opts = { method: method, headers:{'Content-Type':'application/json'}, credentials:'include' };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(url, opts).then(function(res){
-    return res.text().then(function(raw){
-      var data = null;
-      if (raw && raw.trim()) {
-        try { data = JSON.parse(raw); } catch(e) { data = { raw: raw }; }
-      }
-      if (!res.ok) {
-        var msg = (data && data.error) ? data.error : ('Request failed status ' + res.status);
-        throw new Error(msg);
-      }
-      return data || { ok:true, empty:true };
+function renderResults(data, parFront, parBack) {
+  // 4-flight split: F9A, F9B, B9A, B9B — always split within each nine
+  const f9teams = data.filter(t => t.nine === 'front' || t.nine === 'all18');
+  const b9teams = data.filter(t => t.nine === 'back'  || t.nine === 'all18');
+
+  function splitFlight(teams) {
+    var sorted = teams.slice().sort(function(a,b){return (a.net??999)-(b.net??999);});
+    var mid = Math.ceil(sorted.length/2);
+    sorted.forEach(function(t,i){ t.flight = i<mid ? 'A' : 'B'; });
+  }
+  splitFlight(f9teams);
+  splitFlight(b9teams);
+  // Any team not in f9 or b9 defaults to A
+  data.forEach(function(t){ if (!t.flight) t.flight = 'A'; });
+  // SI tiebreaker sort — if nets are tied, compare scores on hardest holes first
+  function siSort(a, b) {
+    var netDiff = (a.net??999) - (b.net??999);
+    if (netDiff !== 0) return netDiff;
+    // Tiebreaker: compare hole scores on hardest holes (SI 1, 2, 3...)
+    var front = _front9si || [1,2,3,4,5,6,7,8,9];
+    var back  = _back9si  || [10,11,12,13,14,15,16,17,18];
+    var allSI = front.concat(back); // index 0 = SI rank 1-18
+    // Build SI rank -> hole index map
+    var siOrder = Array.from({length:18}, function(_,i){ return i; });
+    siOrder.sort(function(i,j){ return allSI[i]-allSI[j]; }); // sorted by SI rank
+    for (var k = 0; k < siOrder.length; k++) {
+      var holeIdx = siOrder[k];
+      var aScore = (a.holes && a.holes[holeIdx]) || 99;
+      var bScore = (b.holes && b.holes[holeIdx]) || 99;
+      if (aScore !== bScore) return aScore - bScore; // lower score wins
+    }
+    return 0;
+  }
+
+  const fA = f9teams.filter(t=>t.flight==='A').sort(siSort);
+  const fB = f9teams.filter(t=>t.flight==='B').sort(siSort);
+  const bA = b9teams.filter(t=>t.flight==='A').sort(siSort);
+  const bB = b9teams.filter(t=>t.flight==='B').sort(siSort);
+  // For skins: all18 teams play both nines
+  const frontTeams = data.filter(t=>t.nine==='front' || t.nine==='all18').map(t => {
+    if (t.nine==='all18') return {...t, holes: t.holes.slice(0,9), nine:'front'};
+    return t;
+  });
+  const backTeams = data.filter(t=>t.nine==='back' || t.nine==='all18').map(t => {
+    if (t.nine==='all18') return {...t, holes: t.holes.slice(9), nine:'back'};
+    return t;
+  });
+  const skinsFrontA = skinsEnabled ? computeSkins(fA,'front') : [];
+  const skinsFrontB = skinsEnabled ? computeSkins(fB,'front') : [];
+  const skinsBackA  = skinsEnabled ? computeSkins(bA,'back')  : [];
+  const skinsBackB  = skinsEnabled ? computeSkins(bB,'back')  : [];
+  const pft = parFront.reduce((a,b)=>a+b,0);
+  const pbt = parBack.reduce((a,b)=>a+b,0);
+  const cut = 3; // fixed cutoff: A=+3 and under, B=+4 and over
+
+  document.getElementById('resultsArea').innerHTML = `
+    <div class="results-title">
+      <h2>🏆 Results</h2>
+      <p>${data.length} teams • ${flightMode==='par'?'A: +3 &amp; under / B: +4 &amp; over':'High/Low split'} • Front par ${pft} • Back par ${pbt}</p>
+    </div>
+    <div class="hdcp-override">
+      <div class="hdcp-override-title">✏️ Adjust Handicaps</div>
+      <div class="hdcp-override-sub">Edit any team's handicap, then hit Recalculate.</div>
+      <div class="hdcp-override-grid">
+        ${data.map(t=>`<div class="hdcp-override-row">
+          <div class="hdcp-override-name" title="${esc(t.name)}">${esc(t.name)}</div>
+          <input class="hdcp-override-inp" type="text" inputmode="text" value="${t.hdcp}" id="ovr_${t.id}" onchange="this.classList.add('hdcp-changed')">
+        </div>`).join('')}
+      </div>
+    </div>
+    <button class="btn-recalc" onclick="recalculate()">⟳ RECALCULATE</button>
+    <button class="btn-update-hdcp" onclick="saveUpdatedHandicaps()">💾 SAVE UPDATED HANDICAPS TO ROSTER</button>
+    <div class="results-grid">
+      ${flightHTML('F9 A Flight',fA,'a')} ${flightHTML('F9 B Flight',fB,'b')}
+      ${flightHTML('B9 A Flight',bA,'a')} ${flightHTML('B9 B Flight',bB,'b')}
+      ${skinsEnabled ? skinsHTML(skinsFrontA,'F9 A Flight Skins','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsFrontB,'F9 B Flight Skins','Holes 1–9') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBackA, 'B9 A Flight Skins','Holes 10–18') : ''}
+      ${skinsEnabled ? skinsHTML(skinsBackB, 'B9 B Flight Skins','Holes 10–18') : ''}
+      ${scoreboardHTML(data)}
+    </div>
+    <div class="result-actions">
+      <button class="btn-calculate" style="font-size:18px;padding:14px 28px;margin-bottom:0;" onclick="adminSignAndSave()">✍ SIGN & SAVE ROUND</button>
+      <button class="btn-green-outline" onclick="saveRound()">📅 Save to History Only</button>
+      <button class="btn-outline" onclick="downloadCSV()">⬇ Download CSV</button>
+      <button class="btn-outline" onclick="document.getElementById('resultsArea').style.display='none'">↩ Back to Scores</button>
+    </div>`;
+}
+
+function recalculate() {
+  lastCalcData.forEach(t => {
+    const el = document.getElementById('ovr_'+t.id);
+    if (el) { t.hdcp=parseInt(el.value)||0; t.net=t.gross-t.hdcp; }
+  });
+  renderResults(lastCalcData, getParFront(), getParBack());
+}
+
+async function saveUpdatedHandicaps() {
+  const updates = lastCalcData.map(t => {
+    const el = document.getElementById('ovr_'+t.id);
+    return { id:t.id, handicap: el ? parseInt(el.value)||0 : t.hdcp };
+  });
+  await api('POST', '/api/league/teams/handicaps', { updates });
+  // Update local roster
+  updates.forEach(u => { const t=rosterTeams.find(r=>r.id===u.id); if(t) t.handicap=u.handicap; });
+  renderRosterTable();
+  toast('✓ Handicaps saved to roster');
+}
+
+async function adminSignAndSave() {
+  var result = document.getElementById('adminSignResult');
+  var weekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
+
+  // Ask which week
+  var weekInput = prompt('Save and sign scores for which week?', weekNum);
+  if (!weekInput) return;
+  weekNum = parseInt(weekInput) || weekNum;
+
+  result.innerHTML = '<span style="color:var(--muted)">Saving...</span>';
+
+  // Run calculate first to get data
+  calculate();
+
+  if (!lastCalcData || !lastCalcData.length) {
+    result.innerHTML = '<span style="color:#ff9999">No scores to save. Enter scores first.</span>';
+    return;
+  }
+
+  try {
+    // Save round to history
+    const scores = lastCalcData.map(t => ({
+      team_id: t.id, nine: t.nine, handicap_used: t.hdcp,
+      hole_scores: t.holes, gross: t.gross, net: t.net||0,
+      is_sub: t.isSub || false, sub_name: t.subName || ''
+    }));
+    await api('POST', '/api/league/rounds', { scores, week_number: weekNum });
+
+    // Sign each team's scorecard
+    var signCount = 0;
+    for (var i = 0; i < lastCalcData.length; i++) {
+      var t = lastCalcData[i];
+      if (_noShowState[t.id]) continue;
+      try {
+        await api('POST', '/api/league/scorecard/sign', {
+          team_id: t.id,
+          week_number: weekNum,
+          hole_scores: t.holes || [],
+          gross: t.gross || 0,
+          net: t.net || 0,
+          handicap_used: t.hdcp || 0,
+          nine: t.nine || 'front',
+          signed_by: 'Admin'
+        });
+        applySignedBadge(t.id, {}, weekNum);
+        signCount++;
+      } catch(e) {}
+    }
+
+    // Update current week in settings
+    await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekNum }));
+    leagueSettings.currentWeek = weekNum;
+
+    // Clear localStorage drafts for this week now that round is officially saved
+    try {
+      var leagueId = league && league.id ? league.id : 'default';
+      rosterTeams.forEach(function(t) {
+        localStorage.removeItem('gp_draft_' + leagueId + '_' + t.id + '_wk' + weekNum);
+      });
+    } catch(e) {}
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved and signed for ' + signCount + ' teams.</span>';
+    toast('✓ Week ' + weekNum + ' saved');
+    loadHistory();
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+async function saveRound() {
+  const scores = lastCalcData.map(t => ({
+    team_id: t.id, nine: t.nine, handicap_used: t.hdcp,
+    hole_scores: t.holes, gross: t.gross, net: t.net||0,
+    is_sub: t.isSub || false,
+    sub_name: t.subName || ''
+  }));
+  await api('POST', '/api/league/rounds', { scores });
+  toast('✓ Round saved to history');
+  loadHistory();
+}
+
+// ══ SKINS + RESULTS HTML ══
+function computeSkins(teams, nine) {
+  if (!teams.length) return [];
+  const par = getParFor(nine);
+  const offset = nine==='back'?10:1;
+  let carry=1;
+  return Array.from({length:9},(_,i)=>{
+    const holeNum=offset+i;
+    const scores=teams.map(t=>({name:t.name,score:t.holes[i]})).filter(x=>x.score!=null);
+    if (!scores.length) { const r={hole:holeNum,score:null,winner:null,value:carry,tied:null}; carry++; return r; }
+    const min=Math.min(...scores.map(x=>x.score));
+    const winners=scores.filter(x=>x.score===min);
+    if (winners.length===1) { const r={hole:holeNum,score:min,winner:winners[0].name,value:carry,tied:null}; carry=1; return r; }
+    else { const r={hole:holeNum,score:min,winner:null,value:carry,tied:winners.map(w=>w.name)}; carry++; return r; }
+  });
+}
+
+function getTiebreakerHole(a, b) {
+  var front = _front9si || [1,2,3,4,5,6,7,8,9];
+  var back  = _back9si  || [10,11,12,13,14,15,16,17,18];
+  var allSI = front.concat(back);
+  var siOrder = Array.from({length:18}, function(_,i){ return i; });
+  siOrder.sort(function(i,j){ return allSI[i]-allSI[j]; });
+  for (var k = 0; k < siOrder.length; k++) {
+    var holeIdx = siOrder[k];
+    var aScore = (a.holes && a.holes[holeIdx] != null) ? a.holes[holeIdx] : 99;
+    var bScore = (b.holes && b.holes[holeIdx] != null) ? b.holes[holeIdx] : 99;
+    if (aScore !== bScore) return { hole: holeIdx+1, winnerScore: Math.min(aScore,bScore), loserScore: Math.max(aScore,bScore) };
+  }
+  return null;
+}
+
+function flightHTML(letter, teams, cls) {
+  cls = cls || (letter.includes('A') ? 'a' : 'b');
+  const icon = letter.includes('A')?'🟢':'⚪';
+  const rows = teams.length ? teams.slice(0,8).map((t,i)=>{
+    const pc=i===0?'p1':i===1?'p2':i===2?'p3':'px';
+    const prevNet = i>0 ? teams[i-1].net : null;
+    const netTied = i>0 && t.net === prevNet;
+    var tbNote = '';
+    if (netTied) {
+      var tb = getTiebreakerHole(teams[i-1], t);
+      if (tb) tbNote = ' <span style="font-size:10px;color:var(--gold2);"> • TB: H'+tb.hole+' ('+tb.winnerScore+' vs '+tb.loserScore+')</span>';
+    }
+    const diff=t.gross-(t.parTotal||36);
+    const ds=diff===0?'E':diff>0?'+'+diff:''+diff;
+    return `<div class="flight-row">
+      <div class="place ${pc}">${i+1}</div>
+      <div class="fr-info">
+        <div class="fr-name">${esc(t.name)}</div>
+        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}${tbNote}</div>
+      </div>
+      <div class="fr-score">
+        <div class="fr-net">${t.net??'—'}</div>
+        <div class="fr-gross">Gross ${t.gross}</div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty-state">No teams in this flight.</div>';
+  return `<div class="res-card"><div class="res-hdr ${cls}">
+    <span class="res-icon">${icon}</span>
+    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play • SI Tiebreaker</div></div>
+  </div><div class="res-body">${rows}</div></div>`;
+}
+
+function skinsHTML(skins, title, sub) {
+  if (!skins.length) return `<div class="res-card"><div class="res-hdr skins">
+    <span class="res-icon">💰</span>
+    <div><div class="res-htitle">Skins — ${title}</div><div class="res-hsub">${sub} — No teams</div></div>
+  </div><div class="res-body"><div class="empty-state">No teams on this nine.</div></div></div>`;
+  const won=skins.filter(s=>s.winner).length;
+  const tally={};
+  skins.filter(s=>s.winner).forEach(s=>{ tally[s.winner]=(tally[s.winner]||0)+s.value; });
+  const tallyHTML=Object.entries(tally).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`
+    <div class="skin-tally"><div class="skin-count">${c}</div><div class="skin-name">${esc(n)}</div></div>`).join('');
+  const rows=skins.map(s=>{
+    if(s.winner) return `<tr class="won"><td class="h-num">${s.hole}</td><td>${s.score}</td><td>${esc(s.winner)}</td><td><span class="badge-skin">${s.value} skin${s.value>1?'s':''}</span></td></tr>`;
+    return `<tr><td class="h-num">${s.hole}</td><td>${s.score??'—'}</td><td style="color:var(--muted);font-size:12px">${s.tied?s.tied.map(esc).join(' / '):'—'}</td><td><span class="${s.tied?'badge-push':'badge-carry'}">${s.tied?'Tied':'—'}</span></td></tr>`;
+  }).join('');
+  return `<div class="res-card full"><div class="res-hdr skins">
+    <span class="res-icon">💰</span>
+    <div><div class="res-htitle">Skins — ${title}</div><div class="res-hsub">${sub} • Gross • Carryover • ${won} skins won</div></div>
+  </div><div class="res-body">
+    ${tallyHTML?`<div class="skins-summary">${tallyHTML}</div>`:''}
+    <div class="scroll-body"><table class="skins-tbl">
+      <thead><tr><th>Hole</th><th>Score</th><th>Team</th><th>Result</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div></div>`;
+}
+
+function scoreboardHTML(data) {
+  const sorted=[...data].sort((a,b)=>(a.net??999)-(b.net??999));
+  const rows=sorted.map(t=>`<tr>
+    <td>${esc(t.name)}<span class="ft ft-${t.flight.toLowerCase()}">${t.flight}</span></td>
+    <td>${t.hdcp}</td><td style="color:var(--muted);font-size:11px">${t.nine==='all18'?'18':t.nine==='back'?'B9':'F9'}</td>
+    <td>${t.gross||'—'}</td><td><strong style="color:var(--gold2)">${t.net??'—'}</strong></td>
+  </tr>`).join('');
+  return `<div class="res-card full"><div class="res-hdr board">
+    <span class="res-icon">📋</span>
+    <div><div class="res-htitle">Full Scoreboard</div><div class="res-hsub">All teams by net score</div></div>
+  </div><div class="res-body"><div class="scroll-body"><table class="sb-tbl">
+    <thead><tr><th>Team</th><th>Hdcp</th><th>Nine</th><th>Gross</th><th>Net</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div></div></div>`;
+}
+
+// ══ CSV ══
+function downloadCSV() {
+  if (!lastCalcData.length) return;
+  const rows = [['Team','Player 1','Player 2','Nine','Handicap','Gross','Net','To Par','Flight','H1','H2','H3','H4','H5','H6','H7','H8','H9','H10','H11','H12','H13','H14','H15','H16','H17','H18'].join(',')];
+  [...lastCalcData].sort((a,b)=>(a.net??999)-(b.net??999)).forEach(t => {
+    const diff=t.gross-t.parTotal; const ds=diff===0?'E':diff>0?'+'+diff:''+diff;
+    const nineLabel = t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9';
+    const holeCells = Array.from({length:18},(_,i)=>(t.holes||[])[i]??'');
+    rows.push([`"${t.name}"`,`"${t.player1||''}"`,`"${t.player2||''}"`,nineLabel,t.hdcp,t.gross,t.net??'',ds,t.flight||'',...holeCells].join(','));
+  });
+  rows.push('','SKINS');
+  [{ nine:'front', label:'Front 9' },{ nine:'back', label:'Back 9' }].forEach(sec => {
+    const ts = lastCalcData.filter(t=>t.nine===sec.nine);
+    if (!ts.length) return;
+    rows.push(`"${sec.label}",,Hole,Score,Winner,Result`);
+    computeSkins(ts, sec.nine).forEach(s => {
+      rows.push(`,,${s.hole},${s.score??''},"${s.winner?s.winner:s.tied?s.tied.join(' / '):''}","${s.winner?s.value+' skin(s)':s.tied?'Tied-Carry':'—'}"`);
     });
   });
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download=`tournament_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
 }
 
-function saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, net) {
-  var payload = {
-    team_id: teamId,
-    week_number: weekNum,
-    hole_scores: holes,
-    nine: nine,
-    handicap_used: hdcp,
-    gross: gross,
-    net: net,
-    signed_by: 'draft'
-  };
-
-  // Local backup for the player device.
+// ══ HISTORY ══
+async function loadHistory() {
   try {
-    var leagueId = (league && league.id) || (currentUser && (currentUser.leagueId || currentUser.league_id)) || 'default';
-    localStorage.setItem('gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum, JSON.stringify(Object.assign({}, payload, { holes: holes, hdcp: hdcp, week: weekNum, ts: Date.now() })));
-  } catch(e) {}
+    const rounds = await api('GET', '/api/league/rounds');
+    const el = document.getElementById('historyList');
+    if (!rounds.length) { el.innerHTML='<div class="empty-state">No rounds recorded yet.</div>'; return; }
+    el.innerHTML = rounds.map((r,i)=>`
+      <div class="history-item" style="cursor:pointer;">
+        <div class="history-date">${(r.played_on||'').slice(0,10)}</div>
+        <div class="history-info" style="flex:1;">
+          <div class="history-title">Week ${i+1}${r.notes?' — '+r.notes:''}</div>
+          <div class="history-sub">${r.played_on ? new Date(r.played_on).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : ''}</div>
+        </div>
+        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:8px;" onclick="loadRoundIntoScoring(${r.id}, ${i+1});event.stopPropagation();">📋 Load</button>
+        <button class="btn-save-roster" style="font-size:12px;padding:5px 12px;margin-left:4px;border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRound(${r.id}, ${i+1});event.stopPropagation();">🗑 Delete</button>
+        <div class="history-arrow">›</div>
+      </div>`).join('');
+  } catch(e) { console.warn(e); }
+}
 
-  // IMPORTANT: write to BOTH possible server paths. Some deployments accept the draft endpoint but return no rows later,
-  // so the signed-scorecard draft row is also saved as the reliable live-feed fallback.
-  var save1 = liveFetch('PUT', '/api/league/scores/draft/' + teamId, payload).catch(function(e){ return { ok:false, error:e.message, endpoint:'draft' }; });
-  var save2 = liveFetch('POST', '/api/league/scorecard/sign', payload).catch(function(e){ return { ok:false, error:e.message, endpoint:'signed' }; });
+async function deleteRound(roundId, weekNum) {
+  if (!confirm('Delete Week ' + weekNum + ' from history? This removes all scores for that week and will recalculate standings.')) return;
+  try {
+    await api('DELETE', '/api/league/rounds/' + roundId);
+    toast('✓ Week ' + weekNum + ' deleted');
+    loadHistory();
+    loadStandings();
+  } catch(e) { toast('Error: ' + e.message); }
+}
 
-  return Promise.all([save1, save2]).then(function(results){
-    var warn = document.getElementById('liveSaveWarn_' + teamId);
-    var okCount = results.filter(function(r){ return !r || r.ok !== false; }).length;
-    if (warn) {
-      if (okCount > 0) warn.textContent = 'Live saved ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
-      else warn.textContent = 'Live save failed: ' + results.map(function(r){return r.error;}).join(' | ');
+async function loadRoundIntoScoring(roundId, weekNum) {
+  try {
+    const round = await api('GET', `/api/league/rounds/${roundId}`);
+    if (!round.scores || !round.scores.length) { toast('No scores found for this round'); return; }
+
+    // Switch to scoring tab
+    showTab('scoring');
+
+    // Set week number
+    var wkEl = document.getElementById('scoringWeekNum');
+    if (wkEl) wkEl.value = weekNum;
+    if (leagueSettings) leagueSettings.currentWeek = weekNum;
+    document.querySelectorAll('.wk-badge-num').forEach(function(el){ el.textContent = weekNum; });
+
+    // Load each team's scores into their card
+    round.scores.forEach(function(s) {
+      var holeScores = [];
+      try { holeScores = JSON.parse(s.hole_scores || '[]'); } catch(e) {}
+
+      // Switch nine if needed
+      var st = scoreTeams.find(function(t){ return t.id === s.team_id; });
+      if (!st) return;
+      if (s.nine && st.nine !== normalizeScheduleNine(s.nine, null)) switchNine(s.team_id, normalizeScheduleNine(s.nine, null), true);
+
+      // Fill hole inputs
+      holeScores.forEach(function(score, i) {
+        var inp = document.getElementById('shole_' + s.team_id + '_' + i);
+        if (inp && score != null) inp.value = score;
+      });
+
+      // Set handicap
+      var hdcpEl = document.getElementById('shdcp_' + s.team_id);
+      if (hdcpEl && s.handicap_used != null) hdcpEl.value = s.handicap_used;
+
+      // Recalculate display
+      calcTeamScore(s.team_id);
+    });
+
+    toast('✓ Week ' + weekNum + ' scores loaded into scoring tab');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function viewRound(id) {
+  try {
+    const round = await api('GET', `/api/league/rounds/${id}`);
+    toast('Round ' + round.played_on);
+  } catch {}
+}
+
+// ══ NAV ══
+function showTab(tab) {
+  ['scoring','roster','course','players','schedule','settings','standings','playoffs','history'].forEach(t => {
+    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'':'none';
+    document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
+    document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
+  });
+  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); loadSubTracker(); }
+  if (tab!=='scoring' && _liveActive) { toggleLiveScoring(); }
+  if (tab==='schedule') initSchedule();
+  if (tab==='scoring') {
+    loadConfirmSummary();
+    loadWeeklyConfirmations();
+    // Rebuild cards when entering Scoring so the cards follow the saved schedule/week.
+    _buildingScoringCards = false;
+    buildScoringCards();
+  }
+  if (tab==='standings') loadStandings();
+  if (tab==='course') { loadSI(); if (league && league.course) loadCourseData(league.course); }
+  if (tab==='playoffs') loadPlayoffs();
+  if (tab==='players') { loadPlayersList(); loadWelcomeEmailStatus(); }
+  if (tab==='roster') loadCalculatedHandicaps();
+  if (tab==='settings') loadLeagueSettings();
+  // Scroll to top on tab change
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showPage(name) {
+  ['loginPage','appPage','playerPage','superAdminPage'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  var pageMap = { login:'loginPage', app:'appPage', player:'playerPage', superadmin:'superAdminPage' };
+  var pageId = pageMap[name] || 'loginPage';
+  var target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
+  var nav = document.querySelector('.bottom-nav');
+  if (nav) nav.style.display = (name==='login'||name==='player'||name==='superadmin') ? 'none' : '';
+}
+
+
+// ══ SCHEDULE GENERATOR ══
+let savedSchedule = []; // [{week, matchups:[{hole, teamA, teamB}]}]
+
+function toggleManualMatchups() {
+  var sec = document.getElementById('manualMatchupSection');
+  var btn = event.target;
+  if (sec.style.display === 'none') {
+    sec.style.display = '';
+    btn.textContent = '▲ Hide';
+    // Build initial rows if empty
+    if (!document.getElementById('manualMatchupRows').children.length) {
+      // Add rows based on half the team count
+      var count = Math.floor(rosterTeams.length / 2) || 6;
+      for (var i = 0; i < count; i++) addManualMatchupRow();
     }
+  } else {
+    sec.style.display = 'none';
+    btn.textContent = '▼ Show';
+  }
+}
+
+var _manualRowCount = 0;
+function addManualMatchupRow() {
+  var container = document.getElementById('manualMatchupRows');
+  var idx = _manualRowCount++;
+  var row = document.createElement('div');
+  row.id = 'mrow_' + idx;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr auto 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;';
+
+  // Build team options
+  var teamOpts = '<option value="">Select team...</option>';
+  rosterTeams.forEach(function(t) {
+    var name = esc(t.player1||'') + (t.player2?' / '+esc(t.player2):'');
+    teamOpts += '<option value="'+t.id+'">'+name+'</option>';
+  });
+
+  row.innerHTML =
+    '<select class="week-inp" id="mteamA_'+idx+'" style="width:100%;padding:6px 8px;font-size:12px;">'+teamOpts+'</select>' +
+    '<span style="color:var(--muted);font-family:\'Bebas Neue\',sans-serif;font-size:14px;">VS</span>' +
+    '<select class="week-inp" id="mteamB_'+idx+'" style="width:100%;padding:6px 8px;font-size:12px;">'+teamOpts+'</select>' +
+    '<div style="display:flex;align-items:center;gap:4px;"><label style="font-size:11px;color:var(--muted);">HOLE</label><input class="week-inp" id="mhole_'+idx+'" type="number" min="1" max="18" style="width:55px;padding:6px;text-align:center;" placeholder="1"></div>' +
+    '<button onclick="document.getElementById(\'mrow_'+idx+'\').remove();" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:14px;">✕</button>';
+
+  container.appendChild(row);
+}
+
+async function saveManualMatchups() {
+  var weekNum = parseInt(document.getElementById('manualWeekNum').value) || 1;
+  var result = document.getElementById('manualMatchupResult');
+  var rows = document.getElementById('manualMatchupRows').children;
+  var matchups = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var idx = row.id.replace('mrow_','');
+    var teamAId = parseInt(document.getElementById('mteamA_'+idx).value);
+    var teamBId = parseInt(document.getElementById('mteamB_'+idx).value);
+    var hole    = parseInt(document.getElementById('mhole_'+idx).value) || (i+1);
+    if (!teamAId || !teamBId) continue;
+    var teamA = rosterTeams.find(function(t){return t.id===teamAId;});
+    var teamB = rosterTeams.find(function(t){return t.id===teamBId;});
+    var nine = hole >= 10 ? 'back' : 'front';
+    matchups.push({
+      hole: hole, nine: nine,
+      teamAId: teamAId, teamBId: teamBId,
+      teamAName: teamA ? (teamA.player1+(teamA.player2?' / '+teamA.player2:'')) : '',
+      teamBName: teamB ? (teamB.player1+(teamB.player2?' / '+teamB.player2:'')) : ''
+    });
+  }
+
+  if (!matchups.length) { result.innerHTML = '<span style="color:#ff9999">Add at least one complete matchup.</span>'; return; }
+
+  result.innerHTML = '<span style="color:var(--muted)">Saving...</span>';
+  try {
+    await api('POST', '/api/league/schedule/save', { weeks: [{ week: weekNum, matchups: matchups }] });
+    await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekNum }));
+    if (leagueSettings) leagueSettings.currentWeek = weekNum;
+
+    // Reload schedule display
+    var weekData = { week: weekNum, matchups: matchups.map(function(m) {
+      return {
+        hole: m.hole, nine: m.nine,
+        teamA: rosterTeams.find(function(t){return t.id===m.teamAId;}),
+        teamB: rosterTeams.find(function(t){return t.id===m.teamBId;})
+      };
+    })};
+    var existing = savedSchedule.findIndex(function(w){return w.week===weekNum;});
+    if (existing>=0) savedSchedule[existing]=weekData; else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b){return a.week-b.week;});
+    renderSavedSchedule(savedSchedule);
+
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week '+weekNum+' saved with '+matchups.length+' matchups.</span>';
+    document.getElementById('startWeek').value = weekNum + 1;
+    toast('Week ' + weekNum + ' matchups saved');
+    var scoringVisible = document.getElementById('tabScoring') && document.getElementById('tabScoring').style.display !== 'none';
+    var scoringWeek = parseInt((document.getElementById('scoringWeekNum')||{}).value, 10) || weekNum;
+    if (scoringVisible && scoringWeek === weekNum) { _buildingScoringCards = false; buildScoringCards(); }
+    var scoringWeekEl = document.getElementById('scoringWeekNum');
+    if (scoringWeekEl && parseInt(scoringWeekEl.value) === weekNum) {
+      _buildingScoringCards = false;
+      buildScoringCards();
+    }
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+async function initSchedule() {
+  var out = document.getElementById('scheduleOutput');
+  // Always try to load saved schedule from DB
+  try {
+    var weeks = await api('GET', '/api/league/schedule/all');
+    if (weeks && weeks.length) {
+      savedSchedule = weeks;
+      renderSavedSchedule(weeks);
+      document.getElementById('schedInfo').textContent =
+        weeks.length + ' weeks loaded from saved schedule.';
+      return;
+    }
+  } catch(e) { /* no saved schedule yet */ }
+  // No saved schedule — show info
+  var fullRR = roundRobinWeeks(rosterTeams.length);
+  var seasonEl = document.getElementById('seasonWeeks');
+  var season = seasonEl ? parseInt(seasonEl.value) || 29 : 29;
+  document.getElementById('schedInfo').textContent =
+    rosterTeams.length + ' teams loaded. Full round robin = ' + fullRR + ' weeks. Season set to ' + season + ' weeks.';
+}
+
+function renderSavedSchedule(weeks) {
+  var output = document.getElementById('scheduleOutput');
+  output.innerHTML = '';
+  weeks.forEach(function(w) {
+    var weekNum = w.week;
+    var rows = '';
+    w.matchups.forEach(function(m) {
+      var tA = m.teamA;
+      var tB = m.teamB;
+      var hole = m.hole;
+      if (!hole) return;
+      var isBack = (m.nine === 'back') || (!m.nine && hole >= 10);
+      var chipClass = 'hole-chip' + (isBack ? ' back' : '');
+      var nineDisplay = isBack ? 'Back 9' : 'Front 9';
+      var nameA = tA ? esc(tA.player1||'') + ' / ' + esc(tA.player2||'') : 'BYE';
+      if (!tB) {
+        rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
+      } else {
+        var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
+        var mIdx = w.matchups.indexOf(m);
+        rows += '<tr id="srow_'+weekNum+'_'+mIdx+'">';
+        rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
+        rows += '<td class="nine-col">' + nineDisplay + '</td>';
+        rows += '<td class="team-a-name">' + nameA + '</td>';
+        rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
+        rows += '<td class="team-b-name">' + nameB + '</td>';
+        rows += '<td style="white-space:nowrap;">'
+          + '<button onclick="markTeamBye('+weekNum+','+mIdx+',\'A\');event.stopPropagation();" style="background:rgba(192,57,43,.15);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:10px;margin-right:3px;" title="Mark '+nameA+' as BYE">A BYE</button>'
+          + '<button onclick="markTeamBye('+weekNum+','+mIdx+',\'B\');event.stopPropagation();" style="background:rgba(192,57,43,.15);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:10px;" title="Mark '+nameB+' as BYE">B BYE</button>'
+          + '</td>';
+        rows += '</tr>';
+      }
+    });
+    if (!rows) return;
+    var section = document.createElement('div');
+    section.className = 'schedule-week';
+    section.innerHTML = '<div class="schedule-week-title">Week ' + weekNum +
+      '<button onclick="deleteScheduleWeek(' + weekNum + ')" style="background:rgba(192,57,43,.2);border:1px solid rgba(220,80,80,.4);color:#ff9999;border-radius:6px;padding:2px 10px;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:14px;letter-spacing:1px;margin-left:8px;" title="Delete week ' + weekNum + ' from schedule">✕ Delete</button>' +
+      '</div>' +
+      '<div class="section-card"><div class="table-scroll-wrap" style="max-height:400px;">' +
+      '<table class="sched-table">' +
+      '<thead><tr><th style="position:sticky;top:0;background:var(--surface);z-index:5;">Hole</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Nine</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team A</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team B</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div></div>';
+    output.appendChild(section);
   });
 }
 
-function liveRowWeek(row) {
-  if (!row) return null;
-  var w = row.week_number != null ? row.week_number : (row.weekNumber != null ? row.weekNumber : (row.week != null ? row.week : (row.round_week != null ? row.round_week : row.roundWeek)));
-  var n = parseInt(w, 10);
-  return isNaN(n) ? null : n;
-}
+async function markTeamBye(weekNum, matchupIdx, side) {
+  var weekData = savedSchedule.find(function(w){ return w.week === weekNum; });
+  if (!weekData) return;
+  var m = weekData.matchups[matchupIdx];
+  var outTeam = side === 'A' ? (m.teamA ? (m.teamA.player1+(m.teamA.player2?' / '+m.teamA.player2:'')) : '') : (m.teamB ? (m.teamB.player1+(m.teamB.player2?' / '+m.teamB.player2:'')) : '');
+  var stayTeam = side === 'A' ? (m.teamB ? (m.teamB.player1+(m.teamB.player2?' / '+m.teamB.player2:'')) : '') : (m.teamA ? (m.teamA.player1+(m.teamA.player2?' / '+m.teamA.player2:'')) : '');
+  if (!confirm(outTeam + ' will be BYE. ' + stayTeam + ' stays without opponent. Continue?')) return;
 
-function liveRowMatchesRequestedWeek(row, requestedWeek, allowMissingWeek) {
-  var rw = liveRowWeek(row);
-  if (rw == null) return !!allowMissingWeek;
-  return parseInt(rw, 10) === parseInt(requestedWeek, 10);
-}
+  // Set the out team to null (BYE)
+  if (side === 'A') m.teamA = null;
+  else m.teamB = null;
 
-async function getLiveScoreForTeam(teamId, weekNum) {
-  // IMPORTANT: never trust a "latest" score unless it proves it belongs to the selected week.
-  // Some server routes ignore ?week= and return last week's row, which made Week 4 show Week 3 scores.
-
-  var latestUrls = [
-    '/api/league/scores/latest/' + teamId + '?week=' + weekNum,
-    '/api/league/scores/latest?team_id=' + teamId + '&week=' + weekNum,
-    '/api/league/scores/latest?teamId=' + teamId + '&week_number=' + weekNum
-  ];
-  for (var u = 0; u < latestUrls.length; u++) {
-    try {
-      var data = await liveFetch('GET', latestUrls[u]);
-      if (data && data.found && liveRowMatchesRequestedWeek(data, weekNum, false)) return data;
-      if (data && data.found && !liveRowMatchesRequestedWeek(data, weekNum, false)) {
-        console.warn('Ignoring live latest for team ' + teamId + ' because it is not Week ' + weekNum, data);
-        continue;
-      }
-      if (data && (data.hole_scores || data.scores)) {
-        if (!liveRowMatchesRequestedWeek(data, weekNum, false)) {
-          console.warn('Ignoring latest score for team ' + teamId + ' because it did not include matching week ' + weekNum, data);
-          continue;
-        }
-        var hs0 = data.hole_scores || data.scores || [];
-        return { found:true, hole_scores: hs0, nine: data.nine || 'front', handicap_used: data.handicap_used, gross:data.gross, net:data.net, week_number: weekNum, source:'latest' };
-      }
-    } catch(e1) {
-      console.warn('Live latest failed:', latestUrls[u], e1.message);
-    }
-  }
-
-  // Fallback to signed scorecards. Draft/live-draft rows are intentionally included.
+  // Save updated week to DB
   try {
-    var rows = await liveFetch('GET', '/api/league/scorecard/signed');
-    if (rows && !Array.isArray(rows) && Array.isArray(rows.scorecards)) rows = rows.scorecards;
-    if (Array.isArray(rows)) {
-      var matches = rows.filter(function(r){
-        var rid = r.team_id != null ? r.team_id : (r.teamId != null ? r.teamId : r.team);
-        var rw = r.week_number != null ? r.week_number : (r.weekNumber != null ? r.weekNumber : r.week);
-        return String(rid) === String(teamId) && parseInt(rw, 10) === parseInt(weekNum, 10);
+    var toSave = weekData.matchups.map(function(mm) {
+      return {
+        hole: mm.hole, nine: mm.nine,
+        teamAId: mm.teamA ? mm.teamA.id : null,
+        teamBId: mm.teamB ? mm.teamB.id : null
+      };
+    });
+    await api('POST', '/api/league/schedule/save', { weeks: [{ week: weekNum, matchups: toSave }] });
+    renderSavedSchedule(savedSchedule);
+    toast('✓ ' + outTeam + ' marked as BYE for week ' + weekNum);
+  } catch(e) {
+    toast('Error: ' + e.message);
+    // Revert on failure
+    if (side === 'A') m.teamA = rosterTeams.find(function(t){ return t.id === (m.teamA||{}).id; }) || m.teamA;
+    else m.teamB = rosterTeams.find(function(t){ return t.id === (m.teamB||{}).id; }) || m.teamB;
+    renderSavedSchedule(savedSchedule);
+  }
+}
+
+async function deleteScheduleWeek(weekNum) {
+  if (!confirm('Permanently delete Week ' + weekNum + ' from the schedule?')) return;
+  try {
+    await api('DELETE', '/api/league/schedule/week/' + weekNum);
+    savedSchedule = savedSchedule.filter(function(w){ return w.week !== weekNum; });
+    renderSavedSchedule(savedSchedule);
+    toast('✓ Week ' + weekNum + ' deleted from schedule');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function clearSavedSchedule() {
+  if (!confirm('Delete the saved schedule from the database? This cannot be undone.')) return;
+  try {
+    await api('DELETE', '/api/league/schedule/all');
+    savedSchedule = [];
+    document.getElementById('scheduleOutput').innerHTML = '';
+    document.getElementById('schedInfo').textContent = 'Schedule cleared.';
+    toast('Schedule cleared');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function roundRobinWeeks(n) {
+  return n % 2 === 0 ? n - 1 : n;
+}
+
+// Standard round-robin algorithm (Berger tables)
+// Returns array of weeks, each week is array of [teamIdxA, teamIdxB] pairs
+function buildRoundRobin(teams) {
+  const n = teams.length;
+  const hasOdd = n % 2 !== 0;
+  const list = [...Array(n).keys()]; // indices
+  if (hasOdd) list.push(null); // null = bye
+  const total = list.length;
+  const weeks = total - 1;
+  const rounds = [];
+
+  for (let w = 0; w < weeks; w++) {
+    const pairs = [];
+    for (let i = 0; i < total / 2; i++) {
+      const a = list[i];
+      const b = list[total - 1 - i];
+      if (a !== null && b !== null) pairs.push([a, b]);
+      else if (a === null) pairs.push([b, null]); // bye
+      else pairs.push([a, null]); // bye
+    }
+    rounds.push(pairs);
+    // Rotate all except first element
+    list.splice(1, 0, list.pop());
+  }
+  return rounds;
+}
+
+// Assign one matchup per hole across all 18 holes, rotating start each week
+// With >18 matchups some holes get 2 groups — unavoidable, minimized by spread
+// Get which nine a team plays in a given week based on alternating schedule
+// Each team alternates F9/B9 every week based on their index in the roster
+// Even index teams: F9 on odd weeks, B9 on even weeks
+// Odd index teams:  B9 on odd weeks, F9 on even weeks
+function getTeamNine(team, weekNum) {
+  var useAlt = leagueSettings && leagueSettings.alternateNines;
+  if (!useAlt) return team.nine || 'front'; // use roster default if not alternating
+  // Find team index in roster for stagger
+  var idx = rosterTeams.findIndex(function(t) { return t.id === team.id; });
+  if (idx < 0) idx = 0;
+  // Stagger: even-indexed teams start on F9 week 1, odd-indexed start on B9 week 1
+  var startFront = (idx % 2 === 0);
+  var frontOnOdd = startFront;
+  var isFront = frontOnOdd ? (weekNum % 2 !== 0) : (weekNum % 2 === 0);
+  return isFront ? 'front' : 'back';
+}
+
+function assignHoles(matchups, weekNum) {
+  var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
+  var byes = matchups.filter(function(m) { return !m.teamB; });
+
+  var frontHoles = [1,2,3,4,5,6,7,8,9];
+  var backHoles  = [10,11,12,13,14,15,16,17,18];
+
+  // Rotate starting holes each week
+  var fOff = (weekNum - 1) % frontHoles.length;
+  var bOff = (weekNum - 1) % backHoles.length;
+  var fRot = frontHoles.slice(fOff).concat(frontHoles.slice(0, fOff));
+  var bRot = backHoles.slice(bOff).concat(backHoles.slice(0, bOff));
+
+  var total = realMatchups.length;
+  var half  = Math.floor(total / 2);
+  var extra = total % 2; // 1 if odd number of matchups
+
+  // Alternate which half goes to front vs back each week
+  // Week 1: first half = front, second half = back
+  // Week 2: first half = back, second half = front
+  var firstHalfFront = (weekNum % 2 !== 0);
+
+  // Count how many go to each nine
+  var frontCount = firstHalfFront ? half + extra : half;
+  var backCount  = firstHalfFront ? half : half + extra;
+
+  var fIdx = 0, bIdx = 0;
+  var assigned = realMatchups.map(function(m, i) {
+    var playFront = firstHalfFront ? (i < frontCount) : (i >= backCount);
+    var nine = playFront ? 'front' : 'back';
+    // Only double up holes if more matchups than holes on that nine
+    var hole = playFront
+      ? fRot[fIdx++ % fRot.length]
+      : bRot[bIdx++ % bRot.length];
+    return Object.assign({}, m, { hole: hole, nine: nine });
+  });
+
+  assigned.sort(function(a, b) { return a.hole - b.hole; });
+  return assigned.concat(byes.map(function(m) { return Object.assign({}, m, { hole: null }); }));
+}
+
+
+function exportScheduleCSV() {
+  if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
+  const rows = ['Week,Round,Hole,Nine,Team A Player 1,Team A Player 2,Team B Player 1,Team B Player 2'];
+  var rrLen = buildRoundRobin(rosterTeams).length;
+  var seasonLen = parseInt((document.getElementById('seasonWeeks')||{}).value) || 29;
+  var capLen = Math.min(rrLen, seasonLen);
+  savedSchedule.forEach(function(sw) {
+    var week = sw.week; var matchups = sw.matchups;
+    var roundIdx = (week-1) % rrLen;
+    matchups.forEach(function(m) {
+      if (m.teamA && m.teamB) {
+        rows.push([
+          week, roundIdx+1, m.hole,
+          m.hole >= 10 ? 'Back 9' : 'Front 9',
+          '"' + ((m.teamA && m.teamA.player1) || '') + '"',
+          '"' + ((m.teamA && m.teamA.player2) || '') + '"',
+          '"' + ((m.teamB && m.teamB.player1) || '') + '"',
+          '"' + ((m.teamB && m.teamB.player2) || '') + '"'
+        ].join(','));
+      }
+    });
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'gimmepar_schedule.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+var _lastGeneratedMatchups = null;
+var _lastGeneratedWeek = null;
+
+async function generateWeekOnly() {
+  if (!rosterTeams.length) { toast('Add teams to the roster first'); return; }
+  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
+  var resultEl = document.getElementById('weekGenResult');
+  resultEl.innerHTML = '<span style="color:var(--muted)">Generating...</span>';
+  try {
+    var matchups;
+    if (leagueSettings && leagueSettings.teamFormat === 'random') {
+      var allPlayers = [];
+      rosterTeams.forEach(function(t) {
+        if (t.player1) allPlayers.push({ name: t.player1, handicap: t.handicap, nine: t.nine, id: t.id, origTeam: t });
+        if (t.player2) allPlayers.push({ name: t.player2, handicap: t.handicap, nine: t.nine, id: t.id*1000, origTeam: t });
       });
-      if (matches.length) {
-        matches.sort(function(a,b){
-          var at = new Date(a.updated_at || a.updatedAt || a.created_at || a.createdAt || a.signed_at || a.signedAt || 0).getTime();
-          var bt = new Date(b.updated_at || b.updatedAt || b.created_at || b.createdAt || b.signed_at || b.signedAt || 0).getTime();
-          return bt - at;
-        });
-        var r = matches[0];
-        var hs = r.hole_scores || r.holeScores || r.scores || [];
-        if (typeof hs === 'string') { try { hs = JSON.parse(hs); } catch(e) { hs = []; } }
-        return { found:true, hole_scores: hs, nine: r.nine || 'front', handicap_used: r.handicap_used || r.handicapUsed, gross:r.gross, net:r.net, signed_by:r.signed_by || r.signedBy || '', source:'signed' };
+      for (var i = allPlayers.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = allPlayers[i]; allPlayers[i] = allPlayers[j]; allPlayers[j] = tmp;
+      }
+      matchups = [];
+      for (var k = 0; k < allPlayers.length - 1; k += 2) {
+        matchups.push({ teamA: { id: allPlayers[k].id, player1: allPlayers[k].name, player2: '', handicap: allPlayers[k].handicap, nine: allPlayers[k].nine }, teamB: { id: allPlayers[k+1].id, player1: allPlayers[k+1].name, player2: '', handicap: allPlayers[k+1].handicap, nine: allPlayers[k+1].nine } });
+      }
+      if (allPlayers.length % 2 !== 0) {
+        var last = allPlayers[allPlayers.length - 1];
+        matchups.push({ teamA: { id: last.id, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine }, teamB: null });
+      }
+    } else {
+      var rounds = buildRoundRobin(rosterTeams);
+      var roundIdx = (weekNum - 1) % rounds.length;
+      var round = rounds[roundIdx];
+      matchups = round.map(function(pair) {
+        return { teamA: pair[0] !== null ? rosterTeams[pair[0]] : null, teamB: pair[1] !== null ? rosterTeams[pair[1]] : null };
+      });
+    }
+    var withHoles = assignHoles(matchups, weekNum);
+    _lastGeneratedMatchups = withHoles;
+    _lastGeneratedWeek = weekNum;
+    // Preview in schedule output
+    var previewWeek = { week: weekNum, matchups: withHoles };
+    var existing = savedSchedule.findIndex(function(w){ return w.week === weekNum; });
+    var tempSchedule = savedSchedule.slice();
+    if (existing >= 0) tempSchedule[existing] = previewWeek;
+    else tempSchedule.push(previewWeek);
+    tempSchedule.sort(function(a,b){ return a.week-b.week; });
+    renderSavedSchedule(tempSchedule);
+    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click 💾 Save Week to save.</span>';
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+async function saveGeneratedWeek() {
+  var weekNum = parseInt(document.getElementById('startWeek').value) || 1;
+  var resultEl = document.getElementById('weekGenResult');
+  // Use last generated matchups OR current saved schedule for this week
+  var matchupsToSave = _lastGeneratedMatchups;
+  var weekToSave = _lastGeneratedWeek || weekNum;
+  if (!matchupsToSave) {
+    // No generated matchups — save whatever is currently displayed for this week
+    var existing = savedSchedule.find(function(w){ return w.week === weekNum; });
+    if (!existing) { toast('Generate a schedule first or use Manual Matchups'); return; }
+    matchupsToSave = existing.matchups;
+    weekToSave = weekNum;
+  }
+  try {
+    var slim = [{ week: weekToSave, matchups: matchupsToSave.map(function(m) {
+      return { hole: m.hole, nine: m.nine||'front', teamAId: m.teamA?m.teamA.id:null, teamBId: m.teamB?m.teamB.id:null };
+    })}];
+    await api('POST', '/api/league/schedule/save', { weeks: slim });
+    await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekToSave }));
+    if (leagueSettings) leagueSettings.currentWeek = weekToSave;
+    var existing = savedSchedule.findIndex(function(w){ return w.week === weekToSave; });
+    var weekData = { week: weekToSave, matchups: matchupsToSave };
+    if (existing >= 0) savedSchedule[existing] = weekData;
+    else savedSchedule.push(weekData);
+    savedSchedule.sort(function(a,b){ return a.week-b.week; });
+    renderSavedSchedule(savedSchedule);
+    _lastGeneratedMatchups = null;
+    _lastGeneratedWeek = null;
+    document.getElementById('startWeek').value = weekToSave + 1;
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekToSave + ' saved. ' + matchupsToSave.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups.</span>';
+    toast('Week ' + weekToSave + ' saved');
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+// Keep old function for backward compat
+async function generateAndSaveWeek() {
+  await generateWeekOnly();
+  await saveGeneratedWeek();
+}
+
+function setFlightMode(mode, btn) {
+  flightMode = mode;
+  document.querySelectorAll('#flightModeHL,#flightModePar').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSkinsMode(on, btn) {
+  skinsEnabled = on;
+  document.querySelectorAll('#skinsOn,#skinsOff').forEach(function(b) { b.classList.remove('active','active-off'); });
+  if (on) {
+    document.getElementById('skinsOn').classList.add('active');
+  } else {
+    document.getElementById('skinsOff').classList.add('active-off');
+  }
+}
+
+// ══ LEAGUE SETTINGS ══
+async function saveLeagueInfo() {
+  var nameEl = document.getElementById('leagueNameInp');
+  var passEl = document.getElementById('leaguePassInp');
+  var confEl = document.getElementById('leaguePassConfInp');
+  var resultEl = document.getElementById('leagueInfoResult');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var pass = passEl ? passEl.value : '';
+  var conf = confEl ? confEl.value : '';
+  if (!name) { resultEl.innerHTML = '<span style="color:#ff9999">League name cannot be empty.</span>'; return; }
+  if (pass && pass.length < 4) { resultEl.innerHTML = '<span style="color:#ff9999">Password must be at least 4 characters.</span>'; return; }
+  if (pass && pass !== conf) { resultEl.innerHTML = '<span style="color:#ff9999">Passwords do not match.</span>'; return; }
+  try {
+    var body = { name: name };
+    if (pass) body.password = pass;
+    await api('PUT', '/api/league/info', body);
+    if (league) league.leagueName = name;
+    var hl = document.getElementById('headerLeague');
+    if (hl) hl.textContent = name + ' League';
+    resultEl.innerHTML = '<span style="color:var(--green2)">✓ League info updated.</span>';
+    if (passEl) passEl.value = '';
+    if (confEl) confEl.value = '';
+    toast('League info saved');
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
+  }
+}
+
+async function loadLeagueSettings() {
+  try {
+    var s = await api('GET', '/api/league/settings');
+    leagueSettings = Object.assign({ subThreshold: 2, seasonLength: 29, flightMode: 'hl', skinsEnabled: true }, s);
+    // Populate UI
+    var st = document.getElementById('subThresholdInp');
+    if (st) st.value = leagueSettings.subThreshold || 2;
+    var sl = document.getElementById('seasonLengthInp');
+    if (sl) sl.value = leagueSettings.seasonLength || 29;
+    updateSubThresholdHint();
+    // Flight toggle
+    var fhl = document.getElementById('settingFlightHL');
+    var fpar = document.getElementById('settingFlightPar');
+    if (fhl && fpar) {
+      fhl.classList.toggle('active', leagueSettings.flightMode !== 'par');
+      fpar.classList.toggle('active', leagueSettings.flightMode === 'par');
+    }
+    // Skins toggle
+    var son = document.getElementById('settingSkinsOn');
+    var soff = document.getElementById('settingSkinsOff');
+    if (son && soff) {
+      son.classList.toggle('active', leagueSettings.skinsEnabled !== false);
+      soff.classList.toggle('active', leagueSettings.skinsEnabled === false);
+    }
+    var ldInp = document.getElementById('leagueDayInp');
+    if (ldInp && leagueSettings.leagueDay) ldInp.value = leagueSettings.leagueDay;
+    var anon = document.getElementById('settingAltNinesOn');
+    var anoff = document.getElementById('settingAltNinesOff');
+    if (anon && anoff) {
+      anon.classList.toggle('active', leagueSettings.alternateNines === true);
+      anoff.classList.toggle('active', leagueSettings.alternateNines !== true);
+    }
+    var tst = document.getElementById('settingTeamStatic');
+    var trnd = document.getElementById('settingTeamRandom');
+    if (tst && trnd) {
+      tst.classList.toggle('active', leagueSettings.teamFormat !== 'random');
+      trnd.classList.toggle('active', leagueSettings.teamFormat === 'random');
+    }
+    updateTeamFormatHint();
+    var hl = document.getElementById('settingHdcpLive');
+    var he = document.getElementById('settingHdcpEstablish');
+    if (hl && he) {
+      hl.classList.toggle('active', leagueSettings.hdcpSystem !== 'establish');
+      he.classList.toggle('active', leagueSettings.hdcpSystem === 'establish');
+    }
+    var opts = document.getElementById('hdcpEstablishOpts');
+    var desc = document.getElementById('hdcpLiveDesc');
+    if (opts) opts.style.display = leagueSettings.hdcpSystem === 'establish' ? '' : 'none';
+    if (desc) desc.style.display = leagueSettings.hdcpSystem !== 'establish' ? '' : 'none';
+    var ewEl = document.getElementById('hdcpEstWeeks');
+    var pctEl = document.getElementById('hdcpPct');
+    if (ewEl) ewEl.value = leagueSettings.hdcpEstWeeks || 5;
+    if (pctEl) pctEl.value = leagueSettings.hdcpPct || 80;
+    var mcEl = document.getElementById('hdcpMaxChange');
+    if (mcEl) mcEl.value = leagueSettings.hdcpMaxChange !== undefined ? leagueSettings.hdcpMaxChange : 2;
+    var pbEl = document.getElementById('playoffBrackets');
+    if (pbEl) pbEl.value = leagueSettings.playoffBrackets || 2;
+    var ps = document.getElementById('settingPlayoffSingle');
+    var pd = document.getElementById('settingPlayoffDouble');
+    if (ps && pd) {
+      ps.classList.toggle('active', leagueSettings.playoffFormat !== 'double');
+      pd.classList.toggle('active', leagueSettings.playoffFormat === 'double');
+    }
+    // Apply to scoring
+    flightMode = leagueSettings.flightMode || 'hl';
+    skinsEnabled = leagueSettings.skinsEnabled !== false;
+    // Populate league name field
+    var lni = document.getElementById('leagueNameInp');
+    if (lni && league) lni.value = league.leagueName || '';
+    // Populate current week
+    var cwi = document.getElementById('currentWeekInp');
+    if (cwi) cwi.value = leagueSettings.currentWeek || 1;
+    // Update WK badges and scoring week input
+    var weekNum = leagueSettings.currentWeek || 1;
+    document.querySelectorAll('.wk-badge-num').forEach(function(el) { el.textContent = weekNum; });
+    var swn = document.getElementById('scoringWeekNum');
+    if (swn) swn.value = weekNum;
+    // Update roster subtitle
+    var rst = document.getElementById('rosterSubtitle');
+    if (rst) {
+      rst.textContent = leagueSettings.teamFormat === 'random'
+        ? 'Random teams mode — roster is a list of individual players drawn each week'
+        : 'Static partners — same teams every week';
+    }
+  } catch(e) { console.warn('Could not load settings', e); }
+}
+
+function updateSubThresholdHint() {
+  var el = document.getElementById('subThresholdHint');
+  var inp = document.getElementById('subThresholdInp');
+  if (!el || !inp) return;
+  var n = parseInt(inp.value) || 2;
+  el.textContent = 'Example: if set to ' + n + ', a team plays scratch for their first ' + n + ' sub weeks, then uses full handicap on sub week ' + (n+1) + ' and beyond.';
+}
+
+function setSettingFlight(mode, btn) {
+  leagueSettings.flightMode = mode;
+  document.querySelectorAll('#settingFlightHL,#settingFlightPar').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSettingSkins(on, btn) {
+  leagueSettings.skinsEnabled = on;
+  document.querySelectorAll('#settingSkinsOn,#settingSkinsOff').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSettingPlayoff(format, btn) {
+  leagueSettings.playoffFormat = format;
+  document.querySelectorAll('#settingPlayoffSingle,#settingPlayoffDouble').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+function setSettingHdcp(mode, btn) {
+  leagueSettings.hdcpSystem = mode;
+  document.querySelectorAll('#settingHdcpLive,#settingHdcpEstablish').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var opts = document.getElementById('hdcpEstablishOpts');
+  var desc = document.getElementById('hdcpLiveDesc');
+  if (opts) opts.style.display = mode === 'establish' ? '' : 'none';
+  if (desc) desc.style.display = mode === 'live' ? '' : 'none';
+}
+
+function setSettingTeamFormat(format, btn) {
+  leagueSettings.teamFormat = format;
+  document.querySelectorAll('#settingTeamStatic,#settingTeamRandom').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  updateTeamFormatHint();
+}
+
+function updateTeamFormatHint() {
+  var el = document.getElementById('teamFormatHint');
+  if (!el) return;
+  var fmt = leagueSettings.teamFormat || 'static';
+  if (fmt === 'random') {
+    el.textContent = 'Random: teams are randomly drawn each week. The roster is used as a list of individual players.';
+  } else {
+    el.textContent = 'Static: same partners every week as set in the Roster tab.';
+  }
+}
+
+function setSettingAltNines(on, btn) {
+  leagueSettings.alternateNines = on;
+  document.querySelectorAll('#settingAltNinesOn,#settingAltNinesOff').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+async function saveCurrentWeek() {
+  var weekNum = parseInt(document.getElementById('currentWeekInp').value) || 1;
+  var result = document.getElementById('currentWeekResult');
+  try {
+    var updated = Object.assign({}, leagueSettings, { currentWeek: weekNum });
+    await api('PUT', '/api/league/settings', updated);
+    leagueSettings.currentWeek = weekNum;
+    // Update WK badges on scoring tab
+    document.querySelectorAll('.wk-badge-num').forEach(function(el) { el.textContent = weekNum; });
+    // Update scoring week input too
+    var swn = document.getElementById('scoringWeekNum');
+    if (swn) swn.value = weekNum;
+    result.innerHTML = '<span style="color:var(--green2)">✓ Week ' + weekNum + ' saved</span>';
+    toast('Current week set to ' + weekNum);
+    setTimeout(function(){ result.innerHTML = ''; }, 3000);
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error</span>';
+  }
+}
+
+async function saveLeagueSettings() {
+  var st = parseInt(document.getElementById('subThresholdInp').value) || 2;
+  var settings = {
+    subThreshold: st,
+    currentWeek: parseInt((document.getElementById('currentWeekInp')||{}).value) || 1,
+    leagueDay: (document.getElementById('leagueDayInp')||{}).value || 'tuesday',
+    flightMode: leagueSettings.flightMode || 'hl',
+    skinsEnabled: leagueSettings.skinsEnabled !== false,
+    alternateNines: leagueSettings.alternateNines === true,
+    teamFormat: leagueSettings.teamFormat || 'static',
+    hdcpSystem: leagueSettings.hdcpSystem || 'live',
+    hdcpEstWeeks: parseInt((document.getElementById('hdcpEstWeeks')||{}).value) || 5,
+    hdcpPct: parseInt((document.getElementById('hdcpPct')||{}).value) || 80,
+    hdcpMaxChange: parseFloat((document.getElementById('hdcpMaxChange')||{}).value) || 0,
+    playoffBrackets: parseInt((document.getElementById('playoffBrackets')||{}).value) || 2,
+    playoffFormat: leagueSettings.playoffFormat || 'single'
+  };
+  try {
+    await api('PUT', '/api/league/settings', settings);
+    leagueSettings = settings;
+    flightMode = settings.flightMode;
+    skinsEnabled = settings.skinsEnabled;
+    document.getElementById('settingsSaveResult').innerHTML = '<span style="color:var(--green2)">✓ Settings saved.</span>';
+    toast('Settings saved');
+  } catch(e) {
+    document.getElementById('settingsSaveResult').innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+// ══ STANDINGS ══
+async function clearAllStandings() {
+  if (!confirm('Clear ALL rounds, scores, and standings? This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure? This deletes all round history and standings.')) return;
+  try {
+    await api('DELETE', '/api/league/standings/clear');
+    toast('✓ All standings and round history cleared');
+    loadStandings();
+    loadHistory();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+function filterStandings(q) {
+  q = (q||'').toLowerCase();
+  document.querySelectorAll('#standingsContent .standings-tbl tbody tr').forEach(function(row) {
+    var text = row.textContent.toLowerCase();
+    row.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+}
+
+async function recalculateStandings() {
+  var el = document.getElementById('standingsContent');
+  if (el) el.innerHTML = '<div class="empty-state">Recalculating from round history...</div>';
+  try {
+    // Check what we have
+    var rounds = await api('GET', '/api/league/rounds');
+    var data   = await api('GET', '/api/league/standings');
+    var played = data.filter(function(s){ return s.played > 0; });
+
+    if (!rounds.length) {
+      if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">No saved rounds found. Save scores from the Scoring tab first.</div>';
+      return;
+    }
+    if (!played.length) {
+      if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">'
+        + rounds.length + ' round(s) found but no matchups matched. '
+        + 'Make sure the Schedule tab has weeks saved that match your round history.</div>';
+      return;
+    }
+    toast('✓ Standings recalculated — ' + played.length + ' teams with results');
+    await loadStandings();
+  } catch(e) {
+    if (el) el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
+  }
+}
+
+async function loadStandings() {
+  var el = document.getElementById('standingsContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var data = await api('GET', '/api/league/standings');
+    var adjs = {};
+    try { adjs = await api('GET', '/api/league/standings/adjustments'); } catch(e) {}
+    window._standingsAdj = adjs; // store for edit modal
+
+    // Apply adjustments
+    data.forEach(function(s) {
+      var adj = adjs[s.team.id];
+      if (adj) {
+        s.wins   += parseFloat(adj.wins_adj)   || 0;
+        s.losses += parseFloat(adj.losses_adj) || 0;
+        s.ties   += parseFloat(adj.ties_adj)   || 0;
+        s.points  = s.wins + (s.ties * 0.5);
+        s.adj     = adj;
+      }
+    });
+
+    if (!data.length) {
+      el.innerHTML = '<div class="empty-state">No standings yet. Save rounds to history to build standings.</div>';
+      return;
+    }
+
+    var isAdmin = currentUser && (currentUser.role === 'leagueadmin' || currentUser.role === 'superadmin');
+    var sorted = data.slice().sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
+
+    var html = renderCombinedStandings('Season Standings', sorted, isAdmin);
+    if (isAdmin) {
+      html += '<div style="margin-top:16px;font-size:12px;color:var(--muted);font-style:italic;">Click Edit on any team to manually adjust their record.</div>';
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state" style="color:#ff9999">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderCombinedStandings(title, teams, isAdmin) {
+  if (!teams.length) return '<div class="empty-state">No standings yet.</div>';
+  var rows = teams.map(function(s, i) {
+    var t = s.team;
+    var name = esc(t.player1||'') + ' / ' + esc(t.player2||'');
+    var adjNote = (s.adj && isAdmin) ? ' <span style="font-size:10px;color:var(--gold);font-style:italic;">(adj)</span>' : '';
+    var editBtn = isAdmin
+      ? '<td class="num"><button class="btn-del" style="font-size:11px;padding:3px 8px;background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold2);" data-tid="'+t.id+'" data-tname="'+esc(name)+'" data-wins="'+s.wins+'" data-losses="'+s.losses+'" data-ties="'+s.ties+'" onclick="editStandingsRow(this)">Edit</button></td>'
+      : '';
+    return '<tr>' +
+      '<td class="rank">' + (i+1) + '</td>' +
+      '<td style="font-weight:700">' + name + adjNote + '</td>' +
+      '<td class="num">' + t.handicap + '</td>' +
+      '<td class="num pts">' + s.points + '</td>' +
+      '<td class="num" style="color:var(--green2)">' + s.wins + '</td>' +
+      '<td class="num" style="color:#ff9999">' + s.losses + '</td>' +
+      '<td class="num" style="color:var(--muted)">' + s.ties + '</td>' +
+      '<td class="num">' + s.played + '</td>' +
+      editBtn +
+      '</tr>';
+  }).join('');
+  var editHeader = isAdmin ? '<th class="num"></th>' : '';
+  return '<div class="standings-flight">' +
+    '<div class="standings-flight-title a">' + title + '</div>' +
+    '<table class="standings-tbl">' +
+    '<thead><tr><th class="rank">#</th><th>Team</th><th class="num">Hdcp</th><th class="num">Pts</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Played</th>' + editHeader + '</tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>' +
+    '<div class="playoff-note">Flights will be determined at the end of the season for the playoff tournament.</div>' +
+    '</div>';
+}
+
+function renderFlightStandings(title, cls, teams, isAdmin) {
+  if (!teams.length) return '';
+  var rows = teams.map(function(s, i) {
+    var t = s.team;
+    var name = esc(t.player1||'') + ' / ' + esc(t.player2||'');
+    var adjNote = (s.adj && isAdmin) ? ' <span style="font-size:10px;color:var(--gold);font-style:italic;">(adj)</span>' : '';
+    var editBtn = isAdmin
+      ? '<td class="num"><button class="btn-del" style="font-size:11px;padding:3px 8px;background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold2);" data-tid="'+t.id+'" data-tname="'+esc(name)+'" data-wins="'+s.wins+'" data-losses="'+s.losses+'" data-ties="'+s.ties+'" onclick="editStandingsRow(this)">Edit</button></td>'
+      : '';
+    return '<tr>' +
+      '<td class="rank">' + (i+1) + '</td>' +
+      '<td style="font-weight:700">' + name + adjNote + '</td>' +
+      '<td class="num">' + t.handicap + '</td>' +
+      '<td class="num pts">' + s.points + '</td>' +
+      '<td class="num" style="color:var(--green2)">' + s.wins + '</td>' +
+      '<td class="num" style="color:#ff9999">' + s.losses + '</td>' +
+      '<td class="num" style="color:var(--muted)">' + s.ties + '</td>' +
+      '<td class="num">' + s.played + '</td>' +
+      editBtn +
+      '</tr>';
+  }).join('');
+  var editHeader = isAdmin ? '<th class="num"></th>' : '';
+  return '<div class="standings-flight">' +
+    '<div class="standings-flight-title ' + cls + '">' + title + '</div>' +
+    '<table class="standings-tbl">' +
+    '<thead><tr><th class="rank">#</th><th>Team</th><th class="num">Hdcp</th><th class="num">Pts</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Played</th>' + editHeader + '</tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>' +
+    '<div class="playoff-note">Top teams from each flight advance to the playoff tournament.</div>' +
+    '</div>';
+}
+
+async function editStandingsRow(btn) {
+  var tid   = btn.dataset.tid;
+  var tname = btn.dataset.tname;
+  var wins   = parseFloat(btn.dataset.wins)   || 0;
+  var losses = parseFloat(btn.dataset.losses) || 0;
+  var ties   = parseFloat(btn.dataset.ties)   || 0;
+
+  // Show inline edit form in a toast-style modal
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;max-width:360px;width:90%;margin:20px;">' +
+    '<div style="font-size:20px;letter-spacing:2px;color:var(--gold);margin-bottom:4px;font-weight:700;">Edit Record</div>' +
+    '<div style="font-size:13px;color:var(--muted);margin-bottom:18px;">' + tname + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WINS</div><input id="adjW" type="number" step="0.5" value="'+wins+'" class="team-input" style="width:100%;text-align:center;"></div>' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">LOSSES</div><input id="adjL" type="number" step="0.5" value="'+losses+'" class="team-input" style="width:100%;text-align:center;"></div>' +
+    '<div><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TIES</div><input id="adjT" type="number" step="0.5" value="'+ties+'" class="team-input" style="width:100%;text-align:center;"></div>' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic;">These values replace the calculated record for this team.</div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button class="btn-save-roster" style="flex:1;" id="adjSaveBtn">Save</button>' +
+    '<button class="btn-export-sched" style="flex:1;" id="adjCancelBtn">Cancel</button>' +
+    '</div>' +
+    '<div id="adjErr" style="color:#ff9999;font-size:12px;margin-top:8px;"></div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  document.getElementById('adjCancelBtn').onclick = function() { overlay.remove(); };
+  document.getElementById('adjSaveBtn').onclick = async function() {
+    var w  = parseFloat(document.getElementById('adjW').value)  || 0;
+    var l  = parseFloat(document.getElementById('adjL').value)  || 0;
+    var t2 = parseFloat(document.getElementById('adjT').value)  || 0;
+    try {
+      // Calculate what the round-based record is (without adjustments)
+      var existingAdj = (window._standingsAdj && (window._standingsAdj[tid] || window._standingsAdj[parseInt(tid)]));
+      var calcWins   = wins   - (existingAdj ? parseFloat(existingAdj.wins_adj)   || 0 : 0);
+      var calcLosses = losses - (existingAdj ? parseFloat(existingAdj.losses_adj) || 0 : 0);
+      var calcTies   = ties   - (existingAdj ? parseFloat(existingAdj.ties_adj)   || 0 : 0);
+      // Save the difference between what they typed and the calculated record
+      await api('PUT', '/api/league/standings/adjustments/' + tid, {
+        wins_adj:   w  - calcWins,
+        losses_adj: l  - calcLosses,
+        ties_adj:   t2 - calcTies,
+        note: 'Manual adjustment'
+      });
+      overlay.remove();
+      loadStandings();
+      toast('✓ Record updated to ' + w + '-' + l + (t2 ? '-'+t2 : ''));
+    } catch(e) {
+      document.getElementById('adjErr').textContent = 'Error: ' + e.message;
+    }
+  };
+}
+
+// ══ CALCULATED HANDICAPS ══
+async function loadCalculatedHandicaps() {
+  var el = document.getElementById('calcHdcpContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var data = await api('GET', '/api/league/handicaps/calculated');
+    if (!Object.keys(data).length) {
+      el.innerHTML = '<div class="empty-state">No rounds saved yet.</div>';
+      return;
+    }
+    var rows = rosterTeams.map(function(t) {
+      var h = data[t.id];
+      if (!h) return '';
+      var name = esc(t.player1||'') + (t.player2 ? ' / ' + esc(t.player2) : '');
+      var hdcpDisplay, statusBadge;
+      if (h.status === 'establishing') {
+        hdcpDisplay = '<span style="color:var(--muted)">—</span>';
+        statusBadge = '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,.15);padding:2px 7px;border-radius:4px;border:1px solid rgba(201,168,76,.3);">Week ' + h.roundsPlayed + ' of ' + h.hdcpEstWeeks + ' (establishing)</span>';
+      } else if (h.status === 'no_rounds') {
+        hdcpDisplay = '<span style="color:var(--muted)">—</span>';
+        statusBadge = '<span style="font-size:10px;color:var(--muted);font-style:italic;">No rounds played</span>';
+      } else {
+        var pct = h.hdcpSystem === 'establish' ? ' (' + h.hdcpPct + '%)' : '';
+        var cap = (h.hdcpMaxChange && h.hdcpMaxChange > 0) ? ' | cap ±' + h.hdcpMaxChange : '';
+        hdcpDisplay = '<strong style="color:var(--cream);font-size:15px;">' + (h.calculatedHdcp > 0 ? '+' : '') + h.calculatedHdcp + '</strong>';
+        statusBadge = '<span style="font-size:11px;color:var(--muted);">avg diff: ' + (h.avgDiff > 0 ? '+' : '') + h.avgDiff + pct + ' over ' + h.roundsPlayed + ' rounds</span>';
+      }
+      var applyBtn = (h.status !== 'establishing' && h.status !== 'no_rounds')
+        ? '<button class="btn-sc-load" style="font-size:11px;padding:4px 10px;" onclick="applyCalcHandicap(' + t.id + ',' + h.calculatedHdcp + ')">Apply</button>'
+        : '';
+      return '<tr><td style="font-weight:700">' + name + '</td>' +
+        '<td style="text-align:center">' + hdcpDisplay + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td style="text-align:center">' + applyBtn + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<table class="team-table" style="width:100%">' +
+      '<thead><tr><th>Team</th><th style="text-align:center">Calc Hdcp</th><th>Status</th><th></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      '<div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:10px;">Click Apply to update a team roster handicap with the calculated value.</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
+
+async function applyCalcHandicap(teamId, hdcp) {
+  try {
+    await api('PUT', '/api/league/teams/' + teamId, { handicap: hdcp });
+    var team = rosterTeams.find(function(t) { return t.id === teamId; });
+    if (team) team.handicap = hdcp;
+    renderRosterTable();
+    toast('Handicap updated to ' + hdcp);
+    loadCalculatedHandicaps();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ══ PLAYOFFS ══
+var playoffBrackets = []; // stored bracket data
+
+async function loadPlayoffs() {
+  var el = document.getElementById('playoffContent');
+  if (!el) return;
+  if (playoffBrackets.length) { renderAllBrackets(); return; }
+  el.innerHTML = '<div class="empty-state">Click Generate Brackets to create the playoff draw.</div>';
+}
+
+async function generatePlayoffs() {
+  var el = document.getElementById('playoffContent');
+  el.innerHTML = '<div class="empty-state">Loading standings...</div>';
+  try {
+    // Get standings
+    var data = await api('GET', '/api/league/standings');
+    var adjs = {};
+    try { adjs = await api('GET', '/api/league/standings/adjustments'); } catch(e) {}
+    data.forEach(function(s) {
+      var adj = adjs[s.team.id];
+      if (adj) {
+        s.wins   += parseFloat(adj.wins_adj)   || 0;
+        s.losses += parseFloat(adj.losses_adj) || 0;
+        s.ties   += parseFloat(adj.ties_adj)   || 0;
+        s.points  = s.wins + (s.ties * 0.5);
+      }
+    });
+
+    // Sort by points descending
+    data.sort(function(a,b) { return b.points - a.points || a.team.handicap - b.team.handicap; });
+
+    var numBrackets = leagueSettings.playoffBrackets || 2;
+    var format = leagueSettings.playoffFormat || 'single';
+    var perBracket = Math.ceil(data.length / numBrackets);
+
+    // Split into brackets
+    playoffBrackets = [];
+    var bracketNames = ['Championship Bracket', 'Consolation Bracket', 'Third Bracket', 'Fourth Bracket'];
+    for (var b = 0; b < numBrackets; b++) {
+      var teams = data.slice(b * perBracket, (b+1) * perBracket);
+      playoffBrackets.push({
+        name: bracketNames[b] || ('Bracket ' + (b+1)),
+        teams: teams,
+        format: format,
+        matches: buildBracket(teams, format)
+      });
+    }
+
+    // Update subtitle
+    var sub = document.getElementById('playoffSubtitle');
+    if (sub) sub.textContent = numBrackets + ' brackets • ' + format + ' elimination • ' + data.length + ' teams';
+
+    renderAllBrackets();
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999">Error: ' + e.message + '</div>';
+  }
+}
+
+function buildBracket(teams, format) {
+  // Seed teams — next power of 2
+  var n = teams.length;
+  var size = 1;
+  while (size < n) size *= 2;
+  var byes = size - n;
+
+  // Build first round matchups — top seed vs bottom seed
+  var seeded = teams.slice();
+  var rounds = [];
+  var firstRound = [];
+  for (var i = 0; i < size / 2; i++) {
+    var teamA = seeded[i] || null;
+    var teamB = seeded[size - 1 - i] || null;
+    // If teamB is beyond teams.length it's a bye
+    if (i + (size - 1 - i) >= n || !teamB) {
+      firstRound.push({ teamA: teamA, teamB: null, winner: teamA, bye: true });
+    } else {
+      firstRound.push({ teamA: teamA, teamB: teamB, winner: null, bye: false });
+    }
+  }
+  rounds.push(firstRound);
+
+  // Build subsequent rounds (empty placeholders)
+  var prev = firstRound;
+  while (prev.length > 1) {
+    var next = [];
+    for (var j = 0; j < prev.length; j += 2) {
+      next.push({ teamA: null, teamB: null, winner: null, bye: false, placeholder: true });
+    }
+    rounds.push(next);
+    prev = next;
+  }
+
+  return rounds;
+}
+
+function renderAllBrackets() {
+  var el = document.getElementById('playoffContent');
+  if (!el) return;
+  var html = '';
+  playoffBrackets.forEach(function(bracket, bi) {
+    html += renderBracket(bracket, bi);
+  });
+  html += '<div style="margin-top:20px;font-size:12px;color:var(--muted);font-style:italic;">Brackets are seeded by season points. Byes are awarded to top seeds.</div>';
+  el.innerHTML = html;
+}
+
+function renderBracket(bracket, bi) {
+  var teams = bracket.teams;
+  var rounds = bracket.matches;
+  var roundLabels = ['First Round', 'Quarterfinals', 'Semifinals', 'Finals', 'Champion'];
+
+  var html = '<div style="margin-bottom:32px;">';
+  html += '<div style="font-size:20px;letter-spacing:2px;color:var(--gold);margin-bottom:16px;font-weight:700;">' + esc(bracket.name) + '</div>';
+
+  // Seedings list
+  html += '<div style="margin-bottom:16px;"><div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;">SEEDS</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  teams.forEach(function(s, i) {
+    var name = esc(s.team.player1||'') + (s.team.player2 ? ' / ' + esc(s.team.player2) : '');
+    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;">' +
+      '<span style="color:var(--gold);font-weight:700;margin-right:6px;">#' + (i+1) + '</span>' +
+      name + ' <span style="color:var(--muted);">(' + s.points + 'pts)</span></div>';
+  });
+  html += '</div></div>';
+
+  // Bracket rounds
+  html += '<div style="overflow-x:auto;"><div style="display:flex;gap:24px;min-width:max-content;padding-bottom:10px;">';
+  rounds.forEach(function(round, ri) {
+    var label = roundLabels[Math.min(ri, roundLabels.length-1)];
+    if (ri === rounds.length - 1) label = 'Final';
+    if (ri === rounds.length - 2 && rounds.length > 2) label = 'Semifinals';
+    html += '<div style="min-width:200px;">';
+    html += '<div style="font-size:11px;color:var(--gold2);letter-spacing:1px;font-weight:700;margin-bottom:10px;">' + label + '</div>';
+    round.forEach(function(match, mi) {
+      var nameA = match.teamA ? esc(match.teamA.team ? match.teamA.team.player1 : (match.teamA.player1||'')) : 'TBD';
+      var nameB = match.teamB ? esc(match.teamB.team ? match.teamB.team.player1 : (match.teamB.player1||'')) : (match.bye ? 'BYE' : 'TBD');
+      var nameA2 = match.teamA && (match.teamA.team ? match.teamA.team.player2 : (match.teamA.player2||''));
+      var nameB2 = match.teamB && (match.teamB.team ? match.teamB.team.player2 : (match.teamB.player2||''));
+      if (nameA2) nameA += ' / ' + esc(nameA2);
+      if (nameB2) nameB += ' / ' + esc(nameB2);
+      var byeStyle = match.bye ? 'opacity:.5;' : '';
+      html += '<div style="' + byeStyle + 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;">';
+      html += '<div style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;">' + nameA + '</div>';
+      html += '<div style="padding:8px 12px;font-size:13px;color:' + (match.bye?'var(--muted)':'inherit') + ';">' + nameB + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+  return html;
+}
+
+// ══ SIGNED SCORECARDS ══
+async function loadSignedScorecards() {
+  var el = document.getElementById('signedScorecardsContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var rows = await api('GET', '/api/league/scorecard/signed');
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">No signed scorecards yet.</div>'; return; }
+    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var name = esc(r.player1||'') + (r.player2 ? ' / ' + esc(r.player2) : '');
+      var date = new Date(r.signed_at).toLocaleDateString();
+      var nineLabel = r.nine==='back'?'B9':r.nine==='all18'?'All 18':'F9';
+      html += '<tr>';
+      html += '<td style="font-weight:700;color:var(--gold)">Week ' + r.week_number + '</td>';
+      html += '<td style="font-weight:700">' + name + '</td>';
+      html += '<td style="color:var(--muted);font-size:12px">' + nineLabel + '</td>';
+      html += '<td>' + r.gross + '</td>';
+      html += '<td style="font-weight:700;color:var(--gold2)">' + r.net + '</td>';
+      html += '<td style="color:var(--muted)">' + r.handicap_used + '</td>';
+      html += '<td style="font-size:11px;color:var(--green2)">✓ ' + date + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
+
+// ══ SUBSTITUTE LOGGING ══
+async function initSubLog() {
+  var teamEl = document.getElementById('subTeamSelect');
+  if (!teamEl) return;
+  teamEl.innerHTML = '<option value="">Select team...</option>';
+  rosterTeams.forEach(function(t) {
+    teamEl.innerHTML += '<option value="'+t.id+'">'+esc(t.player1||'')+(t.player2?' / '+esc(t.player2):'')+'</option>';
+  });
+  var roundEl = document.getElementById('subRoundSelect');
+  if (!roundEl) return;
+  roundEl.innerHTML = '<option value="">Select round...</option>';
+  try {
+    var rounds = await api('GET', '/api/league/rounds');
+    if (rounds && rounds.length) {
+      rounds.forEach(function(r, i) {
+        var label = 'Week ' + (i+1) + (r.notes ? ' — ' + r.notes : '') + ' (' + (r.played_on||'').slice(0,10) + ')';
+        roundEl.innerHTML += '<option value="'+r.id+'">'+esc(label)+'</option>';
+      });
+    } else {
+      // No rounds saved yet — show week numbers
+      for (var w = 1; w <= 10; w++) {
+        roundEl.innerHTML += '<option value="week_'+w+'">Week ' + w + ' (not yet saved)</option>';
       }
     }
-  } catch(e2) {
-    console.warn('signed scorecard live fallback failed for team ' + teamId + ':', e2.message);
-  }
-  return { found:false };
+  } catch(e) {}
 }
-// LIVE SCORING
+
+async function logSubstitute() {
+  var teamId   = document.getElementById('subTeamSelect').value;
+  var roundId  = document.getElementById('subRoundSelect').value;
+  var subName  = document.getElementById('subName').value.trim();
+  var replaced = document.getElementById('subReplacedName').value.trim();
+  var result   = document.getElementById('subLogResult');
+  if (!teamId)  { result.innerHTML = '<span style="color:#ff9999">Select a team.</span>'; return; }
+  if (!roundId) { result.innerHTML = '<span style="color:#ff9999">Select a round.</span>'; return; }
+  if (!subName) { result.innerHTML = '<span style="color:#ff9999">Enter the substitute name.</span>'; return; }
+  try {
+    await api('POST', '/api/league/rounds/'+roundId+'/sub', { team_id: teamId, sub_name: subName, replaced_name: replaced });
+    result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
+    loadSubTracker();
+    document.getElementById('subName').value = '';
+    document.getElementById('subReplacedName').value = '';
+  } catch(e) {
+    result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
+  }
+}
+
+// ══ UTILS ══
+async function api(method, url, body) {
+  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
+  if (body) opts.body = JSON.stringify(body);
+  let res;
+  try { res = await fetch(url, opts); }
+  catch(e) { throw new Error('Network error: ' + e.message); }
+  const raw = await res.text();
+  if (!raw || raw.trim() === '') throw new Error('Server returned empty response (status ' + res.status + ')');
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(e) { throw new Error('Server error (status ' + res.status + '): ' + raw.substring(0, 150)); }
+  if (!res.ok) throw new Error(data.error || 'Request failed (status ' + res.status + ')');
+  return data;
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// Catch any uncaught JS errors and show them on screen
+window.onerror = function(msg, src, line) {
+  var el = document.getElementById('loginError');
+  if (el) { el.textContent = 'JS Error: ' + msg + ' (line ' + line + ')'; el.style.display = 'block'; }
+  return false;
+};
+window.onunhandledrejection = function(e) {
+  var el = document.getElementById('loginError');
+  if (el) { el.textContent = 'Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)); el.style.display = 'block'; }
+};
+init();
+
+// �� LIVE SCORING ��
 var _liveTimer = null;
 var _liveActive = false;
 var _livePrev = {}; // last polled hole values per team
-
-function setLiveStatus(msg, isError) {
-  var panel = document.getElementById('liveDebugPanel');
-  if (panel) {
-    panel.style.display = 'block';
-    panel.style.color = isError ? '#ff9999' : 'var(--gold2)';
-    panel.style.borderColor = isError ? 'rgba(220,80,80,.5)' : 'var(--border)';
-    panel.textContent = msg;
-  }
-  var lastEl = document.getElementById('liveLastUpdate');
-  if (lastEl) lastEl.textContent = msg;
-}
-
-function getTeamsToPoll() {
-  var byId = {};
-  var out = [];
-  function add(id) {
-    if (id == null || byId[String(id)]) return;
-    byId[String(id)] = true;
-    out.push({ id:id });
-  }
-  (scoreTeams || []).forEach(function(s){ add(s.id); });
-  (rosterTeams || []).forEach(function(t){ add(t.id); });
-  document.querySelectorAll('[id^="scard_"]').forEach(function(card){ add(card.id.replace('scard_','')); });
-  return out;
-}
 
 function toggleLiveScoring() {
   _liveActive = !_liveActive;
   var btn = document.getElementById('btnLive');
   var banner = document.getElementById('liveBanner');
-  var panel = document.getElementById('liveDebugPanel');
   if (_liveActive) {
     btn && btn.classList.add('active');
     banner && banner.classList.add('visible');
-    if (panel) panel.style.display = 'block';
     _livePrev = {};
-    setLiveStatus('Live scoring ON — checking for player scores now...', false);
     pollLiveScores();
-    if (_liveTimer) clearInterval(_liveTimer);
     _liveTimer = setInterval(pollLiveScores, 15000);
     toast('📡 Live scoring ON');
   } else {
     btn && btn.classList.remove('active');
     banner && banner.classList.remove('visible');
-    if (panel) panel.style.display = 'none';
     clearInterval(_liveTimer);
     _liveTimer = null;
     _livePrev = {};
@@ -4153,105 +5665,312 @@ function toggleLiveScoring() {
 }
 
 async function pollLiveScores() {
-  try {
-    var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
-    var anyUpdate = false;
-    var teamsToPoll = getTeamsToPoll();
-    if (!teamsToPoll.length) {
-      setLiveStatus('Live scoring ON — no scorecards are loaded on this tab. Open the Scoring tab and try Live again.', true);
-      return;
-    }
-    setLiveStatus('Checking Week ' + weekNum + ' live scores for ' + teamsToPoll.length + ' teams...', false);
+  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+  var anyUpdate = false;
+  var serverFound = 0;
+  var serverSkipped = 0;
+  var failedPolls = 0;
 
-    var fetches = teamsToPoll.map(function(t) {
-      return getLiveScoreForTeam(t.id, weekNum)
-        .then(function(data) { return { teamId: t.id, data: data }; })
-        .catch(function(e) { console.warn('Live poll failed for team ' + t.id, e); return { teamId: t.id, data: null, error:e.message }; });
-    });
+  // Only poll teams currently shown on the scoring screen. This avoids dragging in old/latest rows
+  // from teams that are not on this week's scoring cards.
+  var teamsToPoll = (scoreTeams && scoreTeams.length ? scoreTeams : rosterTeams)
+    .map(function(st){ return rosterTeams.find(function(t){ return String(t.id) === String(st.id); }) || st; })
+    .filter(function(t){ return t && t.id; });
 
-    var results = await Promise.all(fetches);
-    var failedPolls = results.filter(function(r){ return r.data === null; }).length;
-    var serverFound = 0;
+  var fetches = teamsToPoll.map(function(t) {
+    return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
+      .then(function(data) { return { teamId: t.id, data: data }; })
+      .catch(function() { failedPolls++; return { teamId: t.id, data: null }; });
+  });
 
-    results.forEach(function(r) {
-      var teamId = r.teamId;
-      var holes = null;
-      var nine = null;
-      var hdcp = null;
+  var results = await Promise.all(fetches);
 
-      if (r.data && r.data.found) {
+  results.forEach(function(r) {
+    var teamId = r.teamId;
+    var holes = null;
+    var nine = null;
+    var hdcp = null;
+
+    // Primary: server response. IMPORTANT: the backend may ignore ?week= and return the latest
+    // scorecard from a prior week. Do not apply it unless the row proves it belongs to this week.
+    if (r.data && r.data.found) {
+      var rowWeek = r.data.week_number || r.data.weekNum || r.data.week || r.data.currentWeek;
+      if (rowWeek !== undefined && rowWeek !== null && String(parseInt(rowWeek)) === String(weekNum)) {
         serverFound++;
         holes = r.data.hole_scores || r.data.scores || [];
         if (typeof holes === 'string') { try { holes = JSON.parse(holes); } catch(e) { holes = []; } }
         nine = r.data.nine || 'front';
         hdcp = r.data.handicap_used || r.data.handicapUsed;
+      } else {
+        // Skip old/latest score rows, such as Week 3 showing while Week 4 is selected.
+        serverSkipped++;
       }
+    }
 
-      if (!holes || !holes.some(function(h){ return h !== null && h !== undefined && h !== ''; })) {
-        try {
-          var leagueId = league && league.id ? league.id : 'default';
-          var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
-          var raw = localStorage.getItem(draftKey);
-          if (raw) {
-            var draft = JSON.parse(raw);
-            if (draft && draft.holes && draft.holes.some(function(h){ return h !== null && h !== undefined && h !== ''; })) {
-              holes = draft.holes;
-              nine = draft.nine || nine || 'front';
-              hdcp = draft.hdcp != null ? draft.hdcp : hdcp;
-            }
+    // Fallback: localStorage draft for this exact week. This is mostly useful on the same device.
+    if (!holes || !holes.some(function(h){ return h !== null && h !== undefined && h !== ''; })) {
+      try {
+        var leagueId = league && league.id ? league.id : 'default';
+        var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
+        var raw = localStorage.getItem(draftKey);
+        if (raw) {
+          var draft = JSON.parse(raw);
+          if (draft && String(parseInt(draft.week || weekNum)) === String(weekNum) && draft.holes && draft.holes.some(function(h){ return h !== null && h !== undefined && h !== ''; })) {
+            holes = draft.holes;
+            nine = draft.nine || nine || 'front';
+            hdcp = draft.hdcp != null ? draft.hdcp : hdcp;
           }
-        } catch(e) {}
-      }
-
-      if (!holes) return;
-      var prevHoles = _livePrev[teamId] || [];
-      var st = scoreTeams.find(function(s){ return String(s.id) === String(teamId); });
-      if (st && nine && !st.scheduledNine && st.nine !== normalizeScheduleNine(nine, null)) switchNine(teamId, normalizeScheduleNine(nine, null), true);
-
-      var changed = false;
-      holes.forEach(function(score, i) {
-        if (score === null || score === undefined || score === '') return;
-        var inp = document.getElementById('shole_' + teamId + '_' + i);
-        if (!inp) return;
-        if (String(inp.value) === String(score) && String(prevHoles[i]) === String(score)) return;
-        inp.value = score;
-        inp.dispatchEvent(new Event('input'));
-        inp.style.transition = 'background .3s';
-        inp.style.background = 'rgba(74,140,63,.4)';
-        setTimeout(function(){ inp.style.background = ''; }, 700);
-        changed = true;
-      });
-
-      if (hdcp != null) {
-        var hdcpEl = document.getElementById('shdcp_' + teamId);
-        if (hdcpEl && !hdcpEl.value) hdcpEl.value = hdcp;
-      }
-      _livePrev[teamId] = holes.slice();
-
-      if (changed) {
-        anyUpdate = true;
-        var card = document.getElementById('scard_' + teamId);
-        if (card) {
-          card.style.boxShadow = '0 0 0 2px rgba(74,140,63,.5)';
-          setTimeout(function(){ card.style.boxShadow = ''; }, 1500);
         }
-        var body = document.getElementById('sbody_' + teamId);
-        if (body && body.classList.contains('collapsed')) toggleCard(teamId);
-      }
+      } catch(e) {}
+    }
+
+    if (!holes) return;
+    var prevHoles = _livePrev[teamId] || [];
+
+    var st = scoreTeams.find(function(s){ return String(s.id) === String(teamId); });
+    // Do not let live rows change a scheduled F9/B9. Schedule is the source of truth.
+    if (st && nine && !st.scheduledNine && st.nine !== normalizeScheduleNine(nine, null)) switchNine(teamId, normalizeScheduleNine(nine, null), true);
+
+    var changed = false;
+    holes.forEach(function(score, i) {
+      if (score === null || score === undefined || score === '') return;
+      var inp = document.getElementById('shole_' + teamId + '_' + i);
+      if (!inp) return;
+      if (String(inp.value) === String(score) && String(prevHoles[i]) === String(score)) return;
+      inp.value = score;
+      inp.dispatchEvent(new Event('input'));
+      inp.style.transition = 'background .3s';
+      inp.style.background = 'rgba(74,140,63,.4)';
+      setTimeout(function(){ inp.style.background = ''; }, 700);
+      changed = true;
     });
 
-    var lsFound = 0;
-    try {
-      var lid = league && league.id ? league.id : 'default';
-      teamsToPoll.forEach(function(t){ if (localStorage.getItem('gp_draft_'+lid+'_'+t.id+'_wk'+weekNum)) lsFound++; });
-    } catch(e) {}
-    var now = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
-    var msg = 'Last checked ' + now + ' — server rows: ' + serverFound + ', local rows: ' + lsFound + ', failed: ' + failedPolls;
-    if (anyUpdate) msg += ' — scorecard updated';
-    if (serverFound === 0 && lsFound === 0) msg += ' — no player scores found yet. Have a player enter one score and wait 2 seconds.';
-    setLiveStatus(msg, false);
-  } catch(e) {
-    console.error('Live scoring crashed:', e);
-    setLiveStatus('Live scoring error: ' + e.message, true);
+    if (hdcp != null) {
+      var hdcpEl = document.getElementById('shdcp_' + teamId);
+      if (hdcpEl && !hdcpEl.value) hdcpEl.value = hdcp;
+    }
+
+    _livePrev[teamId] = holes.slice();
+
+    if (changed) {
+      anyUpdate = true;
+      var card = document.getElementById('scard_' + teamId);
+      if (card) {
+        card.style.boxShadow = '0 0 0 2px rgba(74,140,63,.5)';
+        setTimeout(function(){ card.style.boxShadow = ''; }, 1500);
+      }
+      var body = document.getElementById('sbody_' + teamId);
+      if (body && (body.style.display === 'none' || body.classList.contains('collapsed'))) toggleCard(teamId);
+    }
+  });
+
+  var lastEl = document.getElementById('liveLastUpdate');
+  if (lastEl) {
+    var now = new Date();
+    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) +
+      ' [week:' + weekNum + ' found:' + serverFound + ' skipped-old:' + serverSkipped + ' fail:' + failedPolls + ']' +
+      (anyUpdate ? ' · new scores' : '');
   }
 }
+async function loadSubTracker() {
+  var el = document.getElementById('subTrackerList');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
+  var subThreshold = (leagueSettings && leagueSettings.subThreshold) || 2;
+  try {
+    var loggedSubs = [];
+    try { var res = await api('GET', '/api/league/subs'); if (res && Array.isArray(res)) loggedSubs = res; } catch(e) {}
+
+    var rounds = [];
+    try { rounds = await api('GET', '/api/league/rounds'); } catch(e) {}
+    var roundDetails = await Promise.all(rounds.map(function(r, idx) {
+      return api('GET', '/api/league/rounds/' + r.id)
+        .then(function(d) { return { week: idx + 1, data: d }; })
+        .catch(function() { return { week: idx + 1, data: null }; });
+    }));
+
+    var subMap = {};
+    var seenKeys = {};
+    function addSub(subName, week, teamId, replacedName, gross, nine) {
+      var name = (subName || '').trim();
+      if (!name) return;
+      var nameKey = name.toLowerCase();
+      var dedupKey = nameKey + '|' + week;
+      if (seenKeys[dedupKey]) return;
+      seenKeys[dedupKey] = true;
+      if (!subMap[nameKey]) subMap[nameKey] = { name: name, rounds: [] };
+      var team = rosterTeams.find(function(t) { return t.id == teamId; });
+      var teamName = team ? ((team.player1||'')+(team.player2?' / '+team.player2:'')) : 'Team #'+teamId;
+      subMap[nameKey].rounds.push({ week: week, teamName: teamName, replaced: replacedName||'', gross: (gross>0)?gross:null, nine: nine||'' });
+    }
+
+    loggedSubs.forEach(function(s) { addSub(s.sub_name, s.week_number||'?', s.team_id, s.replaced_name, null, null); });
+    roundDetails.forEach(function(rd) {
+      if (!rd.data) return;
+      var scores = rd.data.scores || (Array.isArray(rd.data) ? rd.data : []);
+      scores.forEach(function(s) {
+        if (!s.is_sub || !s.sub_name) return;
+        var holeScores = [];
+        try { holeScores = JSON.parse(s.hole_scores||'[]'); } catch(e) {}
+        var gross = holeScores.filter(function(h){return h!=null;}).reduce(function(a,b){return a+b;},0) || s.gross || null;
+        addSub(s.sub_name, rd.week, s.team_id, s.replaced_name, gross, s.nine);
+      });
+    });
+
+    var subPlayers = Object.values(subMap).sort(function(a,b){ return b.rounds.length - a.rounds.length; });
+    if (!subPlayers.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">No sub records found. Log subs below or mark SUB during scoring.</div>';
+      return;
+    }
+
+    var html = '<div style="margin-bottom:8px;font-size:11px;color:var(--muted);letter-spacing:1px;">' + subThreshold + '+ rounds qualifies for handicap</div>';
+    subPlayers.forEach(function(sp) {
+      var totalRounds = sp.rounds.length;
+      var grossScores = sp.rounds.filter(function(r){return r.gross>0;}).map(function(r){return r.gross;});
+      var avgGross = grossScores.length ? Math.round(grossScores.reduce(function(a,b){return a+b;},0)/grossScores.length*10)/10 : null;
+      var hdcpReady = totalRounds >= subThreshold;
+      var hdcpNote = hdcpReady
+        ? '<span style="color:var(--green2);font-size:11px;margin-left:8px;">✓ Qualifies for handicap</span>'
+        : '<span style="color:var(--muted);font-size:11px;margin-left:8px;">'+(subThreshold-totalRounds)+' more round'+(subThreshold-totalRounds!==1?'s':'')+' needed</span>';
+      html += '<div style="background:var(--surface2);border:1px solid '+(hdcpReady?'rgba(74,140,63,.5)':'var(--border)')+';border-radius:10px;padding:14px 16px;margin-bottom:10px;">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
+      html += '<div><span style="font-size:16px;font-weight:700;">'+esc(sp.name)+'</span>'+hdcpNote+'</div>';
+      html += '<div style="font-size:24px;font-weight:900;color:'+(hdcpReady?'var(--green2)':'var(--gold)')+';">'+totalRounds+' <span style="font-size:12px;color:var(--muted);font-weight:400;">round'+(totalRounds!==1?'s':'')+'</span></div>';
+      html += '</div>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">WK</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">TEAM</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">REPLACED</th>';
+      html += '<th style="text-align:center;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">NINE</th>';
+      html += '<th style="text-align:center;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">GROSS</th>';
+      html += '</tr></thead><tbody>';
+      sp.rounds.sort(function(a,b){return (a.week||0)-(b.week||0);}).forEach(function(r) {
+        html += '<tr>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--gold);">Wk '+r.week+'</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);">'+esc(r.teamName)+'</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--muted);">'+esc(r.replaced||'—')+'</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center;color:var(--muted);">'+(r.nine?r.nine.replace('front','F9').replace('back','B9').replace('all18','18'):'—')+'</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center;font-weight:700;">'+(r.gross>0?r.gross:'—')+'</td>';
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      if (grossScores.length) {
+        html += '<tfoot><tr><td colspan="4" style="padding:6px 8px;font-size:11px;color:var(--muted);">Avg Gross</td><td style="padding:6px 8px;text-align:center;font-size:13px;font-weight:700;color:var(--gold2);">'+avgGross+'</td></tr></tfoot>';
+      }
+      html += '</table></div>';
+    });
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: '+e.message+'</div>';
+  }
+}
+
+// �� WEEK SPREADSHEET DOWNLOAD ��
+async function downloadWeekXLSX() {
+  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+  // Gather data — prefer lastCalcData if available, else read from DOM
+  var teams = (lastCalcData && lastCalcData.length) ? lastCalcData : rosterTeams.map(function(t) {
+    var st = scoreTeams.find(function(s){return s.id===t.id;});
+    var nine = st ? st.nine : (t.nine||'front');
+    var cfg = getHoleConfig(nine);
+    var holes = Array.from({length:cfg.count},function(_,i){
+      var v = parseInt((document.getElementById('shole_'+t.id+'_'+i)||{}).value);
+      return isNaN(v)?null:v;
+    });
+    var gross = holes.reduce(function(a,b){return b!=null?a+b:a;},0);
+    var hdcp = parseInt((document.getElementById('shdcp_'+t.id)||{}).value)||0;
+    return {id:t.id, name:(t.player1||'')+(t.player2?' / '+t.player2:''), player1:t.player1||'', player2:t.player2||'', holes:holes, gross:gross, hdcp:hdcp, net:gross-hdcp, nine:nine, parTotal:cfg.par.reduce(function(a,b){return a+b;},0)};
+  });
+
+  // Build CSV — F9 and B9 in separate sections, each with their own 9 columns
+  var parFront = getParFront();
+  var parBack  = getParBack();
+
+  var csvRows = [];
+  var leagueName = (league && league.name) || 'GimmePar';
+  csvRows.push([leagueName + ' — Week ' + weekNum + ' Results']);
+  csvRows.push([]);
+
+  var infoHdrs = ['#','Team','Player 1','Player 2','Hdcp','Flight'];
+  var holeHdrs = ['H1','H2','H3','H4','H5','H6','H7','H8','H9',
+                  'H10','H11','H12','H13','H14','H15','H16','H17','H18'];
+  csvRows.push(infoHdrs.concat(holeHdrs).concat(['Gross','Net','To Par']));
+
+  // Par row — blanks for info cols, then par for H1-H18, then blanks for totals
+  var allPar = parFront.concat(parBack);
+  csvRows.push(['','PAR','','','',''].concat(allPar).concat(['','','']));
+  csvRows.push([]);
+
+  // ── FRONT 9 SECTION ──
+  var f9teams = teams.filter(function(t){ return (t.nine||'front') === 'front'; });
+  var b9teams = teams.filter(function(t){ return (t.nine||'front') === 'back'; });
+  var a18teams = teams.filter(function(t){ return t.nine === 'all18'; });
+
+  function teamRow(t, idx) {
+    var nine = t.nine || 'front';
+    var scores18 = [];
+    for (var h = 0; h < 18; h++) scores18.push('');
+
+    if (nine === 'front') {
+      (t.holes||[]).forEach(function(s,i){ if(i<9 && s!=null) scores18[i] = s; });
+    } else if (nine === 'back') {
+      (t.holes||[]).forEach(function(s,i){ if(i<9 && s!=null) scores18[i+9] = s; });
+    } else {
+      (t.holes||[]).forEach(function(s,i){ if(i<18 && s!=null) scores18[i] = s; });
+    }
+
+    var topar = (t.gross && t.parTotal) ? (t.gross - t.parTotal) : null;
+    var toparStr = topar === null ? '' : (topar===0?'E':topar>0?'+'+topar:''+topar);
+    return [idx+1, t.name, t.player1||'', t.player2||'', t.hdcp||0, t.flight||'']
+      .concat(scores18)
+      .concat([t.gross||'', (t.net!=null&&t.net!==undefined)?t.net:'', toparStr]);
+  }
+
+  if (f9teams.length) {
+    csvRows.push(['--- FRONT 9 ---']);
+    f9teams.forEach(function(t,i){ csvRows.push(teamRow(t,i+1)); });
+    csvRows.push([]);
+  }
+  if (b9teams.length) {
+    csvRows.push(['--- BACK 9 ---']);
+    b9teams.forEach(function(t,i){ csvRows.push(teamRow(t,i+1)); });
+    csvRows.push([]);
+  }
+  if (a18teams.length) {
+    csvRows.push(['--- ALL 18 ---']);
+    a18teams.forEach(function(t,i){ csvRows.push(teamRow(t,i+1)); });
+    csvRows.push([]);
+  }
+
+  csvRows.push(['Generated by GimmePar on ' + new Date().toLocaleDateString()]);
+
+  // Convert to CSV string
+  var csv = (function() {
+    var NL = String.fromCharCode(10);
+    return csvRows.map(function(row) {
+      if (!Array.isArray(row)) return String(row);
+      return row.map(function(cell) {
+        var s = String(cell==null?'':cell);
+        if (s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf(NL)>=0) s='"'+s.split('"').join('""')+'"';
+        return s;
+      }).join(',');
+    }).join(NL);
+  })();
+
+    // Download
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = leagueName.replace(/\s+/g,'_') + '_Week' + weekNum + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('✓ Week ' + weekNum + ' spreadsheet downloaded');
+}
+
+
+</script>
+</body>
+</html>
