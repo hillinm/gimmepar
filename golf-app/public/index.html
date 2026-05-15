@@ -772,6 +772,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </nav>
       <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
+    <div id="weekChangeBanner" style="display:none;background:#1a4e10;color:#d4f7d4;font-size:13px;letter-spacing:1px;padding:10px 16px;text-align:center;border-bottom:1px solid rgba(74,140,63,.4);font-weight:700;"></div>
     <div id="playerTabScore" class="wrap" style="padding-top:32px;">
       <div id="playerScoreCard"></div>
     </div>
@@ -1756,6 +1757,7 @@ function showViewAsPlayerPicker() {
 }
 
 async function logout() {
+  stopPlayerPolling();
   await api('POST', '/api/auth/logout');
   league = null; currentUser = null; rosterTeams = []; scoreTeams = []; lastCalcData = [];
   showPage('login');
@@ -1814,6 +1816,7 @@ async function loadPlayerView(data) {
   try {
     var freshSettings = await api('GET', '/api/league/settings');
     activeWeekForConfirm = freshSettings.currentWeek || 1;
+    _playerCurrentWeek = activeWeekForConfirm;
     // Update leagueSettings with fresh data
     if (leagueSettings) leagueSettings.currentWeek = activeWeekForConfirm;
     // Update all WK badges on screen
@@ -1892,6 +1895,7 @@ async function loadPlayerView(data) {
     noOpp.textContent = 'Opponent not found in schedule.';
     container.appendChild(noOpp);
   }
+  startWeekPolling(data);
 
   // Sign Scorecard button — always shown regardless of schedule
   var signArea = document.createElement('div');
@@ -2096,11 +2100,45 @@ function buildReadOnlyCard(team, st) {
 }
 
 var _oppPollTimer = null;
+var _weekPollTimer = null;
+var _playerCurrentWeek = null;
+var _playerViewData = null;
 
 function startOpponentPolling(oppTeamId, weekNum) {
   if (_oppPollTimer) clearInterval(_oppPollTimer);
   fetchOpponentScore(oppTeamId, weekNum);
   _oppPollTimer = setInterval(function() { fetchOpponentScore(oppTeamId, weekNum); }, 30000);
+}
+
+function startWeekPolling(playerData) {
+  // Store player data so we can reload if week changes
+  _playerViewData = playerData;
+  if (_weekPollTimer) clearInterval(_weekPollTimer);
+  _weekPollTimer = setInterval(async function() {
+    try {
+      var s = await api('GET', '/api/league/settings');
+      var newWeek = s && s.currentWeek ? s.currentWeek : null;
+      if (newWeek && _playerCurrentWeek && newWeek !== _playerCurrentWeek) {
+        // Week changed — show banner then reload scorecard
+        var banner = document.getElementById('weekChangeBanner');
+        if (banner) {
+          banner.textContent = '📅 Week updated to Week ' + newWeek + ' — reloading...';
+          banner.style.display = 'block';
+        }
+        setTimeout(function() {
+          if (_weekPollTimer) clearInterval(_weekPollTimer);
+          if (_oppPollTimer) clearInterval(_oppPollTimer);
+          _playerCurrentWeek = null;
+          loadPlayerView(_playerViewData);
+        }, 1500);
+      }
+    } catch(e) {}
+  }, 30000);
+}
+
+function stopPlayerPolling() {
+  if (_oppPollTimer) { clearInterval(_oppPollTimer); _oppPollTimer = null; }
+  if (_weekPollTimer) { clearInterval(_weekPollTimer); _weekPollTimer = null; }
 }
 
 async function fetchOpponentScore(oppTeamId, weekNum) {
@@ -5535,11 +5573,36 @@ async function pollLiveScores() {
   var results = await Promise.all(fetches);
 
   results.forEach(function(r) {
-    if (!r.data || !r.data.found) return;
     var teamId = r.teamId;
-    var holes = r.data.hole_scores || [];
-    var nine = r.data.nine || 'front';
-    var hdcp = r.data.handicap_used;
+    var holes = null;
+    var nine = null;
+    var hdcp = null;
+
+    // Primary: server response
+    if (r.data && r.data.found) {
+      holes = r.data.hole_scores || [];
+      nine = r.data.nine || 'front';
+      hdcp = r.data.handicap_used;
+    }
+
+    // Fallback: localStorage draft (covers future weeks & admin-entered scores)
+    if (!holes || !holes.some(function(h){ return h !== null && h !== undefined; })) {
+      try {
+        var leagueId = league && league.id ? league.id : 'default';
+        var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
+        var raw = localStorage.getItem(draftKey);
+        if (raw) {
+          var draft = JSON.parse(raw);
+          if (draft.holes && draft.holes.some(function(h){ return h !== null; })) {
+            holes = draft.holes;
+            nine = draft.nine || nine || 'front';
+            hdcp = draft.hdcp != null ? draft.hdcp : hdcp;
+          }
+        }
+      } catch(e) {}
+    }
+
+    if (!holes) return;
     var prevHoles = _livePrev[teamId] || [];
 
     var st = scoreTeams.find(function(s){ return s.id === teamId; });
