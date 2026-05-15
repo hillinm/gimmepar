@@ -5668,68 +5668,65 @@ async function loadSubTracker() {
 async function downloadWeekXLSX() {
   var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
   // Gather data — prefer lastCalcData if available, else read from DOM
-  var rows = [];
   var teams = (lastCalcData && lastCalcData.length) ? lastCalcData : rosterTeams.map(function(t) {
     var st = scoreTeams.find(function(s){return s.id===t.id;});
     var nine = st ? st.nine : (t.nine||'front');
-    var {par, count} = getHoleConfig(nine);
-    var holes = Array.from({length:count},function(_,i){
+    var cfg = getHoleConfig(nine);
+    var holes = Array.from({length:cfg.count},function(_,i){
       var v = parseInt((document.getElementById('shole_'+t.id+'_'+i)||{}).value);
       return isNaN(v)?null:v;
     });
     var gross = holes.reduce(function(a,b){return b!=null?a+b:a;},0);
     var hdcp = parseInt((document.getElementById('shdcp_'+t.id)||{}).value)||0;
-    return {id:t.id, name:(t.player1||'')+(t.player2?' / '+t.player2:''), player1:t.player1||'', player2:t.player2||'', holes:holes, gross:gross, hdcp:hdcp, net:gross-hdcp, nine:nine, parTotal:par.reduce(function(a,b){return a+b;},0)};
+    return {id:t.id, name:(t.player1||'')+(t.player2?' / '+t.player2:''), player1:t.player1||'', player2:t.player2||'', holes:holes, gross:gross, hdcp:hdcp, net:gross-hdcp, nine:nine, parTotal:cfg.par.reduce(function(a,b){return a+b;},0)};
   });
 
-  // Build CSV
+  // Build CSV — always 18 hole columns, scores placed in correct position
   var parFront = getParFront();
   var parBack = getParBack();
-  var holeHeaders = [];
-  var parRow = ['PAR','','','','','',''];
-  teams.forEach(function(t){
-    var nine = t.nine||'front';
-    if (nine==='front') for(var i=1;i<=9;i++){holeHeaders.push('H'+i);}
-    else if (nine==='back') for(var i=10;i<=18;i++){holeHeaders.push('H'+i);}
-    else for(var i=1;i<=18;i++){holeHeaders.push('H'+i);}
-    return; // build once
-  });
-  // Use first team's nine for hole headers
-  var firstTeam = teams[0];
-  var headerHoles = [];
-  if (firstTeam) {
-    var {holeNums} = getHoleConfig(firstTeam.nine||'front');
-    headerHoles = holeNums;
-    parRow = ['PAR','','','','','',''].concat(holeNums.map(function(h){
-      return h<=9 ? parFront[h-1] : parBack[h-10];
-    })).concat(['','','']);
-  }
+  var allPar = parFront.concat(parBack); // par for holes 1-18
 
   var csvRows = [];
   var leagueName = (league && league.name) || 'GimmePar';
   csvRows.push([leagueName + ' — Week ' + weekNum + ' Results']);
   csvRows.push([]);
-  var hdrs = ['#','Team','Player 1','Player 2','Nine','Hdcp','Flight'].concat(headerHoles.map(function(h){return 'H'+h;})).concat(['Gross','Net','To Par']);
-  csvRows.push(hdrs);
-  csvRows.push(parRow.length > 1 ? parRow : []);
 
-  teams.forEach(function(t, i) {
-    var topar = t.gross && t.parTotal ? (t.gross - t.parTotal) : null;
+  // Headers: fixed info columns + H1-H18 + totals
+  var hdrs = ['#','Team','Player 1','Player 2','Nine','Hdcp','Flight',
+    'H1','H2','H3','H4','H5','H6','H7','H8','H9',
+    'H10','H11','H12','H13','H14','H15','H16','H17','H18',
+    'Gross','Net','To Par'];
+  csvRows.push(hdrs);
+
+  // Par row
+  var parRow = ['','','','','','',''].concat(allPar).concat(['','','']);
+  csvRows.push(parRow);
+
+  teams.forEach(function(t, idx) {
+    var nine = t.nine || 'front';
+    var scores18 = new Array(18).fill(''); // 18 blank slots
+
+    // Place this team's hole scores into the right columns
+    if (nine === 'front') {
+      // holes array[0..8] → columns H1-H9 (indices 0-8)
+      (t.holes||[]).forEach(function(s,i){ if(s!=null && i<9) scores18[i]=s; });
+    } else if (nine === 'back') {
+      // holes array[0..8] → columns H10-H18 (indices 9-17)
+      (t.holes||[]).forEach(function(s,i){ if(s!=null && i<9) scores18[i+9]=s; });
+    } else {
+      // all18: holes array[0..17] → columns H1-H18
+      (t.holes||[]).forEach(function(s,i){ if(s!=null && i<18) scores18[i]=s; });
+    }
+
+    var topar = (t.gross && t.parTotal) ? (t.gross - t.parTotal) : null;
     var toparStr = topar === null ? '' : (topar===0?'E':topar>0?'+'+topar:''+topar);
-    var row = [
-      i+1,
-      t.name,
-      t.player1||'',
-      t.player2||'',
-      (t.nine||'front').replace('front','F9').replace('back','B9').replace('all18','18'),
-      t.hdcp||0,
-      t.flight||''
-    ].concat((t.holes||[]).map(function(h){return h!=null?h:'';}))
-     .concat([t.gross||'', (t.net!=null?t.net:''), toparStr]);
+    var nineLabel = nine.replace('front','F9').replace('back','B9').replace('all18','18');
+    var row = [idx+1, t.name, t.player1||'', t.player2||'', nineLabel, t.hdcp||0, t.flight||'']
+      .concat(scores18)
+      .concat([t.gross||'', (t.net!=null&&t.net!==undefined)?t.net:'', toparStr]);
     csvRows.push(row);
   });
 
-  // Skins section if available
   csvRows.push([]);
   csvRows.push(['Generated by GimmePar on ' + new Date().toLocaleDateString()]);
 
