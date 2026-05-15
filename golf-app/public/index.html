@@ -3150,18 +3150,26 @@ async function buildScoringCards() {
   } catch(e) { signedThisWeek = {}; }
 
   // Load this week's schedule to get each team's assigned nine
-  var scheduleNineMap = {}; // teamId -> 'front'|'back'|'all18'
+  var scheduleNineMap = {}; // teamId -> 'front'|'back'
   try {
     var weekNumForSched = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
-    var weekSched = await api('GET', '/api/league/schedule/week/' + weekNumForSched);
-    if (weekSched && weekSched.matchups) {
-      weekSched.matchups.forEach(function(m) {
+    // Try local savedSchedule first (already in memory, no API call needed)
+    var localWeek = (typeof savedSchedule !== 'undefined') && savedSchedule.find(function(w){ return w.week === weekNumForSched; });
+    var matchupsToUse = (localWeek && localWeek.matchups) ? localWeek.matchups : null;
+    // Fall back to API if not in local cache
+    if (!matchupsToUse) {
+      try {
+        var weekSched = await api('GET', '/api/league/schedule/week/' + weekNumForSched);
+        if (weekSched && weekSched.matchups) matchupsToUse = weekSched.matchups;
+      } catch(e2) {}
+    }
+    if (matchupsToUse) {
+      matchupsToUse.forEach(function(m) {
         var nine = m.nine || (m.hole >= 10 ? 'back' : 'front');
-        if (m.teamA && m.teamA.id) scheduleNineMap[m.teamA.id] = nine;
-        if (m.teamB && m.teamB.id) scheduleNineMap[m.teamB.id] = nine;
-        // Also handle flat teamAId/teamBId format
-        if (m.teamAId) scheduleNineMap[m.teamAId] = nine;
-        if (m.teamBId) scheduleNineMap[m.teamBId] = nine;
+        var aId = (m.teamA && m.teamA.id) ? m.teamA.id : m.teamAId;
+        var bId = (m.teamB && m.teamB.id) ? m.teamB.id : m.teamBId;
+        if (aId) scheduleNineMap[aId] = nine;
+        if (bId) scheduleNineMap[bId] = nine;
       });
     }
   } catch(e) {}
@@ -3692,8 +3700,6 @@ function updateScoringWeek(val) {
   document.querySelectorAll('.wk-badge-num').forEach(function(el) {
     el.textContent = weekNum;
   });
-  // Rebuild scorecards so F9/B9 reflects the new week's schedule
-  buildScoringCards();
 }
 
 async function deleteRoundWeek() {
@@ -5605,30 +5611,19 @@ async function pollLiveScores() {
       hdcp = r.data.handicap_used;
     }
 
-    // Fallback: localStorage draft — try exact week first, then any recent draft for this team
+    // Fallback: localStorage draft for this week
     if (!holes || !holes.some(function(h){ return h !== null && h !== undefined; })) {
       try {
         var leagueId = league && league.id ? league.id : 'default';
-        var bestDraft = null;
-        // Scan all localStorage keys for this team's drafts (any week)
-        var prefix = 'gp_draft_' + leagueId + '_' + teamId + '_wk';
-        for (var key in localStorage) {
-          if (key.indexOf(prefix) === 0) {
-            try {
-              var d = JSON.parse(localStorage.getItem(key));
-              if (d && d.holes && d.holes.some(function(h){ return h !== null; })) {
-                // Prefer exact week match, otherwise take most recent
-                if (!bestDraft || d.week === weekNum || (d.ts && (!bestDraft.ts || d.ts > bestDraft.ts))) {
-                  bestDraft = d;
-                }
-              }
-            } catch(e2) {}
+        var draftKey = 'gp_draft_' + leagueId + '_' + teamId + '_wk' + weekNum;
+        var raw = localStorage.getItem(draftKey);
+        if (raw) {
+          var draft = JSON.parse(raw);
+          if (draft && draft.holes && draft.holes.some(function(h){ return h !== null; })) {
+            holes = draft.holes;
+            nine = draft.nine || nine || 'front';
+            hdcp = draft.hdcp != null ? draft.hdcp : hdcp;
           }
-        }
-        if (bestDraft) {
-          holes = bestDraft.holes;
-          nine = bestDraft.nine || nine || 'front';
-          hdcp = bestDraft.hdcp != null ? bestDraft.hdcp : hdcp;
         }
       } catch(e) {}
     }
