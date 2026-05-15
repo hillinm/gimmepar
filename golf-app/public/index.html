@@ -3287,7 +3287,9 @@ function filterScoringCards() {
   rosterTeams.forEach(t => {
     const card = document.getElementById('scard_'+t.id);
     if (!card) return;
-    const nine = t.nine || 'front';
+    // Use schedule-assigned nine from scoreTeams if available, fall back to roster
+    const st = scoreTeams.find(function(s){ return s.id === t.id; });
+    const nine = (st && st.nine) ? st.nine : (t.nine || 'front');
     const nameMatch = !search || (t.player1+' '+t.player2).toLowerCase().includes(search);
     const nineMatch = currentFilter === 'all' || nine === currentFilter ||
                       (currentFilter === 'front' && nine === 'all18') ||
@@ -5671,7 +5673,17 @@ async function pollLiveScores() {
   var lastEl = document.getElementById('liveLastUpdate');
   if (lastEl) {
     var now = new Date();
-    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' · new scores' : '');
+    // Count teams with server data and localStorage data
+    var serverFound = results.filter(function(r){ return r.data && r.data.found; }).length;
+    var lsFound = 0;
+    try {
+      var lid = league && league.id ? league.id : 'default';
+      rosterTeams.forEach(function(t){
+        if (localStorage.getItem('gp_draft_'+lid+'_'+t.id+'_wk'+weekNum)) lsFound++;
+      });
+    } catch(e) {}
+    var debugStr = ' [srv:'+serverFound+' ls:'+lsFound+']';
+    lastEl.textContent = 'Last updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'}) + (anyUpdate ? ' · new scores' : '') + debugStr;
   }
 }
 async function loadSubTracker() {
