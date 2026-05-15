@@ -3113,6 +3113,17 @@ let signedThisWeek = {}; // {teamId: weekNumber}
   }
 })();
 
+
+function normalizeScheduleNine(nine, hole) {
+  var raw = (nine == null ? '' : String(nine)).trim().toLowerCase();
+  if (raw === 'front' || raw === 'f9' || raw === 'front 9' || raw === 'front9' || raw === 'f') return 'front';
+  if (raw === 'back' || raw === 'b9' || raw === 'back 9' || raw === 'back9' || raw === 'b') return 'back';
+  if (raw === 'all18' || raw === 'all 18' || raw === '18' || raw === 'eighteen') return 'all18';
+  var h = parseInt(hole, 10);
+  if (!isNaN(h)) return h >= 10 ? 'back' : 'front';
+  return 'front';
+}
+
 var _buildingScoringCards = false;
 async function buildScoringCards() {
   if (_buildingScoringCards) return;
@@ -3165,7 +3176,7 @@ async function buildScoringCards() {
     }
     if (matchupsToUse) {
       matchupsToUse.forEach(function(m) {
-        var nine = m.nine || (m.hole >= 10 ? 'back' : 'front');
+        var nine = normalizeScheduleNine(m.nine, m.hole);
         var aId = (m.teamA && m.teamA.id) ? m.teamA.id : m.teamAId;
         var bId = (m.teamB && m.teamB.id) ? m.teamB.id : m.teamBId;
         if (aId) scheduleNineMap[aId] = nine;
@@ -3175,9 +3186,10 @@ async function buildScoringCards() {
   } catch(e) {}
 
   rosterTeams.forEach((t, idx) => {
-    // Use schedule nine if available, fall back to roster default
-    const nine = scheduleNineMap[t.id] || t.nine || 'front';
-    const st = { id: t.id, nine, holes: Array(9).fill(null), format: t.format||'2man' };
+    // Use the saved schedule as the source of truth for F9/B9. Roster nine is only a fallback.
+    const scheduledNine = scheduleNineMap[String(t.id)] || scheduleNineMap[t.id];
+    const nine = scheduledNine || normalizeScheduleNine(t.nine, null);
+    const st = { id: t.id, nine, scheduledNine: scheduledNine || null, holes: Array(nine === 'all18' ? 18 : 9).fill(null), format: t.format||'2man' };
     scoreTeams.push(st);
     container.appendChild(buildScoreCard(t, st, idx));
   });
@@ -3190,7 +3202,7 @@ async function buildScoringCards() {
       btn.title = 'Subs used this season: ' + count + (count >= 2 ? ' — Full handicap applies if sub used again' : ' — 1 more sub gets full handicap');
       btn.innerHTML = 'SUB <span style="font-size:10px;opacity:.8;">('+count+')</span>';
     }
-    var currentWeekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
+    var currentWeekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
 
     // Load signed scores into hole inputs
     var signed = signedScoreData[t.id];
@@ -3198,9 +3210,9 @@ async function buildScoringCards() {
       var holeScores = [];
       try { holeScores = JSON.parse(signed.hole_scores || '[]'); } catch(e) {}
       var st = scoreTeams.find(function(s){ return s.id === t.id; });
-      // Switch to correct nine first
-      if (signed.nine && st && st.nine !== signed.nine) {
-        switchNine(t.id, signed.nine);
+      // Keep the scorecard on the scheduled F9/B9. Only use saved signed nine when no schedule exists.
+      if (signed.nine && st && !st.scheduledNine && st.nine !== normalizeScheduleNine(signed.nine, null)) {
+        switchNine(t.id, normalizeScheduleNine(signed.nine, null));
       }
       // Fill in hole scores
       holeScores.forEach(function(score, i) {
@@ -3224,8 +3236,9 @@ async function buildScoringCards() {
         if (draftRaw) {
           var draft = JSON.parse(draftRaw);
           var stDraft = scoreTeams.find(function(s){ return s.id === t.id; });
-          if (draft.nine && stDraft && stDraft.nine !== draft.nine) {
-            switchNine(t.id, draft.nine);
+          // Keep the scorecard on the scheduled F9/B9. Draft nine is only used when there is no saved schedule.
+          if (draft.nine && stDraft && !stDraft.scheduledNine && stDraft.nine !== normalizeScheduleNine(draft.nine, null)) {
+            switchNine(t.id, normalizeScheduleNine(draft.nine, null));
           }
           if (draft.holes && draft.holes.length) {
             draft.holes.forEach(function(score, i) {
@@ -3775,6 +3788,7 @@ function setNine(teamId, nine, btn) {
 }
 
 async function switchNine(teamId, nine) {
+  nine = normalizeScheduleNine(nine, null);
   const st = scoreTeams.find(s=>s.id===teamId);
   const rt = rosterTeams.find(t=>t.id===teamId);
   if (!st) return;
@@ -3809,7 +3823,7 @@ async function switchNine(teamId, nine) {
     gridWrap.querySelectorAll('.hole-inp').forEach(function(inp, i) {
       if (savedScores[i] !== undefined && savedScores[i] !== '') {
         inp.value = savedScores[i];
-        var parVal = parseInt(inp.dataset.par) || 4;
+        var parVal = getHoleConfig(nine).par[i] || 4;
         var val = parseInt(savedScores[i]);
         inp.classList.remove('eagle','birdie','bogey','double');
         if (!isNaN(val)) {
