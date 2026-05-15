@@ -1810,7 +1810,6 @@ async function loadPlayerView(data) {
   var opponent = null;
   var matchupHole = null;
   var curr = null;
-  var currentMatchupNine = normalizeScheduleNine(team.nine || 'front', null);
   // Always fetch fresh settings for current week — don't rely on cached leagueSettings
   var activeWeekForConfirm = 1;
   var myConfStatus = null;
@@ -1845,8 +1844,6 @@ async function loadPlayerView(data) {
     var matchupNine = (myMatchup && myMatchup.nine) ? myMatchup.nine
       : matchupHole ? (matchupHole >= 10 ? 'back' : 'front')
       : (team.nine || 'front');
-    matchupNine = normalizeScheduleNine(matchupNine, matchupHole);
-    currentMatchupNine = matchupNine;
     var nineLabel = matchupNine === 'back' ? 'BACK 9' : matchupNine === 'all18' ? 'ALL 18' : 'FRONT 9';
     container.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;font-weight:700;">WEEK ' + curr.currentWeek
       + ' &nbsp;|&nbsp; ' + nineLabel
@@ -1868,7 +1865,7 @@ async function loadPlayerView(data) {
   });
 
   // Build own editable scorecard
-  scoreTeams = [{ id: team.id, nine: currentMatchupNine, scheduledNine: currentMatchupNine, holes: Array(currentMatchupNine === 'all18' ? 18 : 9).fill(null) }];
+  scoreTeams = [{ id: team.id, nine: team.nine || 'front', holes: Array(9).fill(null) }];
   var myCard = buildScoreCard(team, scoreTeams[0], 0);
   container.appendChild(myCard);
 
@@ -1911,7 +1908,7 @@ async function loadPlayerView(data) {
   try {
     var signedList = await api('GET', '/api/league/scorecard/signed');
     var mySig = signedList.find(function(s) {
-      return String(s.team_id) === String(team.id) && parseInt(s.week_number) === parseInt(activeWeek) && s.signed_by !== 'draft' && s.signed_by !== 'LIVE-DRAFT' && s.signed_by !== 'LIVE-DRAFT';
+      return s.team_id === team.id && s.week_number === activeWeek && s.signed_by !== 'draft';
     });
     if (mySig) alreadySigned = true;
   } catch(e) {}
@@ -3131,6 +3128,40 @@ function normalizeWeekNumber(w) {
   return parseInt((w && (w.week || w.week_number || w.weekNumber)) || w, 10) || 1;
 }
 
+function gpSelectedWeek() {
+  var el = document.getElementById('scoringWeekNum');
+  var fromInput = el ? parseInt(el.value, 10) : NaN;
+  if (!isNaN(fromInput) && fromInput > 0) return fromInput;
+  var fromLocal = parseInt(localStorage.getItem('gimmepar_week'), 10);
+  if (!isNaN(fromLocal) && fromLocal > 0) return fromLocal;
+  var fromSettings = leagueSettings && parseInt(leagueSettings.currentWeek, 10);
+  if (!isNaN(fromSettings) && fromSettings > 0) return fromSettings;
+  return 1;
+}
+
+function rowWeekMatchesSelected(row, weekNum) {
+  if (!row) return false;
+  var raw = row.week_number ?? row.weekNum ?? row.week ?? row.currentWeek ?? row.scoring_week;
+  if (raw === undefined || raw === null || raw === '') return false;
+  var parsed = parseInt(raw, 10);
+  return !isNaN(parsed) && parsed === parseInt(weekNum, 10);
+}
+
+function clearVisibleScoreInputsForLive() {
+  var teams = (scoreTeams && scoreTeams.length ? scoreTeams : rosterTeams);
+  teams.forEach(function(t) {
+    var teamId = t.id;
+    for (var i = 0; i < 18; i++) {
+      var inp = document.getElementById('shole_' + teamId + '_' + i);
+      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
+    }
+    ['sgross_','snet_','sgross2_','stopar_','snet2_'].forEach(function(pre) {
+      var el = document.getElementById(pre + teamId);
+      if (el) el.textContent = (pre === 'snet_' ? '' : '—');
+    });
+  });
+}
+
 function getScheduleTeamId(m, side) {
   if (!m) return null;
   var objKeys = side === 'A' ? ['teamA','team_a','team1','team_1','aTeam'] : ['teamB','team_b','team2','team_2','bTeam'];
@@ -3162,12 +3193,13 @@ async function buildScoringCards() {
   _buildingScoringCards = true;
   setTimeout(function(){ _buildingScoringCards = false; }, 3000);
   loadConfirmSummary();
-  // Set week input from settings or localStorage
+  // Keep the visible scoring week as the source of truth. Do not let server settings
+  // or an old phone/browser cache silently reset the scoring screen back to Week 1.
   var wkEl = document.getElementById('scoringWeekNum');
   if (wkEl) {
-    var savedWeek = localStorage.getItem('gimmepar_week');
-    var settingsWeek = leagueSettings && leagueSettings.currentWeek;
-    wkEl.value = settingsWeek || savedWeek || 1;
+    var selectedWeek = gpSelectedWeek();
+    wkEl.value = selectedWeek;
+    localStorage.setItem('gimmepar_week', selectedWeek);
   }
   const container = document.getElementById('scoringTeams');
   if (!container) return;
@@ -3188,7 +3220,9 @@ async function buildScoringCards() {
     var currentWeekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     signedRows.forEach(function(r) {
       signedThisWeek[r.team_id] = r.week_number;
-      if (parseInt(r.week_number) === currentWeekNum) signedScoreData[r.team_id] = r;
+      // Only load scorecards that explicitly prove they belong to the selected week.
+      // This prevents Week 1/latest rows from pre-populating Week 4.
+      if (rowWeekMatchesSelected(r, currentWeekNum)) signedScoreData[r.team_id] = r;
     });
   } catch(e) { signedThisWeek = {}; }
 
@@ -3291,7 +3325,7 @@ async function buildScoringCards() {
     }
 
     // Apply signed badge only for current week
-    if (signedThisWeek[t.id] && parseInt(signedThisWeek[t.id]) === parseInt(currentWeekNum)) {
+    if (signedThisWeek[t.id] && signedThisWeek[t.id] === currentWeekNum) {
       var nameEl = document.getElementById('sname_' + t.id);
       if (nameEl && !nameEl.querySelector('.signed-badge')) {
         var badge = document.createElement('span');
@@ -3524,7 +3558,7 @@ async function loadConfirmSummary() {
   if (!textEl) return;
   try {
     var settings = leagueSettings || await api('GET', '/api/league/settings');
-    var weekNum = settings.currentWeek || 1;
+    var weekNum = gpSelectedWeek();
     var rows = await api('GET', '/api/league/confirm-playing/' + weekNum);
     var playing    = rows.filter(function(r){ return r.playing; });
     var notPlaying = rows.filter(function(r){ return !r.playing; });
@@ -3694,7 +3728,7 @@ async function clearAndRegenerateWeek() {
 }
 
 async function clearCurrentWeekScores() {
-  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+  var weekNum = _liveSessionWeek || gpSelectedWeek();
   if (!confirm('Clear all entered scores for week ' + weekNum + '? Saved round history is NOT affected.')) return;
 
   // Clear all hole inputs on screen
@@ -3951,22 +3985,6 @@ function recalcCard(teamId) {
       net: filled === count ? net : 0,
       week_number: weekNum
     }).catch(function(){});
-
-    // Also save a week-stamped LIVE-DRAFT through the signed-scorecard route.
-    // This gives the admin live board a reliable source that includes week_number,
-    // even if /scores/latest ignores the ?week= parameter.
-    if (filled > 0) {
-      api('POST', '/api/league/scorecard/sign', {
-        team_id: teamId,
-        week_number: weekNum,
-        hole_scores: holes,
-        gross: gross,
-        net: filled === count ? net : 0,
-        handicap_used: hdcp,
-        nine: nine,
-        signed_by: 'LIVE-DRAFT'
-      }).catch(function(){});
-    }
   }, 1500);
 }
 
@@ -5661,115 +5679,83 @@ init();
 var _liveTimer = null;
 var _liveActive = false;
 var _livePrev = {}; // last polled hole values per team
-
-function getActiveScoringWeek() {
-  var elWeek = parseInt((document.getElementById('scoringWeekNum')||{}).value);
-  var settingsWeek = parseInt(leagueSettings && leagueSettings.currentWeek);
-  return elWeek || settingsWeek || 1;
-}
-
-function clearVisibleLiveScoreInputs() {
-  (scoreTeams || []).forEach(function(st) {
-    var count = st.nine === 'all18' ? 18 : 9;
-    for (var i = 0; i < count; i++) {
-      var inp = document.getElementById('shole_' + st.id + '_' + i);
-      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
-    }
-    ['sgross_','snet_','sgross2_','stopar_','snet2_'].forEach(function(pre) {
-      var el = document.getElementById(pre + st.id);
-      if (el) el.textContent = pre === 'snet_' ? '' : '—';
-    });
-  });
-}
+var _liveSessionWeek = null;
 
 function toggleLiveScoring() {
   _liveActive = !_liveActive;
   var btn = document.getElementById('btnLive');
   var banner = document.getElementById('liveBanner');
   if (_liveActive) {
+    _liveSessionWeek = gpSelectedWeek();
     btn && btn.classList.add('active');
     banner && banner.classList.add('visible');
     _livePrev = {};
-    clearVisibleLiveScoreInputs();
+    clearVisibleScoreInputsForLive();
     pollLiveScores();
     _liveTimer = setInterval(pollLiveScores, 15000);
-    toast('📡 Live scoring ON');
+    toast('📡 Live scoring ON — Week ' + _liveSessionWeek);
   } else {
     btn && btn.classList.remove('active');
     banner && banner.classList.remove('visible');
     clearInterval(_liveTimer);
     _liveTimer = null;
     _livePrev = {};
+    _liveSessionWeek = null;
     toast('Live scoring OFF');
   }
 }
 
 async function pollLiveScores() {
-  var weekNum = getActiveScoringWeek();
+  var weekNum = _liveSessionWeek || gpSelectedWeek();
   var anyUpdate = false;
   var serverFound = 0;
   var serverSkipped = 0;
   var failedPolls = 0;
 
+  // Only poll teams currently shown on the scoring screen. This avoids dragging in old/latest rows
+  // from teams that are not on this week's scoring cards.
   var teamsToPoll = (scoreTeams && scoreTeams.length ? scoreTeams : rosterTeams)
     .map(function(st){ return rosterTeams.find(function(t){ return String(t.id) === String(st.id); }) || st; })
     .filter(function(t){ return t && t.id; });
 
-  // Preferred source: signed scorecard rows because they carry week_number.
-  // Player autosave now writes LIVE-DRAFT rows here, so the admin board can filter by exact week.
-  var rowsByTeam = {};
-  try {
-    var signedRows = await api('GET', '/api/league/scorecard/signed');
-    (signedRows || []).forEach(function(row) {
-      var rowWeek = parseInt(row.week_number || row.weekNum || row.week || row.currentWeek);
-      var teamId = row.team_id || row.teamId;
-      if (!teamId) return;
-      if (rowWeek === weekNum) {
-        var prev = rowsByTeam[String(teamId)];
-        if (!prev || new Date(row.updated_at || row.signed_at || row.created_at || 0) >= new Date(prev.updated_at || prev.signed_at || prev.created_at || 0)) {
-          rowsByTeam[String(teamId)] = row;
-        }
-      } else if (!isNaN(rowWeek)) {
-        serverSkipped++;
-      }
-    });
-  } catch(e) {
-    failedPolls++;
-  }
-
-  // Fallback to latest endpoint only if it proves the row belongs to this week.
-  var missing = teamsToPoll.filter(function(t){ return !rowsByTeam[String(t.id)]; });
-  var latestResults = await Promise.all(missing.map(function(t) {
-    return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum + '&_=' + Date.now())
+  var fetches = teamsToPoll.map(function(t) {
+    return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
       .then(function(data) { return { teamId: t.id, data: data }; })
       .catch(function() { failedPolls++; return { teamId: t.id, data: null }; });
-  }));
-  latestResults.forEach(function(r) {
-    if (!r.data || !r.data.found) return;
-    var rowWeek = parseInt(r.data.week_number || r.data.weekNum || r.data.week || r.data.currentWeek);
-    if (rowWeek === weekNum) rowsByTeam[String(r.teamId)] = r.data;
-    else if (!isNaN(rowWeek)) serverSkipped++;
   });
 
-  teamsToPoll.forEach(function(t) {
-    var teamId = t.id;
-    var data = rowsByTeam[String(teamId)];
-    if (!data) return;
+  var results = await Promise.all(fetches);
 
-    var holes = data.hole_scores || data.scores || [];
-    if (typeof holes === 'string') { try { holes = JSON.parse(holes); } catch(e) { holes = []; } }
-    if (!holes || !holes.some(function(h){ return h !== null && h !== undefined && h !== ''; })) return;
+  results.forEach(function(r) {
+    var teamId = r.teamId;
+    var holes = null;
+    var nine = null;
+    var hdcp = null;
 
-    serverFound++;
-    var nine = data.nine || 'front';
-    var hdcp = data.handicap_used || data.handicapUsed;
-    var prevHoles = _livePrev[teamId] || [];
-    var st = scoreTeams.find(function(s){ return String(s.id) === String(teamId); });
-
-    // Schedule remains the source of truth for F9/B9. Never let a stale draft switch nines.
-    if (st && nine && !st.scheduledNine && st.nine !== normalizeScheduleNine(nine, null)) {
-      switchNine(teamId, normalizeScheduleNine(nine, null), true);
+    // Primary: server response. IMPORTANT: the backend may ignore ?week= and return the latest
+    // scorecard from a prior week. Do not apply it unless the row proves it belongs to this week.
+    if (r.data && r.data.found) {
+      if (rowWeekMatchesSelected(r.data, weekNum)) {
+        serverFound++;
+        holes = r.data.hole_scores || r.data.scores || [];
+        if (typeof holes === 'string') { try { holes = JSON.parse(holes); } catch(e) { holes = []; } }
+        nine = r.data.nine || 'front';
+        hdcp = r.data.handicap_used || r.data.handicapUsed;
+      } else {
+        // Skip old/latest score rows, such as Week 3 showing while Week 4 is selected.
+        serverSkipped++;
+      }
     }
+
+    // No admin localStorage fallback in Live mode. Old browser/PWA drafts were the source of Week 1 bleed-through.
+
+
+    if (!holes) return;
+    var prevHoles = _livePrev[teamId] || [];
+
+    var st = scoreTeams.find(function(s){ return String(s.id) === String(teamId); });
+    // Do not let live rows change a scheduled F9/B9. Schedule is the source of truth.
+    if (st && nine && !st.scheduledNine && st.nine !== normalizeScheduleNine(nine, null)) switchNine(teamId, normalizeScheduleNine(nine, null), true);
 
     var changed = false;
     holes.forEach(function(score, i) {
@@ -5791,6 +5777,7 @@ async function pollLiveScores() {
     }
 
     _livePrev[teamId] = holes.slice();
+
     if (changed) {
       anyUpdate = true;
       var card = document.getElementById('scard_' + teamId);
