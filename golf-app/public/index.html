@@ -29,6 +29,19 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 
 
+
+/* ── LIVE SCORING ── */
+.btn-live { background:transparent; border:1px solid var(--border); color:var(--muted); font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:1.5px; padding:6px 14px; border-radius:7px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:6px; }
+.btn-live.active { background:rgba(74,140,63,.2); border-color:var(--green); color:var(--green2); }
+.btn-live .live-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+.btn-live.active .live-dot { background:var(--green2); box-shadow:0 0 6px var(--green2); animation:pulse-dot 1.2s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+.live-banner { display:none; background:rgba(74,140,63,.12); border:1px solid rgba(74,140,63,.35); border-radius:8px; padding:8px 14px; margin-bottom:12px; font-size:12px; color:var(--green2); letter-spacing:1px; align-items:center; gap:10px; }
+.live-banner.visible { display:flex; }
+.live-team-pulse { box-shadow:0 0 0 2px rgba(74,140,63,.5) !important; transition:box-shadow .3s; }
+.live-score-updated { animation:flash-green .6s ease; }
+@keyframes flash-green { 0%{background:rgba(74,140,63,.4);} 100%{background:transparent;} }
+
 /* ── SUB TOGGLE ── */
 .btn-sub {
   background: transparent;
@@ -897,6 +910,9 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button class="filter-btn" onclick="collapseAll()">▲ Collapse All</button>
+      <button id="btnLive" class="btn-live" onclick="toggleLiveScoring()" title="Poll live scores from players every 15 seconds">
+        <span class="live-dot"></span> LIVE
+      </button>
       <button class="filter-btn" onclick="expandAll()">▼ Expand All</button>
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="hardDeduplicateTeams()">🧹 Remove Duplicates</button>
       <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearCurrentWeekScores()">🗑 Clear Scores</button>
@@ -905,6 +921,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
         <input class="week-inp" type="number" id="scoringWeekNum" min="1" max="99" style="width:55px;text-align:center;" value="1" onchange="updateScoringWeek(this.value);localStorage.setItem('gimmepar_week',this.value);" oninput="localStorage.setItem('gimmepar_week',this.value);">
         <button class="filter-btn" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="deleteRoundWeek()">🗑 Delete Week</button>
       </div>
+    </div>
+    <div id="liveBanner" class="live-banner">
+      <span class="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green2);box-shadow:0 0 6px var(--green2);animation:pulse-dot 1.2s ease-in-out infinite;flex-shrink:0;"></span>
+      <span>LIVE SCORING ACTIVE — updating every 15 seconds</span>
+      <span id="liveLastUpdate" style="margin-left:auto;color:var(--muted);"></span>
     </div>
     <div id="scoringTeams"></div>
     <button class="btn-calculate" onclick="calculate()">⛳ CALCULATE RESULTS</button>
@@ -1430,6 +1451,21 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       </div>
       <div class="section-body" id="signedScorecardsContent">
         <div class="empty-state">No signed scorecards yet — players sign from their scorecard view.</div>
+      </div>
+    </div>
+
+    <!-- Sub Tracker -->
+    <div class="section-card">
+      <div class="section-header">
+        <span style="font-size:24px;">👥</span>
+        <div style="flex:1;">
+          <div class="section-title">Sub Tracker</div>
+          <div class="section-sub">All substitutes and how many times each has played</div>
+        </div>
+        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadSubTracker()">↻ Refresh</button>
+      </div>
+      <div class="section-body">
+        <div id="subTrackerList"><div class="empty-state" style="color:var(--muted);font-size:13px;">Click Refresh to load.</div></div>
       </div>
     </div>
 
@@ -3787,6 +3823,112 @@ function recalcCard(teamId) {
   }, 1500);
 }
 
+
+// ══ LIVE SCORING ══
+var _liveTimer = null;
+var _liveActive = false;
+var _liveLastScores = {}; // teamId -> {holes, gross}
+
+function toggleLiveScoring() {
+  _liveActive = !_liveActive;
+  var btn = document.getElementById('btnLive');
+  var banner = document.getElementById('liveBanner');
+  if (_liveActive) {
+    btn && btn.classList.add('active');
+    banner && banner.classList.add('visible');
+    pollLiveScores();
+    _liveTimer = setInterval(pollLiveScores, 15000);
+    toast('📡 Live scoring ON');
+  } else {
+    btn && btn.classList.remove('active');
+    banner && banner.classList.remove('visible');
+    clearInterval(_liveTimer);
+    _liveTimer = null;
+    toast('Live scoring OFF');
+  }
+}
+
+async function pollLiveScores() {
+  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+  var anyUpdate = false;
+
+  var fetches = rosterTeams.map(function(t) {
+    return api('GET', '/api/league/scores/latest/' + t.id + '?week=' + weekNum)
+      .then(function(data) { return { teamId: t.id, data: data }; })
+      .catch(function() { return { teamId: t.id, data: null }; });
+  });
+
+  var results = await Promise.all(fetches);
+
+  results.forEach(function(r) {
+    if (!r.data || !r.data.found) return;
+    var teamId = r.teamId;
+    var incoming = r.data;
+    var holes = incoming.hole_scores || [];
+    var gross = incoming.gross || 0;
+    var nine = incoming.nine || 'front';
+    var hdcp = incoming.handicap_used;
+
+    // Switch nine if needed
+    var st = scoreTeams.find(function(s){ return s.id === teamId; });
+    if (st && nine && st.nine !== nine) {
+      switchNine(teamId, nine);
+    }
+
+    // Compare with last known — only update changed holes
+    var prev = _liveLastScores[teamId] || {};
+    var prevHoles = prev.holes || [];
+    var changed = false;
+
+    holes.forEach(function(score, i) {
+      if (score === null || score === undefined) return;
+      if (prevHoles[i] === score) return; // no change
+      var inp = document.getElementById('shole_' + teamId + '_' + i);
+      if (!inp) return;
+      inp.value = score;
+      inp.dispatchEvent(new Event('input'));
+      inp.classList.add('live-score-updated');
+      setTimeout(function(){ inp.classList.remove('live-score-updated'); }, 700);
+      changed = true;
+    });
+
+    // Update handicap if provided and field is empty
+    if (hdcp != null) {
+      var hdcpEl = document.getElementById('shdcp_' + teamId);
+      if (hdcpEl && !hdcpEl.value) hdcpEl.value = hdcp;
+    }
+
+    if (changed) {
+      anyUpdate = true;
+      // Pulse the card border briefly
+      var card = document.getElementById('scard_' + teamId);
+      if (card) {
+        card.classList.add('live-team-pulse');
+        setTimeout(function(){ card.classList.remove('live-team-pulse'); }, 1500);
+      }
+      // Auto-expand the card so admin can see it
+      var body = document.getElementById('sbody_' + teamId);
+      if (body && body.style.display === 'none') {
+        toggleCard(teamId);
+      }
+    }
+
+    _liveLastScores[teamId] = { holes: holes.slice(), gross: gross };
+  });
+
+  // Update last-updated timestamp
+  var lastEl = document.getElementById('liveLastUpdate');
+  if (lastEl) {
+    var now = new Date();
+    var t = now.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', second:'2-digit' });
+    lastEl.textContent = 'Last updated ' + t + (anyUpdate ? ' · scores updated' : '');
+  }
+}
+
+// Stop live polling when navigating away from scoring tab
+var _origShowTab = typeof showTab === 'function' ? showTab : null;
+
+
 // ══ CALCULATE ══
 function calculate() {
   const parFront = getParFront(), parBack = getParBack();
@@ -4223,9 +4365,10 @@ function showTab(tab) {
     document.getElementById('tab-'+t)?.classList.toggle('active', t===tab);
     document.getElementById('bnav-'+t)?.classList.toggle('active', t===tab);
   });
-  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); }
+  if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); loadSubTracker(); }
   if (tab==='schedule') initSchedule();
   if (tab==='scoring') { loadConfirmSummary(); loadWeeklyConfirmations(); }
+  if (tab!=='scoring' && _liveActive) { toggleLiveScoring(); }
   if (tab==='standings') loadStandings();
   if (tab==='course') { loadSI(); if (league && league.course) loadCourseData(league.course); }
   if (tab==='playoffs') loadPlayoffs();
@@ -5413,6 +5556,7 @@ async function logSubstitute() {
   try {
     await api('POST', '/api/league/rounds/'+roundId+'/sub', { team_id: teamId, sub_name: subName, replaced_name: replaced });
     result.innerHTML = '<span style="color:var(--green2)">✓ Sub record saved — '+esc(subName)+' logged for this round.</span>';
+    loadSubTracker();
     document.getElementById('subName').value = '';
     document.getElementById('subReplacedName').value = '';
   } catch(e) {
@@ -5420,43 +5564,139 @@ async function logSubstitute() {
   }
 }
 
-// ══ UTILS ══
-async function api(method, url, body) {
-  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
-  if (body) opts.body = JSON.stringify(body);
-  let res;
-  try { res = await fetch(url, opts); }
-  catch(e) { throw new Error('Network error: ' + e.message); }
-  const raw = await res.text();
-  if (!raw || raw.trim() === '') throw new Error('Server returned empty response (status ' + res.status + ')');
-  let data;
-  try { data = JSON.parse(raw); }
-  catch(e) { throw new Error('Server error (status ' + res.status + '): ' + raw.substring(0, 150)); }
-  if (!res.ok) throw new Error(data.error || 'Request failed (status ' + res.status + ')');
-  return data;
-}
+// ══ SUB TRACKER ══
+async function loadSubTracker() {
+  var el = document.getElementById('subTrackerList');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
 
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+  // Use league sub threshold setting (default 2)
+  var subThreshold = (leagueSettings && leagueSettings.subThreshold) || 2;
 
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 2500);
-}
+  try {
+    // Source 1: dedicated subs endpoint (from Log Substitute form)
+    var loggedSubs = [];
+    try {
+      var res = await api('GET', '/api/league/subs');
+      if (res && Array.isArray(res)) loggedSubs = res;
+    } catch(e) {}
 
-// Catch any uncaught JS errors and show them on screen
-window.onerror = function(msg, src, line) {
-  var el = document.getElementById('loginError');
-  if (el) { el.textContent = 'JS Error: ' + msg + ' (line ' + line + ')'; el.style.display = 'block'; }
-  return false;
-};
-window.onunhandledrejection = function(e) {
-  var el = document.getElementById('loginError');
-  if (el) { el.textContent = 'Error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)); el.style.display = 'block'; }
-};
-init();
-</script>
-</body>
-</html>
+    // Source 2: round details — fetch all rounds and scan for is_sub scores
+    var rounds = [];
+    try { rounds = await api('GET', '/api/league/rounds'); } catch(e) {}
+
+    var roundDetails = await Promise.all(rounds.map(function(r, idx) {
+      return api('GET', '/api/league/rounds/' + r.id)
+        .then(function(d) { return { week: idx + 1, roundId: r.id, data: d }; })
+        .catch(function() { return { week: idx + 1, roundId: r.id, data: null }; });
+    }));
+
+    // Build unified sub map — key: "subname_lower|week" to deduplicate across sources
+    var subMap = {};    // key: subName lower → { name, rounds: [] }
+    var seenKeys = {};  // key: "subnamelower|week" → true  (dedup)
+
+    function addSub(subName, week, teamId, replacedName, gross, nine) {
+      var name = (subName || '').trim();
+      if (!name || name === '') return;
+      var nameKey = name.toLowerCase();
+      var dedupKey = nameKey + '|' + week;
+
+      // Skip duplicate (same sub, same week from two sources)
+      if (seenKeys[dedupKey]) return;
+      seenKeys[dedupKey] = true;
+
+      if (!subMap[nameKey]) subMap[nameKey] = { name: name, rounds: [] };
+      var team = rosterTeams.find(function(t) { return t.id == teamId; });
+      var teamName = team ? ((team.player1 || '') + (team.player2 ? ' / ' + team.player2 : '')) : ('Team #' + teamId);
+      subMap[nameKey].rounds.push({
+        week: week,
+        teamName: teamName,
+        replaced: replacedName || '',
+        gross: (gross != null && gross > 0) ? gross : null,
+        nine: nine || ''
+      });
+    }
+
+    // Add from logged subs (form entries) — these have week_number
+    loggedSubs.forEach(function(s) {
+      addSub(s.sub_name, s.week_number || '?', s.team_id, s.replaced_name, null, null);
+    });
+
+    // Add from round detail scores
+    roundDetails.forEach(function(rd) {
+      if (!rd.data) return;
+      var scores = rd.data.scores || rd.data || [];
+      if (!Array.isArray(scores)) return;
+      scores.forEach(function(s) {
+        if (!s.is_sub || !s.sub_name) return;
+        var holeScores = [];
+        try { holeScores = JSON.parse(s.hole_scores || '[]'); } catch(e) {}
+        var gross = holeScores.filter(function(h){ return h != null; }).reduce(function(a,b){ return a+b; }, 0);
+        if (!gross) gross = s.gross || null;
+        addSub(s.sub_name, rd.week, s.team_id, s.replaced_name, gross, s.nine);
+      });
+    });
+
+    var subPlayers = Object.values(subMap).sort(function(a, b) {
+      return b.rounds.length - a.rounds.length;
+    });
+
+    if (!subPlayers.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">No sub records found yet. Log subs below or mark SUB during scoring.</div>';
+      return;
+    }
+
+    var html = '<div style="margin-bottom:6px;font-size:11px;color:var(--muted);letter-spacing:1px;">Rounds played as substitute — ' + subThreshold + '+ rounds qualifies for handicap</div>';
+
+    subPlayers.forEach(function(sp) {
+      var totalRounds = sp.rounds.length;
+      var grossScores = sp.rounds.filter(function(r){ return r.gross > 0; }).map(function(r){ return r.gross; });
+      var avgGross = grossScores.length ? Math.round(grossScores.reduce(function(a,b){ return a+b;},0) / grossScores.length * 10) / 10 : null;
+
+      var hdcpReady = totalRounds >= subThreshold;
+      var hdcpNote = hdcpReady
+        ? '<span style="color:var(--green2);font-size:11px;margin-left:8px;">✓ Qualifies for handicap (' + totalRounds + '/' + subThreshold + ')</span>'
+        : '<span style="color:var(--muted);font-size:11px;margin-left:8px;">' + (subThreshold - totalRounds) + ' more round' + (subThreshold - totalRounds !== 1 ? 's' : '') + ' needed for hdcp</span>';
+
+      html += '<div style="background:var(--surface2);border:1px solid ' + (hdcpReady ? 'rgba(74,140,63,.5)' : 'var(--border)') + ';border-radius:10px;padding:14px 16px;margin-bottom:10px;">';
+
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
+      html += '<div><span style="font-size:16px;font-weight:700;">' + esc(sp.name) + '</span>' + hdcpNote + '</div>';
+      html += '<div style="font-size:24px;font-weight:900;color:' + (hdcpReady ? 'var(--green2)' : 'var(--gold)') + ';">' + totalRounds + ' <span style="font-size:12px;color:var(--muted);font-weight:400;">round' + (totalRounds !== 1 ? 's' : '') + '</span></div>';
+      html += '</div>';
+
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+      html += '<thead><tr>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">WK</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">TEAM</th>';
+      html += '<th style="text-align:left;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">REPLACED</th>';
+      html += '<th style="text-align:center;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">NINE</th>';
+      html += '<th style="text-align:center;padding:4px 8px;color:var(--muted);font-weight:400;border-bottom:1px solid var(--border);">GROSS</th>';
+      html += '</tr></thead><tbody>';
+
+      sp.rounds.sort(function(a,b){ return (a.week||0) - (b.week||0); }).forEach(function(r) {
+        html += '<tr>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--gold);">Wk ' + r.week + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);">' + esc(r.teamName) + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--muted);">' + esc(r.replaced || '—') + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center;color:var(--muted);">' + (r.nine ? r.nine.replace('front','F9').replace('back','B9').replace('all18','18') : '—') + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:center;font-weight:700;">' + (r.gross > 0 ? r.gross : '—') + '</td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      if (grossScores.length) {
+        html += '<tfoot><tr>';
+        html += '<td colspan="4" style="padding:6px 8px;font-size:11px;color:var(--muted);">Avg Gross</td>';
+        html += '<td style="padding:6px 8px;text-align:center;font-size:13px;font-weight:700;color:var(--gold2);">' + avgGross + '</td>';
+        html += '</tr></tfoot>';
+      }
+      html += '</table></div>';
+    });
+
+    el.innerHTML = html;
+
+  } catch(e) {
+    el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
