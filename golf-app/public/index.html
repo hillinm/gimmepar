@@ -1448,7 +1448,11 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <div class="section-title">Signed Scorecards</div>
           <div class="section-sub">Player-submitted and finalized scores</div>
         </div>
-        <button class="btn-export-sched" style="margin-left:auto;" onclick="loadSignedScorecards()">↻ Refresh</button>
+        <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="btn-export-sched" onclick="massUnsignSignedScorecards('current')" style="border-color:rgba(220,80,80,.6);color:#ff9999;">Mass Unsign Week</button>
+          <button class="btn-outline" onclick="massUnsignSignedScorecards('all')" style="font-size:15px;padding:9px 20px;color:#ff9999;border-color:rgba(220,80,80,.45);">Unsign All</button>
+          <button class="btn-export-sched" onclick="loadSignedScorecards()">↻ Refresh</button>
+        </div>
       </div>
       <div class="section-body" id="signedScorecardsContent">
         <div class="empty-state">No signed scorecards yet — players sign from their scorecard view.</div>
@@ -2011,7 +2015,7 @@ async function loadWeeklyConfirmations() {
       + '<span style="color:var(--green2)">✅ ' + playing.length + ' playing</span>'
       + ' &nbsp;|&nbsp; <span style="color:#ff9999">❌ ' + notPlaying.length + ' not playing</span></div>';
     html += '<table class="team-table" style="width:100%"><thead><tr><th>Player</th><th>Status</th><th>Confirmed</th></tr></thead><tbody>';
-    rows.forEach(function(r) {
+    _signedScorecardRows.forEach(function(r) {
       var name = esc((r.first_name||'') + ' ' + (r.last_name||''));
       var status = r.playing
         ? '<span style="color:var(--green2)">✅ Playing</span>'
@@ -5526,14 +5530,31 @@ function renderBracket(bracket, bi) {
 }
 
 // ══ SIGNED SCORECARDS ══
+var _signedScorecardRows = [];
+function getSelectedScoringWeek() {
+  var wkEl = document.getElementById('scoringWeekNum');
+  return parseInt((wkEl && wkEl.value) || (leagueSettings && leagueSettings.currentWeek) || 1, 10) || 1;
+}
+
 async function loadSignedScorecards() {
   var el = document.getElementById('signedScorecardsContent');
   if (!el) return;
   el.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
     var rows = await api('GET', '/api/league/scorecard/signed');
-    if (!rows.length) { el.innerHTML = '<div class="empty-state">No signed scorecards yet.</div>'; return; }
-    var html = '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th><th>Action</th></tr></thead><tbody>';
+    _signedScorecardRows = Array.isArray(rows) ? rows : [];
+    if (!_signedScorecardRows.length) { el.innerHTML = '<div class="empty-state">No signed scorecards yet.</div>'; return; }
+    var selectedWeek = getSelectedScoringWeek();
+    var weekCount = _signedScorecardRows.filter(function(r) {
+      return (parseInt(r.week_number || r.weekNumber || r.week, 10) || 1) === selectedWeek;
+    }).length;
+    var html = '<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px;">' +
+      '<div style="font-size:12px;color:var(--muted);font-style:italic;">Showing ' + _signedScorecardRows.length + ' signed scorecard(s). Week ' + selectedWeek + ': ' + weekCount + '.</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<button class="btn-outline" style="font-size:12px;padding:7px 12px;color:#ff9999;border-color:rgba(220,80,80,.5);" onclick="massUnsignSignedScorecards(\'current\')">Unsign Week ' + selectedWeek + '</button>' +
+      '<button class="btn-outline" style="font-size:12px;padding:7px 12px;color:#ff9999;border-color:rgba(220,80,80,.5);" onclick="massUnsignSignedScorecards(\'all\')">Unsign All Listed</button>' +
+      '</div></div>';
+    html += '<table class="team-table" style="width:100%"><thead><tr><th>Week</th><th>Team</th><th>Nine</th><th>Gross</th><th>Net</th><th>Hdcp</th><th>Signed</th><th>Action</th></tr></thead><tbody>';
     rows.forEach(function(r) {
       var name = esc(r.player1||'') + (r.player2 ? ' / ' + esc(r.player2) : '');
       var date = new Date(r.signed_at).toLocaleDateString();
@@ -5555,6 +5576,52 @@ async function loadSignedScorecards() {
     el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div style="color:#ff9999;font-size:13px;">Error: ' + e.message + '</div>';
+  }
+}
+
+async function massUnsignSignedScorecards(mode) {
+  var rows = Array.isArray(_signedScorecardRows) ? _signedScorecardRows.slice() : [];
+  if (!rows.length) {
+    try { rows = await api('GET', '/api/league/scorecard/signed'); } catch(e) { toast('Could not load signed scorecards: ' + e.message); return; }
+  }
+  var selectedWeek = getSelectedScoringWeek();
+  var targets = rows.filter(function(r) {
+    var weekNum = parseInt(r.week_number || r.weekNumber || r.week, 10) || 1;
+    if (mode === 'current') return weekNum === selectedWeek;
+    return true;
+  });
+  targets = targets.filter(function(r) { return !!(r.team_id || r.teamId || r.id); });
+  if (!targets.length) {
+    toast(mode === 'current' ? ('No signed scorecards found for Week ' + selectedWeek) : 'No signed scorecards found');
+    return;
+  }
+  var msg = mode === 'current'
+    ? 'Mass unsign ' + targets.length + ' signed scorecard(s) for Week ' + selectedWeek + '? Players will be able to edit and re-submit them.'
+    : 'Unsign ALL ' + targets.length + ' signed scorecard(s) listed? Players will be able to edit and re-submit them.';
+  if (!confirm(msg)) return;
+
+  var ok = 0, fail = 0;
+  for (var i=0; i<targets.length; i++) {
+    var r = targets[i];
+    var teamId = r.team_id || r.teamId || r.id;
+    var weekNum = parseInt(r.week_number || r.weekNumber || r.week, 10) || 1;
+    try {
+      await api('DELETE', '/api/league/scorecard/signed/' + teamId + '/' + weekNum);
+      ok++;
+      if (signedThisWeek && signedThisWeek[teamId] && weekNum === selectedWeek) delete signedThisWeek[teamId];
+      var nameEl = document.getElementById('sname_' + teamId);
+      var badge = nameEl && nameEl.querySelector('.signed-badge');
+      if (badge && weekNum === selectedWeek) badge.remove();
+    } catch(e) {
+      fail++;
+      console.warn('Mass unsign failed', teamId, weekNum, e);
+    }
+  }
+  toast('Mass unsign complete: ' + ok + ' unsigned' + (fail ? ', ' + fail + ' failed' : ''));
+  loadSignedScorecards();
+  if (typeof buildScoringCards === 'function') {
+    _buildingScoringCards = false;
+    buildScoringCards();
   }
 }
 
