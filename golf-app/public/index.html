@@ -4025,8 +4025,23 @@ function saveLiveDraftScore(teamId, weekNum, holes, nine, hdcp, gross, net) {
   });
 }
 
+function liveRowWeek(row) {
+  if (!row) return null;
+  var w = row.week_number != null ? row.week_number : (row.weekNumber != null ? row.weekNumber : (row.week != null ? row.week : (row.round_week != null ? row.round_week : row.roundWeek)));
+  var n = parseInt(w, 10);
+  return isNaN(n) ? null : n;
+}
+
+function liveRowMatchesRequestedWeek(row, requestedWeek, allowMissingWeek) {
+  var rw = liveRowWeek(row);
+  if (rw == null) return !!allowMissingWeek;
+  return parseInt(rw, 10) === parseInt(requestedWeek, 10);
+}
+
 async function getLiveScoreForTeam(teamId, weekNum) {
-  // Try every shape the app has used for live scoring. Empty responses are allowed.
+  // IMPORTANT: never trust a "latest" score unless it proves it belongs to the selected week.
+  // Some server routes ignore ?week= and return last week's row, which made Week 4 show Week 3 scores.
+
   var latestUrls = [
     '/api/league/scores/latest/' + teamId + '?week=' + weekNum,
     '/api/league/scores/latest?team_id=' + teamId + '&week=' + weekNum,
@@ -4035,10 +4050,18 @@ async function getLiveScoreForTeam(teamId, weekNum) {
   for (var u = 0; u < latestUrls.length; u++) {
     try {
       var data = await liveFetch('GET', latestUrls[u]);
-      if (data && data.found) return data;
+      if (data && data.found && liveRowMatchesRequestedWeek(data, weekNum, false)) return data;
+      if (data && data.found && !liveRowMatchesRequestedWeek(data, weekNum, false)) {
+        console.warn('Ignoring live latest for team ' + teamId + ' because it is not Week ' + weekNum, data);
+        continue;
+      }
       if (data && (data.hole_scores || data.scores)) {
+        if (!liveRowMatchesRequestedWeek(data, weekNum, false)) {
+          console.warn('Ignoring latest score for team ' + teamId + ' because it did not include matching week ' + weekNum, data);
+          continue;
+        }
         var hs0 = data.hole_scores || data.scores || [];
-        return { found:true, hole_scores: hs0, nine: data.nine || 'front', handicap_used: data.handicap_used, gross:data.gross, net:data.net, source:'latest' };
+        return { found:true, hole_scores: hs0, nine: data.nine || 'front', handicap_used: data.handicap_used, gross:data.gross, net:data.net, week_number: weekNum, source:'latest' };
       }
     } catch(e1) {
       console.warn('Live latest failed:', latestUrls[u], e1.message);
