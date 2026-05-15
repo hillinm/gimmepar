@@ -3142,10 +3142,10 @@ async function buildScoringCards() {
   try {
     var signedRows = await api('GET', '/api/league/scorecard/signed');
     signedThisWeek = {};
-    var currentWeekNum = (leagueSettings && leagueSettings.currentWeek) || 1;
+    var currentWeekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     signedRows.forEach(function(r) {
       signedThisWeek[r.team_id] = r.week_number;
-      if (r.week_number === currentWeekNum) signedScoreData[r.team_id] = r;
+      if (parseInt(r.week_number) === currentWeekNum) signedScoreData[r.team_id] = r;
     });
   } catch(e) { signedThisWeek = {}; }
 
@@ -3696,12 +3696,28 @@ async function hardDeduplicateTeams() {
   } catch(e) { toast('Error: ' + e.message); }
 }
 
-function updateScoringWeek(val) {
+var _scoreWeekReloadTimer = null;
+async function updateScoringWeek(val) {
   var weekNum = parseInt(val) || 1;
+  localStorage.setItem('gimmepar_week', weekNum);
   if (leagueSettings) leagueSettings.currentWeek = weekNum;
+
   document.querySelectorAll('.wk-badge-num').forEach(function(el) {
     el.textContent = weekNum;
   });
+
+  // Save the active week, then rebuild the cards from that week's schedule.
+  try {
+    if (leagueSettings) {
+      await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekNum }));
+    }
+  } catch(e) { console.warn('Could not save current scoring week', e); }
+
+  clearTimeout(_scoreWeekReloadTimer);
+  _scoreWeekReloadTimer = setTimeout(function() {
+    _buildingScoringCards = false;
+    buildScoringCards();
+  }, 150);
 }
 
 async function deleteRoundWeek() {
@@ -4328,7 +4344,13 @@ function showTab(tab) {
   if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); loadSubTracker(); }
   if (tab!=='scoring' && _liveActive) { toggleLiveScoring(); }
   if (tab==='schedule') initSchedule();
-  if (tab==='scoring') { loadConfirmSummary(); loadWeeklyConfirmations(); }
+  if (tab==='scoring') {
+    loadConfirmSummary();
+    loadWeeklyConfirmations();
+    // Rebuild cards when entering Scoring so the cards follow the saved schedule/week.
+    _buildingScoringCards = false;
+    buildScoringCards();
+  }
   if (tab==='standings') loadStandings();
   if (tab==='course') { loadSI(); if (league && league.course) loadCourseData(league.course); }
   if (tab==='playoffs') loadPlayoffs();
@@ -4447,6 +4469,11 @@ async function saveManualMatchups() {
     result.innerHTML = '<span style="color:var(--green2)">✓ Week '+weekNum+' saved with '+matchups.length+' matchups.</span>';
     document.getElementById('startWeek').value = weekNum + 1;
     toast('Week ' + weekNum + ' matchups saved');
+    var scoringWeekEl = document.getElementById('scoringWeekNum');
+    if (scoringWeekEl && parseInt(scoringWeekEl.value) === weekNum) {
+      _buildingScoringCards = false;
+      buildScoringCards();
+    }
   } catch(e) {
     result.innerHTML = '<span style="color:#ff9999">Error: '+e.message+'</span>';
   }
