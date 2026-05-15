@@ -3149,8 +3149,26 @@ async function buildScoringCards() {
     });
   } catch(e) { signedThisWeek = {}; }
 
+  // Load this week's schedule to get each team's assigned nine
+  var scheduleNineMap = {}; // teamId -> 'front'|'back'|'all18'
+  try {
+    var weekNumForSched = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
+    var weekSched = await api('GET', '/api/league/schedule/week/' + weekNumForSched);
+    if (weekSched && weekSched.matchups) {
+      weekSched.matchups.forEach(function(m) {
+        var nine = m.nine || (m.hole >= 10 ? 'back' : 'front');
+        if (m.teamA && m.teamA.id) scheduleNineMap[m.teamA.id] = nine;
+        if (m.teamB && m.teamB.id) scheduleNineMap[m.teamB.id] = nine;
+        // Also handle flat teamAId/teamBId format
+        if (m.teamAId) scheduleNineMap[m.teamAId] = nine;
+        if (m.teamBId) scheduleNineMap[m.teamBId] = nine;
+      });
+    }
+  } catch(e) {}
+
   rosterTeams.forEach((t, idx) => {
-    const nine = t.nine || 'front';
+    // Use schedule nine if available, fall back to roster default
+    const nine = scheduleNineMap[t.id] || t.nine || 'front';
     const st = { id: t.id, nine, holes: Array(9).fill(null), format: t.format||'2man' };
     scoreTeams.push(st);
     container.appendChild(buildScoreCard(t, st, idx));
@@ -3674,6 +3692,8 @@ function updateScoringWeek(val) {
   document.querySelectorAll('.wk-badge-num').forEach(function(el) {
     el.textContent = weekNum;
   });
+  // Rebuild scorecards so F9/B9 reflects the new week's schedule
+  buildScoringCards();
 }
 
 async function deleteRoundWeek() {
