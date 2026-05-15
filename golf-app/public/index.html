@@ -711,7 +711,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
             <button type="button" onclick="togglePassVis('loginPass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;">👁</button>
           </div>
         </div>
-        <button class="btn-primary" id="loginBtn" onclick="loginBtn.textContent='...'; login()">SIGN IN</button>
+        <button class="btn-primary" id="loginBtn" onclick="var b=document.getElementById('loginBtn'); if(b)b.textContent='...'; window.login()">SIGN IN</button>
         <div class="login-toggle">Don't have a league? <a onclick="showRegister()">Create one</a></div>
       </div>
       <div id="registerForm" style="display:none">
@@ -5968,6 +5968,24 @@ async function downloadWeekXLSX() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('✓ Week ' + weekNum + ' spreadsheet downloaded');
+}
+
+
+// ── Inline handler safety exports ──
+// Some browsers/hosting setups do not expose function declarations reliably to inline onclick handlers
+// after heavy edits. These aliases keep the login/register buttons wired.
+try {
+  window.login = login;
+  window.register = register;
+  window.showLogin = showLogin;
+  window.showRegister = showRegister;
+  window.togglePassVis = togglePassVis;
+  window.logout = logout;
+  window.showTab = showTab;
+  window.toggleLiveScoring = toggleLiveScoring;
+  window.pollLiveScores = pollLiveScores;
+} catch(e) {
+  console.error('GimmePar handler export failed:', e);
 }
 
 
