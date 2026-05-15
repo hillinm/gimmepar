@@ -3128,40 +3128,6 @@ function normalizeWeekNumber(w) {
   return parseInt((w && (w.week || w.week_number || w.weekNumber)) || w, 10) || 1;
 }
 
-function gpSelectedWeek() {
-  var el = document.getElementById('scoringWeekNum');
-  var fromInput = el ? parseInt(el.value, 10) : NaN;
-  if (!isNaN(fromInput) && fromInput > 0) return fromInput;
-  var fromLocal = parseInt(localStorage.getItem('gimmepar_week'), 10);
-  if (!isNaN(fromLocal) && fromLocal > 0) return fromLocal;
-  var fromSettings = leagueSettings && parseInt(leagueSettings.currentWeek, 10);
-  if (!isNaN(fromSettings) && fromSettings > 0) return fromSettings;
-  return 1;
-}
-
-function rowWeekMatchesSelected(row, weekNum) {
-  if (!row) return false;
-  var raw = row.week_number ?? row.weekNum ?? row.week ?? row.currentWeek ?? row.scoring_week;
-  if (raw === undefined || raw === null || raw === '') return false;
-  var parsed = parseInt(raw, 10);
-  return !isNaN(parsed) && parsed === parseInt(weekNum, 10);
-}
-
-function clearVisibleScoreInputsForLive() {
-  var teams = (scoreTeams && scoreTeams.length ? scoreTeams : rosterTeams);
-  teams.forEach(function(t) {
-    var teamId = t.id;
-    for (var i = 0; i < 18; i++) {
-      var inp = document.getElementById('shole_' + teamId + '_' + i);
-      if (inp) { inp.value = ''; inp.classList.remove('eagle','birdie','bogey','double'); }
-    }
-    ['sgross_','snet_','sgross2_','stopar_','snet2_'].forEach(function(pre) {
-      var el = document.getElementById(pre + teamId);
-      if (el) el.textContent = (pre === 'snet_' ? '' : '—');
-    });
-  });
-}
-
 function getScheduleTeamId(m, side) {
   if (!m) return null;
   var objKeys = side === 'A' ? ['teamA','team_a','team1','team_1','aTeam'] : ['teamB','team_b','team2','team_2','bTeam'];
@@ -3193,13 +3159,14 @@ async function buildScoringCards() {
   _buildingScoringCards = true;
   setTimeout(function(){ _buildingScoringCards = false; }, 3000);
   loadConfirmSummary();
-  // Keep the visible scoring week as the source of truth. Do not let server settings
-  // or an old phone/browser cache silently reset the scoring screen back to Week 1.
+  // Set week input from settings or localStorage
   var wkEl = document.getElementById('scoringWeekNum');
   if (wkEl) {
-    var selectedWeek = gpSelectedWeek();
-    wkEl.value = selectedWeek;
-    localStorage.setItem('gimmepar_week', selectedWeek);
+    // Live scoring must follow the league's current week / selected scoring week.
+    // Do NOT let an old saved browser/PWA value such as Week 1 override it.
+    var settingsWeek = leagueSettings && leagueSettings.currentWeek;
+    var existingWeek = parseInt(wkEl.value, 10);
+    wkEl.value = settingsWeek || existingWeek || 1;
   }
   const container = document.getElementById('scoringTeams');
   if (!container) return;
@@ -3219,10 +3186,8 @@ async function buildScoringCards() {
     signedThisWeek = {};
     var currentWeekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     signedRows.forEach(function(r) {
-      signedThisWeek[r.team_id] = r.week_number;
-      // Only load scorecards that explicitly prove they belong to the selected week.
-      // This prevents Week 1/latest rows from pre-populating Week 4.
-      if (rowWeekMatchesSelected(r, currentWeekNum)) signedScoreData[r.team_id] = r;
+      signedThisWeek[r.team_id] = parseInt(r.week_number, 10);
+      if (parseInt(r.week_number, 10) === currentWeekNum) signedScoreData[r.team_id] = r;
     });
   } catch(e) { signedThisWeek = {}; }
 
@@ -3558,7 +3523,7 @@ async function loadConfirmSummary() {
   if (!textEl) return;
   try {
     var settings = leagueSettings || await api('GET', '/api/league/settings');
-    var weekNum = gpSelectedWeek();
+    var weekNum = settings.currentWeek || 1;
     var rows = await api('GET', '/api/league/confirm-playing/' + weekNum);
     var playing    = rows.filter(function(r){ return r.playing; });
     var notPlaying = rows.filter(function(r){ return !r.playing; });
@@ -3728,7 +3693,7 @@ async function clearAndRegenerateWeek() {
 }
 
 async function clearCurrentWeekScores() {
-  var weekNum = _liveSessionWeek || gpSelectedWeek();
+  var weekNum = getStrictScoringWeek();
   if (!confirm('Clear all entered scores for week ' + weekNum + '? Saved round history is NOT affected.')) return;
 
   // Clear all hole inputs on screen
@@ -5676,37 +5641,72 @@ window.onunhandledrejection = function(e) {
 init();
 
 // �� LIVE SCORING ��
+function getStrictScoringWeek() {
+  var wkEl = document.getElementById('scoringWeekNum');
+  var wk = parseInt(wkEl && wkEl.value, 10);
+  if (!wk && leagueSettings && leagueSettings.currentWeek) wk = parseInt(leagueSettings.currentWeek, 10);
+  return wk || 1;
+}
+
+function clearVisibleLiveScores() {
+  (scoreTeams || []).forEach(function(st) {
+    var teamId = st.id;
+    for (var i = 0; i < 18; i++) {
+      var inp = document.getElementById('shole_' + teamId + '_' + i);
+      if (inp) {
+        inp.value = '';
+        inp.classList.remove('eagle','birdie','bogey','double');
+        inp.dispatchEvent(new Event('input'));
+      }
+    }
+    ['sgross_','snet_','sgross2_','stopar_','snet2_'].forEach(function(pre) {
+      var el = document.getElementById(pre + teamId);
+      if (el) el.textContent = '—';
+    });
+  });
+}
+
+function getExplicitRowWeek(row) {
+  if (!row) return null;
+  var candidates = [row.week_number, row.weekNum, row.week, row.currentWeek, row.round_week, row.roundWeek];
+  for (var i = 0; i < candidates.length; i++) {
+    if (candidates[i] !== undefined && candidates[i] !== null && candidates[i] !== '') {
+      var n = parseInt(candidates[i], 10);
+      if (!isNaN(n)) return n;
+    }
+  }
+  return null;
+}
+
 var _liveTimer = null;
 var _liveActive = false;
 var _livePrev = {}; // last polled hole values per team
-var _liveSessionWeek = null;
 
 function toggleLiveScoring() {
   _liveActive = !_liveActive;
   var btn = document.getElementById('btnLive');
   var banner = document.getElementById('liveBanner');
   if (_liveActive) {
-    _liveSessionWeek = gpSelectedWeek();
     btn && btn.classList.add('active');
     banner && banner.classList.add('visible');
     _livePrev = {};
-    clearVisibleScoreInputsForLive();
+    // Clear stale Week 1 / prior-week values from the screen before the first live poll.
+    clearVisibleLiveScores();
     pollLiveScores();
     _liveTimer = setInterval(pollLiveScores, 15000);
-    toast('📡 Live scoring ON — Week ' + _liveSessionWeek);
+    toast('📡 Live scoring ON');
   } else {
     btn && btn.classList.remove('active');
     banner && banner.classList.remove('visible');
     clearInterval(_liveTimer);
     _liveTimer = null;
     _livePrev = {};
-    _liveSessionWeek = null;
     toast('Live scoring OFF');
   }
 }
 
 async function pollLiveScores() {
-  var weekNum = _liveSessionWeek || gpSelectedWeek();
+  var weekNum = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
   var anyUpdate = false;
   var serverFound = 0;
   var serverSkipped = 0;
@@ -5732,23 +5732,25 @@ async function pollLiveScores() {
     var nine = null;
     var hdcp = null;
 
-    // Primary: server response. IMPORTANT: the backend may ignore ?week= and return the latest
-    // scorecard from a prior week. Do not apply it unless the row proves it belongs to this week.
+    // Primary: server response. The backend may ignore ?week= and return the latest
+    // scorecard from Week 1 or another prior week. Do not apply it unless the row explicitly
+    // proves it belongs to the selected scoring week.
     if (r.data && r.data.found) {
-      if (rowWeekMatchesSelected(r.data, weekNum)) {
+      var rowWeek = getExplicitRowWeek(r.data);
+      if (rowWeek === weekNum) {
         serverFound++;
         holes = r.data.hole_scores || r.data.scores || [];
         if (typeof holes === 'string') { try { holes = JSON.parse(holes); } catch(e) { holes = []; } }
         nine = r.data.nine || 'front';
         hdcp = r.data.handicap_used || r.data.handicapUsed;
       } else {
-        // Skip old/latest score rows, such as Week 3 showing while Week 4 is selected.
         serverSkipped++;
+        return;
       }
     }
 
-    // No admin localStorage fallback in Live mode. Old browser/PWA drafts were the source of Week 1 bleed-through.
-
+    // IMPORTANT: no localStorage fallback in Live mode.
+    // Local/PWA saved drafts are the reason old Week 1 phone scores kept bleeding into Live.
 
     if (!holes) return;
     var prevHoles = _livePrev[teamId] || [];
