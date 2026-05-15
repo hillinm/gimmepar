@@ -3116,12 +3116,41 @@ let signedThisWeek = {}; // {teamId: weekNumber}
 
 function normalizeScheduleNine(nine, hole) {
   var raw = (nine == null ? '' : String(nine)).trim().toLowerCase();
-  if (raw === 'front' || raw === 'f9' || raw === 'front 9' || raw === 'front9' || raw === 'f') return 'front';
-  if (raw === 'back' || raw === 'b9' || raw === 'back 9' || raw === 'back9' || raw === 'b') return 'back';
+  if (raw === 'front' || raw === 'f9' || raw === 'front 9' || raw === 'front9' || raw === 'f' || raw === 'front nine') return 'front';
+  if (raw === 'back' || raw === 'b9' || raw === 'back 9' || raw === 'back9' || raw === 'b' || raw === 'back nine') return 'back';
   if (raw === 'all18' || raw === 'all 18' || raw === '18' || raw === 'eighteen') return 'all18';
   var h = parseInt(hole, 10);
   if (!isNaN(h)) return h >= 10 ? 'back' : 'front';
   return 'front';
+}
+
+function normalizeWeekNumber(w) {
+  return parseInt((w && (w.week || w.week_number || w.weekNumber)) || w, 10) || 1;
+}
+
+function getScheduleTeamId(m, side) {
+  if (!m) return null;
+  var objKeys = side === 'A' ? ['teamA','team_a','team1','team_1','aTeam'] : ['teamB','team_b','team2','team_2','bTeam'];
+  for (var i = 0; i < objKeys.length; i++) {
+    var obj = m[objKeys[i]];
+    if (obj && obj.id != null) return String(obj.id);
+    if (obj && obj.team_id != null) return String(obj.team_id);
+  }
+  var idKeys = side === 'A'
+    ? ['teamAId','team_a_id','team1Id','team_1_id','team_id_a','a_team_id']
+    : ['teamBId','team_b_id','team2Id','team_2_id','team_id_b','b_team_id'];
+  for (var j = 0; j < idKeys.length; j++) {
+    if (m[idKeys[j]] != null) return String(m[idKeys[j]]);
+  }
+  return null;
+}
+
+function getMatchupsFromScheduleResponse(resp) {
+  if (!resp) return null;
+  if (Array.isArray(resp)) return resp;
+  if (Array.isArray(resp.matchups)) return resp.matchups;
+  if (resp.week && Array.isArray(resp.week.matchups)) return resp.week.matchups;
+  return null;
 }
 
 var _buildingScoringCards = false;
@@ -3165,20 +3194,20 @@ async function buildScoringCards() {
   try {
     var weekNumForSched = parseInt((document.getElementById('scoringWeekNum')||{}).value) || (leagueSettings && leagueSettings.currentWeek) || 1;
     // Try local savedSchedule first (already in memory, no API call needed)
-    var localWeek = (typeof savedSchedule !== 'undefined') && savedSchedule.find(function(w){ return w.week === weekNumForSched; });
-    var matchupsToUse = (localWeek && localWeek.matchups) ? localWeek.matchups : null;
+    var localWeek = (typeof savedSchedule !== 'undefined') && savedSchedule.find(function(w){ return normalizeWeekNumber(w) === weekNumForSched; });
+    var matchupsToUse = getMatchupsFromScheduleResponse(localWeek);
     // Fall back to API if not in local cache
     if (!matchupsToUse) {
       try {
         var weekSched = await api('GET', '/api/league/schedule/week/' + weekNumForSched);
-        if (weekSched && weekSched.matchups) matchupsToUse = weekSched.matchups;
+        matchupsToUse = getMatchupsFromScheduleResponse(weekSched);
       } catch(e2) {}
     }
     if (matchupsToUse) {
       matchupsToUse.forEach(function(m) {
-        var nine = normalizeScheduleNine(m.nine, m.hole);
-        var aId = (m.teamA && m.teamA.id) ? m.teamA.id : m.teamAId;
-        var bId = (m.teamB && m.teamB.id) ? m.teamB.id : m.teamBId;
+        var nine = normalizeScheduleNine(m.nine || m.starting_nine || m.nine_label, m.hole || m.starting_hole || m.startHole);
+        var aId = getScheduleTeamId(m, 'A');
+        var bId = getScheduleTeamId(m, 'B');
         if (aId) scheduleNineMap[aId] = nine;
         if (bId) scheduleNineMap[bId] = nine;
       });
@@ -3187,7 +3216,7 @@ async function buildScoringCards() {
 
   rosterTeams.forEach((t, idx) => {
     // Use the saved schedule as the source of truth for F9/B9. Roster nine is only a fallback.
-    const scheduledNine = scheduleNineMap[String(t.id)] || scheduleNineMap[t.id];
+    const scheduledNine = scheduleNineMap[String(t.id)];
     const nine = scheduledNine || normalizeScheduleNine(t.nine, null);
     const st = { id: t.id, nine, scheduledNine: scheduledNine || null, holes: Array(nine === 'all18' ? 18 : 9).fill(null), format: t.format||'2man' };
     scoreTeams.push(st);
@@ -3212,7 +3241,7 @@ async function buildScoringCards() {
       var st = scoreTeams.find(function(s){ return s.id === t.id; });
       // Keep the scorecard on the scheduled F9/B9. Only use saved signed nine when no schedule exists.
       if (signed.nine && st && !st.scheduledNine && st.nine !== normalizeScheduleNine(signed.nine, null)) {
-        switchNine(t.id, normalizeScheduleNine(signed.nine, null));
+        switchNine(t.id, normalizeScheduleNine(signed.nine, null), true);
       }
       // Fill in hole scores
       holeScores.forEach(function(score, i) {
@@ -3238,7 +3267,7 @@ async function buildScoringCards() {
           var stDraft = scoreTeams.find(function(s){ return s.id === t.id; });
           // Keep the scorecard on the scheduled F9/B9. Draft nine is only used when there is no saved schedule.
           if (draft.nine && stDraft && !stDraft.scheduledNine && stDraft.nine !== normalizeScheduleNine(draft.nine, null)) {
-            switchNine(t.id, normalizeScheduleNine(draft.nine, null));
+            switchNine(t.id, normalizeScheduleNine(draft.nine, null), true);
           }
           if (draft.holes && draft.holes.length) {
             draft.holes.forEach(function(score, i) {
@@ -3409,14 +3438,15 @@ function buildScoreCard(team, st, idx) {
               id="ssubname_${team.id}" placeholder="Sub name (optional)" inputmode="text">
           </span>
         </div>
-        <div class="nine-toggle" id="stoggle_${team.id}" onclick="event.stopPropagation()">
+        <div class="nine-toggle" id="stoggle_${team.id}" onclick="event.stopPropagation()" title="${st.scheduledNine ? 'Locked to the Schedule tab for this week' : 'No saved schedule found for this team/week'}">
           <button class="nine-toggle-btn ${st.nine==='front'?'active-f':''}"
-                  onclick="switchNine(${team.id},'front')">F9</button>
+                  onclick="switchNine(${team.id},'front', false)">F9</button>
           <button class="nine-toggle-btn ${st.nine==='all18'?'active-18':''}"
-                  onclick="switchNine(${team.id},'all18')">ALL 18</button>
+                  onclick="switchNine(${team.id},'all18', false)">ALL 18</button>
           <button class="nine-toggle-btn ${st.nine==='back'?'active-b':''}"
-                  onclick="switchNine(${team.id},'back')">B9</button>
+                  onclick="switchNine(${team.id},'back', false)">B9</button>
         </div>
+        ${st.scheduledNine ? '<span style="font-size:10px;color:var(--muted);font-family:Bebas Neue,sans-serif;letter-spacing:1px;">FROM SCHEDULE</span>' : ''}
       </div>
       <div id="sgrid_${team.id}">${buildHolesGrid(team.id, st.nine)}</div>
       <div class="score-totals">
@@ -3844,13 +3874,15 @@ async function switchNine(teamId, nine) {
 
   recalcCard(teamId);
 
-  // Save to roster
-  try {
-    const t = rosterTeams.find(t=>t.id===teamId);
-    if (t) await api('PUT', `/api/league/teams/${teamId}`, {
-      player1: t.player1, player2: t.player2, handicap: t.handicap, nine
-    });
-  } catch(e) { console.warn('Could not save nine to roster', e); }
+  // Save to roster only when there is no saved Schedule-tab assignment for this team/week.
+  if (!st.scheduledNine) {
+    try {
+      const t = rosterTeams.find(t=>t.id===teamId);
+      if (t) await api('PUT', `/api/league/teams/${teamId}`, {
+        player1: t.player1, player2: t.player2, handicap: t.handicap, nine
+      });
+    } catch(e) { console.warn('Could not save nine to roster', e); }
+  }
 }
 
 // syncAllNines removed — nine is per-team in roster
@@ -4321,7 +4353,7 @@ async function loadRoundIntoScoring(roundId, weekNum) {
       // Switch nine if needed
       var st = scoreTeams.find(function(t){ return t.id === s.team_id; });
       if (!st) return;
-      if (s.nine && st.nine !== s.nine) switchNine(s.team_id, s.nine);
+      if (s.nine && st.nine !== normalizeScheduleNine(s.nine, null)) switchNine(s.team_id, normalizeScheduleNine(s.nine, null), true);
 
       // Fill hole inputs
       holeScores.forEach(function(score, i) {
@@ -4483,6 +4515,9 @@ async function saveManualMatchups() {
     result.innerHTML = '<span style="color:var(--green2)">✓ Week '+weekNum+' saved with '+matchups.length+' matchups.</span>';
     document.getElementById('startWeek').value = weekNum + 1;
     toast('Week ' + weekNum + ' matchups saved');
+    var scoringVisible = document.getElementById('tabScoring') && document.getElementById('tabScoring').style.display !== 'none';
+    var scoringWeek = parseInt((document.getElementById('scoringWeekNum')||{}).value, 10) || weekNum;
+    if (scoringVisible && scoringWeek === weekNum) { _buildingScoringCards = false; buildScoringCards(); }
     var scoringWeekEl = document.getElementById('scoringWeekNum');
     if (scoringWeekEl && parseInt(scoringWeekEl.value) === weekNum) {
       _buildingScoringCards = false;
@@ -5675,7 +5710,7 @@ async function pollLiveScores() {
     var prevHoles = _livePrev[teamId] || [];
 
     var st = scoreTeams.find(function(s){ return s.id === teamId; });
-    if (st && nine && st.nine !== nine) switchNine(teamId, nine);
+    if (st && nine && !st.scheduledNine && st.nine !== normalizeScheduleNine(nine, null)) switchNine(teamId, normalizeScheduleNine(nine, null), true);
 
     var changed = false;
     holes.forEach(function(score, i) {
