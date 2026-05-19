@@ -4565,6 +4565,7 @@ function renderSavedSchedule(weeks) {
     w.matchups.forEach(function(m) {
       var tA = m.teamA;
       var tB = m.teamB;
+      var tC = m.teamC;
       var hole = m.hole;
       if (!hole) return;
       var isBack = (m.nine === 'back') || (!m.nine && hole >= 10);
@@ -4575,6 +4576,7 @@ function renderSavedSchedule(weeks) {
         rows += '<tr class="bye-row"><td><span class="hole-chip" style="background:var(--muted)">—</span></td><td>—</td><td class="team-a-name">' + nameA + '</td><td><span class="vs-badge">BYE</span></td><td>—</td></tr>';
       } else {
         var nameB = esc(tB.player1||'') + ' / ' + esc(tB.player2||'');
+        var nameC = tC ? (esc(tC.player1||'') + (tC.player2 ? ' / ' + esc(tC.player2||'') : '')) : '';
         var mIdx = w.matchups.indexOf(m);
         rows += '<tr id="srow_'+weekNum+'_'+mIdx+'">';
         rows += '<td><span class="' + chipClass + '">' + hole + '</span></td>';
@@ -4582,6 +4584,7 @@ function renderSavedSchedule(weeks) {
         rows += '<td class="team-a-name">' + nameA + '</td>';
         rows += '<td style="text-align:center"><span class="vs-badge">vs</span></td>';
         rows += '<td class="team-b-name">' + nameB + '</td>';
+        rows += '<td class="team-b-name">' + (nameC ? '<span class="vs-badge">+ 3rd</span> ' + nameC : '') + '</td>';
         rows += '<td style="white-space:nowrap;">'
           + '<button onclick="markTeamBye('+weekNum+','+mIdx+',\'A\');event.stopPropagation();" style="background:rgba(192,57,43,.15);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:10px;margin-right:3px;" title="Mark '+nameA+' as BYE">A BYE</button>'
           + '<button onclick="markTeamBye('+weekNum+','+mIdx+',\'B\');event.stopPropagation();" style="background:rgba(192,57,43,.15);border:1px solid rgba(220,80,80,.3);color:#ff9999;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:10px;" title="Mark '+nameB+' as BYE">B BYE</button>'
@@ -4602,6 +4605,7 @@ function renderSavedSchedule(weeks) {
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team A</th>' +
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th>' +
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">Team B</th>' +
+      '<th style="position:sticky;top:0;background:var(--surface);z-index:5;">3-Team Group</th>' +
       '<th style="position:sticky;top:0;background:var(--surface);z-index:5;"></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div></div>';
     output.appendChild(section);
@@ -4667,25 +4671,39 @@ function roundRobinWeeks(n) {
 }
 
 // Standard round-robin algorithm (Berger tables)
-// Returns array of weeks, each week is array of [teamIdxA, teamIdxB] pairs
+// Returns array of weeks. Each matchup is [teamIdxA, teamIdxB] or, with an odd team count, [teamIdxA, teamIdxB, teamIdxC].
+// IMPORTANT: GimmePar uses NO BYES for odd team counts. For 43 teams this creates
+// 20 normal head-to-head matches plus one 3-team group each week, covering all 43 teams.
 function buildRoundRobin(teams) {
   const n = teams.length;
   const hasOdd = n % 2 !== 0;
-  const list = [...Array(n).keys()]; // indices
-  if (hasOdd) list.push(null); // null = bye
+  const list = [...Array(n).keys()];
+  if (hasOdd) list.push(null); // temporary placeholder only; converted into a 3-team group below
   const total = list.length;
   const weeks = total - 1;
   const rounds = [];
 
   for (let w = 0; w < weeks; w++) {
     const pairs = [];
+    let floatingTeam = null;
+
     for (let i = 0; i < total / 2; i++) {
       const a = list[i];
       const b = list[total - 1 - i];
-      if (a !== null && b !== null) pairs.push([a, b]);
-      else if (a === null) pairs.push([b, null]); // bye
-      else pairs.push([a, null]); // bye
+      if (a !== null && b !== null) {
+        pairs.push([a, b]);
+      } else {
+        floatingTeam = (a === null) ? b : a;
+      }
     }
+
+    // No byes: put the floating odd team into a rotating 3-team group.
+    // This avoids leaving anyone off the weekly schedule.
+    if (floatingTeam !== null && pairs.length) {
+      const targetIdx = w % pairs.length;
+      pairs[targetIdx] = [pairs[targetIdx][0], pairs[targetIdx][1], floatingTeam];
+    }
+
     rounds.push(pairs);
     // Rotate all except first element
     list.splice(1, 0, list.pop());
@@ -4756,7 +4774,7 @@ function assignHoles(matchups, weekNum) {
 
 function exportScheduleCSV() {
   if (!savedSchedule.length) { toast('Generate a schedule first'); return; }
-  const rows = ['Week,Round,Hole,Nine,Team A Player 1,Team A Player 2,Team B Player 1,Team B Player 2'];
+  const rows = ['Week,Round,Hole,Nine,Team A Player 1,Team A Player 2,Team B Player 1,Team B Player 2,3-Team Group Player 1,3-Team Group Player 2'];
   var rrLen = buildRoundRobin(rosterTeams).length;
   var seasonLen = parseInt((document.getElementById('seasonWeeks')||{}).value) || 29;
   var capLen = Math.min(rrLen, seasonLen);
@@ -4771,7 +4789,9 @@ function exportScheduleCSV() {
           '"' + ((m.teamA && m.teamA.player1) || '') + '"',
           '"' + ((m.teamA && m.teamA.player2) || '') + '"',
           '"' + ((m.teamB && m.teamB.player1) || '') + '"',
-          '"' + ((m.teamB && m.teamB.player2) || '') + '"'
+          '"' + ((m.teamB && m.teamB.player2) || '') + '"',
+          '"' + ((m.teamC && m.teamC.player1) || '') + '"',
+          '"' + ((m.teamC && m.teamC.player2) || '') + '"'
         ].join(','));
       }
     });
@@ -4804,14 +4824,15 @@ function downloadSchedulePDF() {
 
   savedSchedule.slice().sort(function(a,b){ return (a.week||0) - (b.week||0); }).forEach(function(sw) {
     html += '<h2>Week ' + esc(String(sw.week || '')) + '</h2>';
-    html += '<table><thead><tr><th class="hole">Hole</th><th class="nine">Nine</th><th>Team A</th><th>Team B</th></tr></thead><tbody>';
+    html += '<table><thead><tr><th class="hole">Hole</th><th class="nine">Nine</th><th>Team A</th><th>Team B</th><th>3-Team Group</th></tr></thead><tbody>';
     (sw.matchups || []).forEach(function(m) {
       var hole = m.hole || '—';
       var nineRaw = (m.nine || '').toString().toLowerCase();
       var nine = nineRaw.indexOf('back') >= 0 || Number(hole) >= 10 ? 'Back 9' : (nineRaw.indexOf('18') >= 0 ? '18 Holes' : 'Front 9');
       var teamA = m.teamA ? [m.teamA.player1, m.teamA.player2, m.teamA.player3, m.teamA.player4].filter(Boolean).join(' / ') : 'BYE';
       var teamB = m.teamB ? [m.teamB.player1, m.teamB.player2, m.teamB.player3, m.teamB.player4].filter(Boolean).join(' / ') : 'BYE';
-      html += '<tr' + ((!m.teamA || !m.teamB) ? ' class="bye"' : '') + '><td class="hole">' + esc(String(hole)) + '</td><td>' + esc(nine) + '</td><td>' + esc(teamA) + '</td><td>' + esc(teamB) + '</td></tr>';
+      var teamC = m.teamC ? [m.teamC.player1, m.teamC.player2, m.teamC.player3, m.teamC.player4].filter(Boolean).join(' / ') : '';
+      html += '<tr' + ((!m.teamA || !m.teamB) ? ' class="bye"' : '') + '><td class="hole">' + esc(String(hole)) + '</td><td>' + esc(nine) + '</td><td>' + esc(teamA) + '</td><td>' + esc(teamB) + '</td><td>' + esc(teamC) + '</td></tr>';
     });
     html += '</tbody></table>';
   });
@@ -4850,14 +4871,20 @@ async function generateWeekOnly() {
       }
       if (allPlayers.length % 2 !== 0) {
         var last = allPlayers[allPlayers.length - 1];
-        matchups.push({ teamA: { id: last.id, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine }, teamB: null });
+        var floating = { id: last.id, player1: last.name, player2: '', handicap: last.handicap, nine: last.nine };
+        if (matchups.length) matchups[(weekNum - 1) % matchups.length].teamC = floating;
+        else matchups.push({ teamA: floating, teamB: null });
       }
     } else {
       var rounds = buildRoundRobin(rosterTeams);
       var roundIdx = (weekNum - 1) % rounds.length;
       var round = rounds[roundIdx];
       matchups = round.map(function(pair) {
-        return { teamA: pair[0] !== null ? rosterTeams[pair[0]] : null, teamB: pair[1] !== null ? rosterTeams[pair[1]] : null };
+        return {
+          teamA: pair[0] !== null ? rosterTeams[pair[0]] : null,
+          teamB: pair[1] !== null ? rosterTeams[pair[1]] : null,
+          teamC: pair.length > 2 && pair[2] !== null ? rosterTeams[pair[2]] : null
+        };
       });
     }
     var withHoles = assignHoles(matchups, weekNum);
@@ -4871,7 +4898,8 @@ async function generateWeekOnly() {
     else tempSchedule.push(previewWeek);
     tempSchedule.sort(function(a,b){ return a.week-b.week; });
     renderSavedSchedule(tempSchedule);
-    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' matchups. Click 💾 Save Week to save.</span>';
+    var scheduledTeamCount = withHoles.reduce(function(sum,m){ return sum + (m.teamA?1:0) + (m.teamB?1:0) + (m.teamC?1:0); }, 0);
+    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' groups / ' + scheduledTeamCount + ' teams. Click 💾 Save Week to save.</span>';
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
@@ -4892,7 +4920,7 @@ async function saveGeneratedWeek() {
   }
   try {
     var slim = [{ week: weekToSave, matchups: matchupsToSave.map(function(m) {
-      return { hole: m.hole, nine: m.nine||'front', teamAId: m.teamA?m.teamA.id:null, teamBId: m.teamB?m.teamB.id:null };
+      return { hole: m.hole, nine: m.nine||'front', teamAId: m.teamA?m.teamA.id:null, teamBId: m.teamB?m.teamB.id:null, teamCId: m.teamC?m.teamC.id:null };
     })}];
     await api('POST', '/api/league/schedule/save', { weeks: slim });
     await api('PUT', '/api/league/settings', Object.assign({}, leagueSettings, { currentWeek: weekToSave }));
