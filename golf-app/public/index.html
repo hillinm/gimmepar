@@ -1184,6 +1184,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
           <button class="btn-gen" onclick="generateWeekOnly()">🎲 Generate</button>
           <button class="btn-gen" style="background:var(--green);border-color:var(--green);" onclick="saveGeneratedWeek()">💾 Save Week</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
+          <button class="btn-export-sched" onclick="downloadSchedulePDF()">📄 PDF</button>
           <button class="btn-export-sched" style="border-color:rgba(192,57,43,.5);color:#ff9999;" onclick="clearSavedSchedule()">🗑 Clear All</button>
         </div>
         <div id="weekGenResult" style="font-size:13px;margin-top:6px;"></div>
@@ -4780,6 +4781,47 @@ function exportScheduleCSV() {
   const a = document.createElement('a');
   a.href = url; a.download = 'gimmepar_schedule.csv';
   a.click(); URL.revokeObjectURL(url);
+}
+
+
+function downloadSchedulePDF() {
+  if (!savedSchedule || !savedSchedule.length) { toast('Generate or load a schedule first'); return; }
+  var leagueName = '';
+  try {
+    leagueName = (currentLeague && (currentLeague.name || currentLeague.leagueName)) ||
+                 (leagueSettings && (leagueSettings.name || leagueSettings.leagueName)) ||
+                 (document.getElementById('headerLeague') ? document.getElementById('headerLeague').textContent : '') ||
+                 'GimmePar Schedule';
+  } catch(e) { leagueName = 'GimmePar Schedule'; }
+
+  var html = '<!doctype html><html><head><title>GimmePar Schedule</title>' +
+    '<meta charset="utf-8"><style>' +
+    'body{font-family:Arial,sans-serif;color:#111;margin:24px;}h1{margin:0 0 4px;font-size:24px;}h2{margin:22px 0 8px;font-size:18px;border-bottom:2px solid #222;padding-bottom:4px;}p{margin:0 0 16px;color:#555;font-size:12px;}table{width:100%;border-collapse:collapse;margin-bottom:18px;}th,td{border:1px solid #ccc;padding:7px 8px;font-size:12px;text-align:left;}th{background:#efefef;} .hole{font-weight:bold;text-align:center;width:45px}.nine{width:70px}.bye{color:#777;font-style:italic;}@media print{button{display:none;}body{margin:12mm;}h2{break-after:avoid;}table{break-inside:auto;}tr{break-inside:avoid;}}' +
+    '</style></head><body>';
+  html += '<button onclick="window.print()" style="float:right;padding:8px 14px;margin-bottom:12px;">Print / Save as PDF</button>';
+  html += '<h1>' + esc(leagueName || 'GimmePar Schedule') + '</h1>';
+  html += '<p>Generated ' + new Date().toLocaleString() + '</p>';
+
+  savedSchedule.slice().sort(function(a,b){ return (a.week||0) - (b.week||0); }).forEach(function(sw) {
+    html += '<h2>Week ' + esc(String(sw.week || '')) + '</h2>';
+    html += '<table><thead><tr><th class="hole">Hole</th><th class="nine">Nine</th><th>Team A</th><th>Team B</th></tr></thead><tbody>';
+    (sw.matchups || []).forEach(function(m) {
+      var hole = m.hole || '—';
+      var nineRaw = (m.nine || '').toString().toLowerCase();
+      var nine = nineRaw.indexOf('back') >= 0 || Number(hole) >= 10 ? 'Back 9' : (nineRaw.indexOf('18') >= 0 ? '18 Holes' : 'Front 9');
+      var teamA = m.teamA ? [m.teamA.player1, m.teamA.player2, m.teamA.player3, m.teamA.player4].filter(Boolean).join(' / ') : 'BYE';
+      var teamB = m.teamB ? [m.teamB.player1, m.teamB.player2, m.teamB.player3, m.teamB.player4].filter(Boolean).join(' / ') : 'BYE';
+      html += '<tr' + ((!m.teamA || !m.teamB) ? ' class="bye"' : '') + '><td class="hole">' + esc(String(hole)) + '</td><td>' + esc(nine) + '</td><td>' + esc(teamA) + '</td><td>' + esc(teamB) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  });
+  html += '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>';
+
+  var w = window.open('', '_blank');
+  if (!w) { toast('Popup blocked. Allow popups, then try PDF again.'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 
 var _lastGeneratedMatchups = null;
