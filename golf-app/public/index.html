@@ -3993,23 +3993,21 @@ function renderResults(data, parFront, parBack) {
   const b9teams = data.filter(t => t.nine === 'back'  || t.nine === 'all18');
 
   function splitFlight(teams) {
+    // Sort by net, then SI tiebreaker for ties — strict 50/50 split
     var sorted = teams.slice().sort(function(a,b){
       var diff = (a.net??999)-(b.net??999);
       if (diff !== 0) return diff;
-      return siSort(a, b); // break ties with SI
+      return siSort(a, b); // SI hole playoff breaks the tie
     });
+    // Strict half — odd number gets extra team in A flight
     var mid = Math.ceil(sorted.length/2);
-    // If the team right at the cutoff has the same net as the next team,
-    // bump all tied teams at the boundary into A flight together
-    if (mid < sorted.length) {
-      var cutoffNet = sorted[mid-1].net;
-      var nextNet   = sorted[mid].net;
-      if (cutoffNet === nextNet) {
-        // Find how many teams share this net score at the boundary
-        while (mid < sorted.length && sorted[mid].net === cutoffNet) mid++;
-      }
-    }
-    sorted.forEach(function(t,i){ t.flight = i<mid ? 'A' : 'B'; });
+    sorted.forEach(function(t,i){
+      t.flight = i<mid ? 'A' : 'B';
+      // Tag if this team's flight was decided by SI tiebreaker
+      // (same net as the team on the other side of the boundary)
+      if (i === mid-1 && mid < sorted.length && (t.net??999) === (sorted[mid].net??999)) t.flightTB = true;
+      if (i === mid   && mid > 0           && (t.net??999) === (sorted[mid-1].net??999)) t.flightTB = true;
+    });
   }
   splitFlight(f9teams);
   splitFlight(b9teams);
@@ -4240,7 +4238,7 @@ function flightHTML(letter, teams, cls) {
       <div class="place ${pc}">${i+1}</div>
       <div class="fr-info">
         <div class="fr-name">${esc(t.name)}</div>
-        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}${tbNote}</div>
+        <div class="fr-meta">Hdcp ${t.hdcp} • ${t.nine==='all18'?'All 18':t.nine==='back'?'Back 9':'Front 9'} • ${ds}${tbNote}${t.flightTB?' <span style="font-size:10px;color:var(--gold2);background:rgba(201,168,76,.15);padding:1px 5px;border-radius:3px;margin-left:4px;">SI Flight TB</span>':''}</div>
       </div>
       <div class="fr-score">
         <div class="fr-net">${t.net??'—'}</div>
