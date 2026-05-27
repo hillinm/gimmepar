@@ -4072,6 +4072,15 @@ function renderResults(data, parFront, parBack) {
     <button class="btn-recalc" onclick="recalculate()">⟳ RECALCULATE</button>
     <button class="btn-update-hdcp" onclick="saveUpdatedHandicaps()">💾 SAVE UPDATED HANDICAPS TO ROSTER</button>
     <div class="results-grid">
+      <div style="grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;display:flex;gap:24px;flex-wrap:wrap;">
+        <span style="color:var(--gold);">FRONT 9:</span>
+        <span style="color:var(--green2);">A Flight: ${fA.length} teams</span>
+        <span style="color:var(--muted);">B Flight: ${fB.length} teams</span>
+        <span style="color:var(--gold);margin-left:16px;">BACK 9:</span>
+        <span style="color:var(--green2);">A Flight: ${bA.length} teams</span>
+        <span style="color:var(--muted);">B Flight: ${bB.length} teams</span>
+        ${fA.length!==fB.length||bA.length!==bB.length?'<span style="color:#ff9999;margin-left:8px;">⚠ Uneven split (odd teams)</span>':'<span style="color:var(--green2);margin-left:8px;">✓ Even split</span>'}
+      </div>
       ${flightHTML('F9 A Flight',fA,'a')} ${flightHTML('F9 B Flight',fB,'b')}
       ${flightHTML('B9 A Flight',bA,'a')} ${flightHTML('B9 B Flight',bB,'b')}
       ${skinsEnabled ? skinsHTML(skinsFrontA,'F9 A Flight Skins','Holes 1–9') : ''}
@@ -4248,7 +4257,7 @@ function flightHTML(letter, teams, cls) {
   }).join('') : '<div class="empty-state">No teams in this flight.</div>';
   return `<div class="res-card"><div class="res-hdr ${cls}">
     <span class="res-icon">${icon}</span>
-    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play • SI Tiebreaker</div></div>
+    <div><div class="res-htitle">${letter}</div><div class="res-hsub">Net Stroke Play • SI Tiebreaker • <strong>${teams.length} teams</strong></div></div>
   </div><div class="res-body">${rows}</div></div>`;
 }
 
