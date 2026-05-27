@@ -4764,10 +4764,24 @@ function assignHoles(matchups, weekNum) {
   var realMatchups = matchups.filter(function(m) { return m.teamA && m.teamB; });
   var byes = matchups.filter(function(m) { return !m.teamB; });
 
-  var frontHoles = [1,2,3,4,5,6,7,8,9];
-  var backHoles  = [10,11,12,13,14,15,16,17,18];
+  // Get par values so we can prioritize Par 5s when doubling up
+  var parFront = getParFront ? getParFront() : [4,3,4,4,4,5,3,4,5];
+  var parBack  = getParBack  ? getParBack()  : [4,3,4,4,4,5,3,4,5];
 
-  // Rotate starting holes each week
+  // Sort holes so Par 5s come first (for double-ups), then by hole number
+  function sortByPar5First(holes, pars) {
+    return holes.slice().sort(function(a, b) {
+      var parA = pars[a <= 9 ? a-1 : a-10] || 4;
+      var parB = pars[b <= 9 ? b-1 : b-10] || 4;
+      if (parB !== parA) return parB - parA; // Par 5 (5) before Par 4 (4) before Par 3 (3)
+      return a - b; // then by hole number
+    });
+  }
+
+  var frontHoles = sortByPar5First([1,2,3,4,5,6,7,8,9], parFront);
+  var backHoles  = sortByPar5First([10,11,12,13,14,15,16,17,18], parBack);
+
+  // Rotate starting holes each week (rotate within par-sorted order)
   var fOff = (weekNum - 1) % frontHoles.length;
   var bOff = (weekNum - 1) % backHoles.length;
   var fRot = frontHoles.slice(fOff).concat(frontHoles.slice(0, fOff));
@@ -4775,14 +4789,9 @@ function assignHoles(matchups, weekNum) {
 
   var total = realMatchups.length;
   var half  = Math.floor(total / 2);
-  var extra = total % 2; // 1 if odd number of matchups
+  var extra = total % 2;
 
-  // Alternate which half goes to front vs back each week
-  // Week 1: first half = front, second half = back
-  // Week 2: first half = back, second half = front
   var firstHalfFront = (weekNum % 2 !== 0);
-
-  // Count how many go to each nine
   var frontCount = firstHalfFront ? half + extra : half;
   var backCount  = firstHalfFront ? half : half + extra;
 
@@ -4790,7 +4799,6 @@ function assignHoles(matchups, weekNum) {
   var assigned = realMatchups.map(function(m, i) {
     var playFront = firstHalfFront ? (i < frontCount) : (i >= backCount);
     var nine = playFront ? 'front' : 'back';
-    // Only double up holes if more matchups than holes on that nine
     var hole = playFront
       ? fRot[fIdx++ % fRot.length]
       : bRot[bIdx++ % bRot.length];
