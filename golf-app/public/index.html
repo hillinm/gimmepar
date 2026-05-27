@@ -1180,7 +1180,7 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appear
       <div class="section-body">
         <div class="week-selector">
           <label>Week</label>
-          <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;">
+          <input class="week-inp" type="number" id="startWeek" value="1" min="1" max="99" style="width:70px;" onchange="localStorage.setItem('gimmepar_sched_week',this.value);" oninput="localStorage.setItem('gimmepar_sched_week',this.value);">
           <button class="btn-gen" onclick="generateWeekOnly()">🎲 Generate</button>
           <button class="btn-gen" style="background:var(--green);border-color:var(--green);" onclick="saveGeneratedWeek()">💾 Save Week</button>
           <button class="btn-export-sched" onclick="exportScheduleCSV()">⬇ CSV</button>
@@ -3109,12 +3109,17 @@ let currentFilter = 'all';
 let subCounts = {}; // {teamId: count}
 let signedThisWeek = {}; // {teamId: weekNumber}
 
-// Restore persisted week number immediately
+// Restore persisted week numbers immediately
 (function() {
   var saved = localStorage.getItem('gimmepar_week');
   if (saved) {
     var el = document.getElementById('scoringWeekNum');
     if (el) el.value = saved;
+  }
+  var savedSched = localStorage.getItem('gimmepar_sched_week');
+  if (savedSched) {
+    var el2 = document.getElementById('startWeek');
+    if (el2) el2.value = savedSched;
   }
 })();
 
@@ -4417,7 +4422,11 @@ function showTab(tab) {
   });
   if (tab==='history') { loadHistory(); loadSignedScorecards(); initSubLog(); loadWeeklyConfirmations(); loadSubTracker(); }
   if (tab!=='scoring' && _liveActive) { toggleLiveScoring(); }
-  if (tab==='schedule') initSchedule();
+  if (tab==='schedule') {
+    initSchedule();
+    var sw = localStorage.getItem('gimmepar_sched_week');
+    if (sw) { var el = document.getElementById('startWeek'); if (el) el.value = sw; }
+  }
   if (tab==='scoring') {
     loadConfirmSummary();
     loadWeeklyConfirmations();
