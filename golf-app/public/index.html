@@ -4937,7 +4937,17 @@ async function generateWeekOnly() {
     tempSchedule.sort(function(a,b){ return a.week-b.week; });
     renderSavedSchedule(tempSchedule);
     var scheduledTeamCount = withHoles.reduce(function(sum,m){ return sum + (m.teamA?1:0) + (m.teamB?1:0) + (m.teamC?1:0); }, 0);
-    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' groups / ' + scheduledTeamCount + ' teams. Click 💾 Save Week to save.</span>';
+    // Find any doubled-up holes
+    var holeCounts = {};
+    withHoles.forEach(function(m) { if (m.hole) holeCounts[m.hole] = (holeCounts[m.hole]||0)+1; });
+    var doubled = Object.keys(holeCounts).filter(function(h){ return holeCounts[h] > 1; }).map(Number).sort(function(a,b){return a-b;});
+    var doubledMsg = '';
+    if (doubled.length) {
+      doubledMsg = ' <span style="color:var(--gold2);">⚠ Doubled up on hole' + (doubled.length>1?'s':'') + ': ' + doubled.join(', ') + '</span>';
+    } else {
+      doubledMsg = ' <span style="color:var(--green2);">✓ No double-ups</span>';
+    }
+    resultEl.innerHTML = '<span style="color:var(--gold)">⚡ Week ' + weekNum + ' generated — ' + withHoles.filter(function(m){return m.teamA&&m.teamB;}).length + ' groups / ' + scheduledTeamCount + ' teams. Click 💾 Save Week to save.</span>' + doubledMsg;
   } catch(e) {
     resultEl.innerHTML = '<span style="color:#ff9999">Error: ' + e.message + '</span>';
   }
