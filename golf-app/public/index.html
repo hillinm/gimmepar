@@ -3993,8 +3993,22 @@ function renderResults(data, parFront, parBack) {
   const b9teams = data.filter(t => t.nine === 'back'  || t.nine === 'all18');
 
   function splitFlight(teams) {
-    var sorted = teams.slice().sort(function(a,b){return (a.net??999)-(b.net??999);});
+    var sorted = teams.slice().sort(function(a,b){
+      var diff = (a.net??999)-(b.net??999);
+      if (diff !== 0) return diff;
+      return siSort(a, b); // break ties with SI
+    });
     var mid = Math.ceil(sorted.length/2);
+    // If the team right at the cutoff has the same net as the next team,
+    // bump all tied teams at the boundary into A flight together
+    if (mid < sorted.length) {
+      var cutoffNet = sorted[mid-1].net;
+      var nextNet   = sorted[mid].net;
+      if (cutoffNet === nextNet) {
+        // Find how many teams share this net score at the boundary
+        while (mid < sorted.length && sorted[mid].net === cutoffNet) mid++;
+      }
+    }
     sorted.forEach(function(t,i){ t.flight = i<mid ? 'A' : 'B'; });
   }
   splitFlight(f9teams);
